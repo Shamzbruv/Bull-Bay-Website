@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getPrimaryCampus } from "@/lib/data/public";
+import { getPrimaryCampus, getPublishedSermons, getStrategicMovementBySlug } from "@/lib/data/public";
 
 export const revalidate = 120;
 export const metadata: Metadata = {
@@ -10,7 +10,11 @@ export const metadata: Metadata = {
 };
 
 export default async function LivePage() {
-  const campus = await getPrimaryCampus();
+  const [campus, worship, worshipSermons] = await Promise.all([
+    getPrimaryCampus(),
+    getStrategicMovementBySlug("worship"),
+    getPublishedSermons({ topic: "worship", limit: 3 }),
+  ]);
   const schedule = Array.isArray(campus?.service_schedule)
     ? (campus?.service_schedule as { day: string; time: string; label: string }[])
     : [];
@@ -19,7 +23,7 @@ export default async function LivePage() {
     <section aria-labelledby="live-title">
       <div className="page-hero live-hero">
         <p className="eyebrow light">
-          <span /> JOIN FROM ANYWHERE
+          <span /> WORSHIP: EXALTING GOD TOGETHER
         </p>
         <h1 id="live-title">
           Church is not just a place.
@@ -57,6 +61,51 @@ export default async function LivePage() {
           ))}
         </article>
       </div>
+
+      {worship && (
+        <section className="section" style={{ paddingTop: 0 }}>
+          <div className="panel">
+            <h2>{worship.description ?? "Exalting God Together"}</h2>
+            {worship.objective && <p style={{ color: "var(--color-ink)" }}>{worship.objective}</p>}
+            {worship.expected_outcome && (
+              <p style={{ color: "var(--color-muted-2)" }}>
+                <b style={{ color: "var(--color-olive-600)" }}>What we&apos;re working toward: </b>
+                {worship.expected_outcome}
+              </p>
+            )}
+            <Link className="link-button" href="/ministries/worship-music">
+              Music &amp; Praise/Worship Ministry <span>→</span>
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {worshipSermons.length > 0 && (
+        <section className="section" style={{ paddingTop: 0 }}>
+          <div className="section-heading split-heading">
+            <h2>Latest worship messages</h2>
+            <Link className="link-button" href="/sermons">
+              All sermons <span>→</span>
+            </Link>
+          </div>
+          <div className="sermon-grid">
+            {worshipSermons.map((s) => (
+              <article className="sermon-card" key={s.id}>
+                <div className="sermon-thumb">
+                  <span className="tag">WORSHIP</span>
+                  <strong>{s.title}</strong>
+                  <span>▶ Watch message</span>
+                </div>
+                <h3>{s.title}</h3>
+                <p>{s.speaker}</p>
+                <Link className="watch-link" href={`/sermons/${s.slug}`}>
+                  Watch now →
+                </Link>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
     </section>
   );
 }

@@ -11,8 +11,13 @@ export const metadata: Metadata = {
 
 const TOPICS = [
   { value: "all", label: "All" },
-  { value: "faith", label: "Faith" },
+  { value: "discipleship", label: "Discipleship" },
+  { value: "worship", label: "Worship" },
   { value: "prayer", label: "Prayer" },
+  { value: "stewardship", label: "Stewardship" },
+  { value: "evangelism", label: "Evangelism" },
+  { value: "family", label: "Family" },
+  { value: "faith", label: "Faith" },
   { value: "purpose", label: "Purpose" },
 ];
 

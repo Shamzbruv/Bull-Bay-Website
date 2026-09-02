@@ -13,6 +13,10 @@ const NAV_ITEMS = [
   { href: "/admin/media", label: "Media" },
   { href: "/admin/giving", label: "Giving" },
   { href: "/admin/shop", label: "Shop" },
+  { href: "/admin/direction", label: "Church Direction" },
+  { href: "/admin/ministry-assignments", label: "Ministry Assignments" },
+  { href: "/admin/annual-plan", label: "Annual Plan" },
+  { href: "/admin/conference-document", label: "Conference Document" },
   { href: "/admin/roles", label: "Roles" },
   { href: "/admin/audit", label: "Audit Log" },
   { href: "/admin/settings", label: "Settings" },
@@ -31,6 +35,8 @@ const ADMIN_PERMISSIONS = [
   "shop.manage",
   "roles.manage",
   "sites.manage",
+  "direction.manage",
+  "ministry_assignments.manage",
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

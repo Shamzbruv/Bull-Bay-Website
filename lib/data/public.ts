@@ -172,3 +172,81 @@ export async function getPublishedAnnouncements(limit = 5) {
     .limit(limit);
   return data ?? [];
 }
+
+// Strategic direction (2026-2027 Church Members Conference) -----------------
+
+export async function getActiveChurchYear() {
+  const supabase = createPublicClient();
+  const { data } = await supabase.from("church_years").select("*").eq("status", "active").maybeSingle();
+  return data;
+}
+
+/** The seven "W" movements with their public objective/outcome. SMART goals
+ * are fetched separately (getPublicGoalsForMovement) since only goals an
+ * administrator has marked public_visible should ever reach this query. */
+export async function getStrategicPriorities() {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("strategic_priorities")
+    .select("*")
+    .eq("public_visible", true)
+    .order("sort_order", { ascending: true });
+  return data ?? [];
+}
+
+export async function getStrategicMovements() {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("strategic_movements")
+    .select("*")
+    .eq("public_visible", true)
+    .order("sort_order", { ascending: true });
+  return data ?? [];
+}
+
+export async function getStrategicMovementBySlug(slug: string) {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("strategic_movements")
+    .select("*")
+    .eq("slug", slug)
+    .eq("public_visible", true)
+    .maybeSingle();
+  return data;
+}
+
+/** Only goals a church administrator has explicitly marked public. */
+export async function getPublicGoalsForMovement(movementId: string) {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("strategic_goals")
+    .select("*")
+    .eq("strategic_movement_id", movementId)
+    .eq("public_visible", true)
+    .order("sort_order", { ascending: true });
+  return data ?? [];
+}
+
+export async function getPublishedDoctrineStatements() {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("doctrine_statements")
+    .select("*")
+    .eq("status", "published")
+    .order("ordinal", { ascending: true });
+  return data ?? [];
+}
+
+/** Only ministry leaders a church administrator has explicitly approved for
+ * public display — never the full roster. */
+export async function getPublicMinistryLeaders(ministryId: string) {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("ministry_assignments")
+    .select("position_title, display_name")
+    .eq("ministry_id", ministryId)
+    .eq("public_visible", true)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+  return data ?? [];
+}

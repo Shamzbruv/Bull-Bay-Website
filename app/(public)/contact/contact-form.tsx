@@ -7,11 +7,12 @@ import { FormStatus } from "@/components/form-status";
 
 const INTERESTS = [
   "Planning a first visit",
-  "Becoming a member",
   "Joining a ministry",
+  "Prayer request",
+  "Pastoral-care enquiry",
+  "General question",
+  "Becoming a member",
   "Getting baptized",
-  "Pastoral counselling",
-  "Serving our community",
 ];
 
 export function ContactForm() {
@@ -49,6 +50,11 @@ export function ContactForm() {
         Anything else you&apos;d like us to know?
         <textarea name="message" placeholder="Optional message" />
       </label>
+      <p className="form-note">
+        For a confidential prayer request, you can also use our dedicated{" "}
+        <a href="/prayer">Prayer page</a> — requests there go directly and privately to our prayer and pastoral
+        team.
+      </p>
       <FormStatus state={state} />
       <SubmitButton>
         Send Message <span>→</span>

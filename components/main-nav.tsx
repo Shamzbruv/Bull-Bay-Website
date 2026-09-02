@@ -13,9 +13,16 @@ const LINKS = [
   { href: "/shop", label: "Shop" },
 ];
 
+const EXPLORE_LINKS = [
+  { href: "/about", label: "Our Story" },
+  { href: "/beliefs", label: "Our Beliefs" },
+  { href: "/direction", label: "Our Direction 2026–2027" },
+];
+
 export function MainNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const exploreActive = EXPLORE_LINKS.some((l) => pathname.startsWith(l.href));
 
   return (
     <>
@@ -42,6 +49,16 @@ export function MainNav() {
             </Link>
           );
         })}
+        <details className="nav-dropdown">
+          <summary aria-current={exploreActive ? "page" : undefined}>About</summary>
+          <div className="nav-dropdown-menu">
+            {EXPLORE_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} onClick={() => setOpen(false)}>
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </details>
       </nav>
     </>
   );

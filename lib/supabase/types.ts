@@ -65,6 +65,86 @@ export type Database = {
           },
         ]
       }
+      annual_plan_items: {
+        Row: {
+          category: string | null
+          church_year_id: string
+          created_at: string
+          description: string | null
+          event_id: string | null
+          id: string
+          ministry_id: string | null
+          month: string
+          organization_id: string
+          planned_date: string | null
+          status: string
+          title: string
+          updated_at: string
+          visibility: string
+        }
+        Insert: {
+          category?: string | null
+          church_year_id: string
+          created_at?: string
+          description?: string | null
+          event_id?: string | null
+          id?: string
+          ministry_id?: string | null
+          month: string
+          organization_id: string
+          planned_date?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          visibility?: string
+        }
+        Update: {
+          category?: string | null
+          church_year_id?: string
+          created_at?: string
+          description?: string | null
+          event_id?: string | null
+          id?: string
+          ministry_id?: string | null
+          month?: string
+          organization_id?: string
+          planned_date?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annual_plan_items_church_year_id_fkey"
+            columns: ["church_year_id"]
+            isOneToOne: false
+            referencedRelation: "church_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annual_plan_items_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annual_plan_items_ministry_id_fkey"
+            columns: ["ministry_id"]
+            isOneToOne: false
+            referencedRelation: "ministries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annual_plan_items_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -263,6 +343,47 @@ export type Database = {
           },
         ]
       }
+      church_years: {
+        Row: {
+          created_at: string
+          ends_on: string
+          id: string
+          label: string
+          organization_id: string
+          starts_on: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_on: string
+          id?: string
+          label: string
+          organization_id: string
+          starts_on: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_on?: string
+          id?: string
+          label?: string
+          organization_id?: string
+          starts_on?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "church_years_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_submissions: {
         Row: {
           assigned_to: string | null
@@ -376,6 +497,47 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doctrine_statements: {
+        Row: {
+          created_at: string
+          id: string
+          ordinal: number
+          organization_id: string
+          statement: string
+          status: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ordinal: number
+          organization_id: string
+          statement: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ordinal?: number
+          organization_id?: string
+          statement?: string
+          status?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctrine_statements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -899,6 +1061,83 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ministry_assignments: {
+        Row: {
+          church_year_id: string | null
+          created_at: string
+          created_by: string | null
+          display_name: string | null
+          id: string
+          is_active: boolean
+          ministry_id: string
+          organization_id: string
+          position_title: string
+          profile_id: string | null
+          public_visible: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          church_year_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          ministry_id: string
+          organization_id: string
+          position_title: string
+          profile_id?: string | null
+          public_visible?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          church_year_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_name?: string | null
+          id?: string
+          is_active?: boolean
+          ministry_id?: string
+          organization_id?: string
+          position_title?: string
+          profile_id?: string | null
+          public_visible?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ministry_assignments_church_year_id_fkey"
+            columns: ["church_year_id"]
+            isOneToOne: false
+            referencedRelation: "church_years"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ministry_assignments_ministry_id_fkey"
+            columns: ["ministry_id"]
+            isOneToOne: false
+            referencedRelation: "ministries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ministry_assignments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ministry_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1715,6 +1954,156 @@ export type Database = {
             columns: ["series_id"]
             isOneToOne: false
             referencedRelation: "sermon_series"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategic_goals: {
+        Row: {
+          created_at: string
+          due_on: string | null
+          goal_text: string
+          id: string
+          metric_type: string | null
+          progress_value: number | null
+          public_visible: boolean
+          sort_order: number
+          status: string
+          strategic_movement_id: string
+          target_unit: string | null
+          target_value: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          due_on?: string | null
+          goal_text: string
+          id?: string
+          metric_type?: string | null
+          progress_value?: number | null
+          public_visible?: boolean
+          sort_order?: number
+          status?: string
+          strategic_movement_id: string
+          target_unit?: string | null
+          target_value?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          due_on?: string | null
+          goal_text?: string
+          id?: string
+          metric_type?: string | null
+          progress_value?: number | null
+          public_visible?: boolean
+          sort_order?: number
+          status?: string
+          strategic_movement_id?: string
+          target_unit?: string | null
+          target_value?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategic_goals_strategic_movement_id_fkey"
+            columns: ["strategic_movement_id"]
+            isOneToOne: false
+            referencedRelation: "strategic_movements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategic_movements: {
+        Row: {
+          church_year_id: string
+          created_at: string
+          description: string | null
+          expected_outcome: string | null
+          id: string
+          name: string
+          objective: string | null
+          public_visible: boolean
+          short_label: string | null
+          slug: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          church_year_id: string
+          created_at?: string
+          description?: string | null
+          expected_outcome?: string | null
+          id?: string
+          name: string
+          objective?: string | null
+          public_visible?: boolean
+          short_label?: string | null
+          slug: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          church_year_id?: string
+          created_at?: string
+          description?: string | null
+          expected_outcome?: string | null
+          id?: string
+          name?: string
+          objective?: string | null
+          public_visible?: boolean
+          short_label?: string | null
+          slug?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategic_movements_church_year_id_fkey"
+            columns: ["church_year_id"]
+            isOneToOne: false
+            referencedRelation: "church_years"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategic_priorities: {
+        Row: {
+          church_year_id: string
+          created_at: string
+          id: string
+          is_primary_focus: boolean
+          public_visible: boolean
+          sort_order: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          church_year_id: string
+          created_at?: string
+          id?: string
+          is_primary_focus?: boolean
+          public_visible?: boolean
+          sort_order?: number
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          church_year_id?: string
+          created_at?: string
+          id?: string
+          is_primary_focus?: boolean
+          public_visible?: boolean
+          sort_order?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "strategic_priorities_church_year_id_fkey"
+            columns: ["church_year_id"]
+            isOneToOne: false
+            referencedRelation: "church_years"
             referencedColumns: ["id"]
           },
         ]

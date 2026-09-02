@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { getOrganizationId } from "@/lib/auth/session";
+import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { SITE_URL } from "@/lib/org";
 import { parseJmdToMinorUnits } from "@/lib/money";
 import type { ActionState } from "@/app/(public)/actions";
@@ -283,4 +283,158 @@ export async function saveCampusSettings(_prev: ActionState, formData: FormData)
   revalidatePath("/live");
   revalidatePath("/visit");
   return { status: "success", message: "Settings saved." };
+}
+
+// Church direction (movements, goals, priorities) --------------------------
+export async function toggleGoalVisibility(goalId: string, publicVisible: boolean): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("strategic_goals").update({ public_visible: publicVisible }).eq("id", goalId);
+  revalidatePath("/admin/direction");
+  revalidatePath("/direction");
+}
+
+export async function updateGoalStatus(goalId: string, status: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("strategic_goals").update({ status }).eq("id", goalId);
+  revalidatePath("/admin/direction");
+  revalidatePath("/pastor/direction");
+}
+
+export async function togglePriorityVisibility(priorityId: string, publicVisible: boolean): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("strategic_priorities").update({ public_visible: publicVisible }).eq("id", priorityId);
+  revalidatePath("/admin/direction");
+  revalidatePath("/direction");
+}
+
+// Ministry assignments -------------------------------------------------
+export async function toggleAssignmentVisibility(assignmentId: string, publicVisible: boolean): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("ministry_assignments").update({ public_visible: publicVisible }).eq("id", assignmentId);
+  revalidatePath("/admin/ministry-assignments");
+  revalidatePath("/ministries");
+}
+
+export async function toggleAssignmentActive(assignmentId: string, isActive: boolean): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("ministry_assignments").update({ is_active: isActive }).eq("id", assignmentId);
+  revalidatePath("/admin/ministry-assignments");
+}
+
+/** Deliberately requires a staff member to type the exact email of the
+ * profile they intend to link — never an automatic name match. */
+export async function linkAssignmentToProfile(assignmentId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const email = String(formData.get("email") || "").trim();
+  if (!email) return { status: "error", message: "Enter the member's email address." };
+
+  const supabase = await createClient();
+  const { data: profile } = await supabase.from("profiles").select("id, first_name, last_name").eq("email", email).maybeSingle();
+  if (!profile) return { status: "error", message: "No profile found with that email." };
+
+  const { error } = await supabase.from("ministry_assignments").update({ profile_id: profile.id }).eq("id", assignmentId);
+  if (error) return { status: "error", message: "Couldn't link this row." };
+  revalidatePath("/admin/ministry-assignments");
+  const name = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
+  return { status: "success", message: name ? `Linked to ${name}.` : "Linked." };
+}
+
+export async function unlinkAssignmentFromProfile(assignmentId: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("ministry_assignments").update({ profile_id: null }).eq("id", assignmentId);
+  revalidatePath("/admin/ministry-assignments");
+}
+
+// Annual plan --------------------------------------------------------------
+export async function saveAnnualPlanItem(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  if (!organizationId) return { status: "error", message: "Something went wrong." };
+  const supabase = await createClient();
+  const { data: churchYear } = await supabase.from("church_years").select("id").eq("status", "active").maybeSingle();
+  if (!churchYear) return { status: "error", message: "No active church year found." };
+
+  const title = String(formData.get("title") || "").trim();
+  if (!title) return { status: "error", message: "Please enter a title." };
+
+  const { error } = await supabase.from("annual_plan_items").insert({
+    organization_id: organizationId,
+    church_year_id: churchYear.id,
+    title,
+    description: String(formData.get("description") || "").trim() || null,
+    category: String(formData.get("category") || "").trim() || null,
+    month: String(formData.get("month") || "").trim(),
+  });
+
+  if (error) return { status: "error", message: "We couldn't save this plan item." };
+  revalidatePath("/admin/annual-plan");
+  return { status: "success", message: "Plan item added." };
+}
+
+export async function updateAnnualPlanItemStatus(itemId: string, status: string): Promise<void> {
+  const supabase = await createClient();
+  await supabase.from("annual_plan_items").update({ status }).eq("id", itemId);
+  revalidatePath("/admin/annual-plan");
+}
+
+/** The only path from an internal plan item to a real, manageable event —
+ * staff must supply the exact date/time before anything can be published. */
+export async function promoteAnnualPlanItemToEvent(itemId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  if (!organizationId) return { status: "error", message: "Something went wrong." };
+  const supabase = await createClient();
+
+  const { data: item } = await supabase.from("annual_plan_items").select("*").eq("id", itemId).single();
+  if (!item) return { status: "error", message: "Plan item not found." };
+
+  const startsAt = String(formData.get("starts_at") || "");
+  if (!startsAt) return { status: "error", message: "Please choose a date and time." };
+
+  function slugify(input: string) {
+    return input.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }
+
+  const { data: event, error } = await supabase
+    .from("events")
+    .insert({
+      organization_id: organizationId,
+      slug: slugify(`${item.title}-${item.month}`),
+      title: item.title,
+      description: item.description,
+      category: item.category,
+      location_name: String(formData.get("location_name") || "").trim() || null,
+      starts_at: new Date(startsAt).toISOString(),
+      status: "draft",
+      visibility: String(formData.get("visibility") || "public"),
+    })
+    .select("id")
+    .single();
+
+  if (error || !event) return { status: "error", message: "We couldn't create the event. Check the title/date." };
+
+  await supabase.from("annual_plan_items").update({ status: "ready_to_publish", event_id: event.id }).eq("id", itemId);
+  revalidatePath("/admin/annual-plan");
+  revalidatePath("/admin/events");
+  return { status: "success", message: "Draft event created — review and publish it from Admin → Events." };
+}
+
+// Conference document --------------------------------------------------
+const CONFERENCE_DOCUMENT_PATH = "conference/Bull_Bay_Church_Members_Conference_2026-2027.pptx";
+
+export async function uploadConferenceDocument(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!permissions.has("direction.manage")) return { status: "error", message: "You don't have permission to do this." };
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { status: "error", message: "Please choose a file." };
+
+  const admin = createServiceRoleClient();
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const { error } = await admin.storage.from("member-resources").upload(CONFERENCE_DOCUMENT_PATH, buffer, {
+    contentType: file.type || "application/octet-stream",
+    upsert: true,
+  });
+
+  if (error) return { status: "error", message: "Upload failed. Please try again." };
+  revalidatePath("/admin/conference-document");
+  return { status: "success", message: "Conference document updated." };
 }

@@ -41,6 +41,9 @@ export async function SiteFooter() {
           <Link href="/events">Events</Link>
           <Link href="/ministries">Ministries</Link>
           <Link href="/groups">Small Groups</Link>
+          <Link href="/direction" className="footer-link">
+            2026–2027 Church Direction
+          </Link>
         </div>
         <div>
           <b>Connect</b>

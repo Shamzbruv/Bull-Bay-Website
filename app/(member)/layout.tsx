@@ -7,6 +7,7 @@ const NAV_ITEMS = [
   { href: "/member/household", label: "Household" },
   { href: "/member/events", label: "Events" },
   { href: "/member/groups", label: "Groups" },
+  { href: "/member/ministry", label: "My Ministry & Serving" },
   { href: "/member/serving", label: "Serving" },
   { href: "/member/giving", label: "Giving" },
   { href: "/member/orders", label: "Orders & Downloads" },

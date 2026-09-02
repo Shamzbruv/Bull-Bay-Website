@@ -16,20 +16,24 @@ export default async function ContactPage() {
     <section aria-labelledby="connect-title">
       <div className="page-hero compact-hero olive-wash">
         <p className="eyebrow">
-          <span /> YOUR NEXT STEP STARTS HERE
+          <span /> WHOLENESS &amp; WELCOME
         </p>
         <h1 id="connect-title">
           Let&apos;s get
           <br />
           <em>connected.</em>
         </h1>
-        <p>Tell us a little about yourself and a member of our team will be in touch.</p>
+        <p>Whatever brought you here — a first visit, a ministry, prayer, or just a question — we want to hear from you.</p>
       </div>
       <section className="section form-layout">
         <aside className="form-aside">
           <span className="card-icon">✦</span>
           <h2>You belong here.</h2>
-          <p>Choose what you are interested in and we will route your request to the right ministry team.</p>
+          <p>
+            Choose what you are interested in: planning a visit, joining a ministry, a prayer request, a
+            pastoral-care enquiry, or a general question. We will route it to the right team — no pastoral-care
+            names or personal details are ever shown publicly.
+          </p>
           <div className="mini-stat">
             <b>Visit us</b>
             <span>

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/json-ld";
-import { getPrimaryCampus, getPublishedSermons, getUpcomingEvents } from "@/lib/data/public";
+import { getPrimaryCampus, getPublishedSermons, getStrategicMovements, getUpcomingEvents } from "@/lib/data/public";
 import { SITE_NAME, SITE_URL } from "@/lib/org";
 
 export const revalidate = 60;
@@ -19,10 +19,11 @@ function formatEventDate(iso: string) {
 }
 
 export default async function HomePage() {
-  const [campus, events, sermons] = await Promise.all([
+  const [campus, events, sermons, movements] = await Promise.all([
     getPrimaryCampus(),
     getUpcomingEvents(4),
     getPublishedSermons({ limit: 1 }),
+    getStrategicMovements(),
   ]);
   const latestSermon = sermons[0];
   const sundaySchedule = Array.isArray(campus?.service_schedule)
@@ -123,18 +124,18 @@ export default async function HomePage() {
         <section className="section home-welcome">
           <div className="section-heading">
             <p className="eyebrow">
-              <span /> YOU ARE WELCOME HERE
+              <span /> OUR VISION
             </p>
             <h2>
               Church feels like <em>family.</em>
             </h2>
           </div>
           <p className="large-copy">
-            Whether you are searching for a church home, returning to faith, or ready to grow deeper, there is a
-            place for you at Bull Bay.
+            We are a Kingdom-advancing, Bible-based, Christ-centered, Spirit-filled, disciple-making, family-focused
+            church, positively impacting people in communities, the nation and the world for the glory of God.
           </p>
           <Link className="link-button" href="/about">
-            Discover our story <span>→</span>
+            Our Story <span>→</span>
           </Link>
           <div className="welcome-cards">
             <article className="soft-card card-blue">
@@ -161,6 +162,66 @@ export default async function HomePage() {
               </div>
               <span className="card-arrow">↗</span>
             </article>
+          </div>
+        </section>
+
+        {movements.length > 0 && (
+          <section className="section" style={{ paddingTop: 0 }}>
+            <div className="section-heading split-heading">
+              <div>
+                <p className="eyebrow">
+                  <span /> CHURCH YEAR 2026–2027
+                </p>
+                <h2>
+                  Our Direction <em>2026–2027.</em>
+                </h2>
+              </div>
+              <Link className="link-button" href="/direction">
+                Read our full direction <span>→</span>
+              </Link>
+            </div>
+            <div className="ministry-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+              {movements.map((m) => (
+                <Link key={m.id} href={`/direction#${m.slug}`} className="ministry-card" style={{ minHeight: 130 }}>
+                  <span className="icon">{m.name.charAt(0)}</span>
+                  <div>
+                    <h3 style={{ fontSize: "1.1rem" }}>{m.name}</h3>
+                    <p>{m.short_label}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <section className="section" style={{ paddingTop: 0 }}>
+          <div className="section-heading">
+            <p className="eyebrow">
+              <span /> PRIMARY FOCUS FOR 2026–2027
+            </p>
+            <h2>Priority ministries this year.</h2>
+          </div>
+          <p className="large-copy">
+            Two departments receive heightened resourcing, focused leadership attention and dedicated programming
+            this church year. The aim is transformational impact — not activity alone.
+          </p>
+          <div className="welcome-cards">
+            <Link href="/ministries/mens-ministry" className="soft-card card-blue">
+              <span className="card-number">Male discipleship</span>
+              <div>
+                <h3>Men&apos;s Ministry</h3>
+                <p>Heightened resourcing, focused leadership attention and dedicated programming.</p>
+              </div>
+              <span className="card-arrow">↗</span>
+            </Link>
+            <Link href="/ministries/youth-ministry" className="soft-card card-olive">
+              <span className="card-number">Engagement &amp; empowerment</span>
+              <div>
+                <h3>Youth Ministry</h3>
+                <p>Heightened resourcing, focused leadership attention and dedicated programming.</p>
+              </div>
+              <span className="card-arrow">↗</span>
+            </Link>
           </div>
         </section>
 

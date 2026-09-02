@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getActiveFunds } from "@/lib/data/public";
+import { getActiveFunds, getStrategicMovementBySlug } from "@/lib/data/public";
 import { getSessionUser } from "@/lib/auth/session";
 import { GivingForm } from "./giving-form";
 
@@ -10,13 +10,13 @@ export const metadata: Metadata = {
 };
 
 export default async function GivePage() {
-  const [funds, user] = await Promise.all([getActiveFunds(), getSessionUser()]);
+  const [funds, user, walk] = await Promise.all([getActiveFunds(), getSessionUser(), getStrategicMovementBySlug("walk")]);
 
   return (
     <section aria-labelledby="giving-title">
       <div className="page-hero giving-hero">
         <p className="eyebrow light">
-          <span /> GENEROSITY CHANGES LIVES
+          <span /> WALK: CHRISTIAN LIVING &amp; STEWARDSHIP
         </p>
         <h1 id="giving-title">
           Your giving makes
@@ -32,6 +32,8 @@ export default async function GivePage() {
           </p>
           <h2>Every gift helps build people, families, and communities.</h2>
           <p>
+            {walk?.objective ??
+              "Faithful stewardship is part of modelling godly Kingdom living in every area of life."}{" "}
             Choose a fund below. Payment processing will go live once the church selects and verifies a
             Jamaica-supported provider such as WiPay, PayPal, or Powertranz.
           </p>

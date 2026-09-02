@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getPrimaryCampus } from "@/lib/data/public";
+import { getPrimaryCampus, getStrategicMovementBySlug } from "@/lib/data/public";
 
 export const revalidate = 120;
 export const metadata: Metadata = {
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function VisitPage() {
-  const campus = await getPrimaryCampus();
+  const [campus, welcome] = await Promise.all([getPrimaryCampus(), getStrategicMovementBySlug("welcome")]);
   const schedule = Array.isArray(campus?.service_schedule)
     ? (campus?.service_schedule as { day: string; time: string; label: string }[])
     : [];
@@ -20,15 +20,37 @@ export default async function VisitPage() {
     <section aria-labelledby="visit-title">
       <div className="page-hero visit-hero">
         <p className="eyebrow">
-          <span /> YOUR FIRST SUNDAY
+          <span /> WELCOME: BELONGING
         </p>
         <h1 id="visit-title">
           Come as you are.
           <br />
           <em>We saved you a seat.</em>
         </h1>
-        <p>We want your first visit to Bull Bay to feel easy, warm, and meaningful.</p>
+        <p>
+          {welcome?.objective ??
+            "We want your first visit to Bull Bay to feel easy, warm, and meaningful — a culture of hospitality and belonging where you feel valued, connected and supported."}
+        </p>
       </div>
+
+      <div className="section" style={{ paddingBottom: 0 }}>
+        <div className="church-photo-hero" style={{ minHeight: 320 }}>
+          <picture className="church-photo-hero-media">
+            <source media="(max-width: 700px)" srcSet="/images/church/church-hero-mobile.png" />
+            <img src="/images/church/church-hero-desktop.png" alt="Entrance and sign of New Testament Church of God, Bull Bay" />
+          </picture>
+          <div className="church-photo-hero-overlay" />
+          <div className="church-photo-hero-copy" style={{ padding: "40px 40px", width: "min(460px, 100%)" }}>
+            <p className="eyebrow">
+              <span /> FIND US
+            </p>
+            <h1 style={{ fontSize: "clamp(1.6rem, 3vw, 2.2rem)" }}>
+              {campus?.city ?? "Bull Bay"}, {campus?.parish ?? "St. Andrew"}
+            </h1>
+          </div>
+        </div>
+      </div>
+
       <div className="section two-col">
         <div>
           <h2>What to expect</h2>
@@ -54,6 +76,18 @@ export default async function VisitPage() {
                 <p>Children, teens, adults, and families can find a place to belong.</p>
               </div>
             </article>
+          </div>
+
+          <div className="panel" style={{ marginTop: 30 }}>
+            <h2>Meet our welcome team</h2>
+            <p style={{ color: "var(--color-muted-2)" }}>
+              A friendly face will greet you at the gate and help you find your way — to a seat, to children&apos;s
+              ministry, or just to a good cup of tea. Reach out ahead of time and we&apos;ll make sure someone is
+              expecting you.
+            </p>
+            <Link className="primary-button compact" href="/contact">
+              Let us know you&apos;re coming <span>→</span>
+            </Link>
           </div>
         </div>
         <aside className="info-card">

@@ -5,6 +5,7 @@ import { getAuthenticatorAssuranceLevel, getOrganizationId, getUserPermissions }
 
 const NAV_ITEMS = [
   { href: "/pastor", label: "Today" },
+  { href: "/pastor/direction", label: "Strategic Direction" },
   { href: "/pastor/sermons", label: "Sermons" },
   { href: "/pastor/care", label: "Pastoral Care" },
 ];
