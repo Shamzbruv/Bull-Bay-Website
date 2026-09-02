@@ -25,6 +25,23 @@ export const metadata: Metadata = {
   },
   description:
     "New Testament Church of God, Bull Bay — a place to worship, grow, serve and belong. Plan your visit, watch live, and connect with our church family.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
+  openGraph: {
+    type: "website",
+    title: "New Testament Church of God, Bull Bay",
+    description: "A place to worship, grow, serve and belong.",
+    images: [
+      {
+        url: "/images/church/church-hero-desktop.png",
+        width: 1672,
+        height: 941,
+        alt: "New Testament Church of God, Bull Bay",
+      },
+    ],
+  },
 };
 
 export const viewport: Viewport = {

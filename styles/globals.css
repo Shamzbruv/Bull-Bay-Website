@@ -72,9 +72,8 @@ img { max-width: 100%; display: block; }
 .brand > span:last-child { display: grid; line-height: 1; }
 .brand strong { font-family: var(--font-display); font-size: 1.1rem; letter-spacing: .05em; }
 .brand small { font-size: .6rem; letter-spacing: .24em; margin-top: 5px; color: var(--color-muted); }
-.brand-mark { width: 36px; height: 38px; position: relative; display: block; border-radius: var(--radius-sm); background: var(--color-surface); box-shadow: var(--shadow-raised-sm); flex-shrink: 0; }
-.brand-mark span { position: absolute; width: 3px; height: 20px; background: var(--color-blue-600); left: 16px; top: 9px; border-radius: 4px; }
-.brand-mark i { position: absolute; width: 15px; height: 3px; background: var(--color-blue-600); left: 10.5px; top: 17px; border-radius: 4px; }
+.brand-logo { width: 44px; height: 44px; object-fit: contain; flex: 0 0 auto; }
+.footer-logo { width: 92px; height: 92px; object-fit: contain; flex: 0 0 auto; }
 
 .main-nav { display: flex; gap: 3px; }
 .main-nav a { padding: 9px 12px; font-size: .85rem; color: var(--color-muted-2); border-radius: var(--radius-sm); font-weight: 600; transition: box-shadow .15s ease, color .15s ease; }
@@ -98,13 +97,11 @@ main { display: block; }
 .inner-view { min-height: 55vh; }
 
 /* Hero / page-hero ----------------------------------------------------- */
-.hero-shell { max-width: 1280px; min-height: 480px; margin: 6px auto 0; padding: 50px 46px 36px; border-radius: 28px; background: var(--color-surface); box-shadow: var(--shadow-raised-lg); display: grid; grid-template-columns: 1.05fr .95fr; overflow: hidden; gap: 20px; }
-.hero-copy { align-self: center; padding: 20px 0 25px 22px; }
 .eyebrow { font-size: .68rem; letter-spacing: .15em; font-weight: 700; color: var(--color-olive-600); margin: 0 0 14px; display: flex; align-items: center; }
 .eyebrow span { display: inline-block; width: 22px; height: 2px; background: currentColor; margin-right: 8px; border-radius: 2px; }
 .eyebrow.light { color: #cfe0a0; }
-.hero-copy h1, .page-hero h1 { font-family: var(--font-display); font-weight: 700; color: var(--color-blue-700); font-size: clamp(2.5rem, 4.6vw, 4.6rem); line-height: 1.05; letter-spacing: -.045em; margin: 0; }
-.hero-copy h1 em, .page-hero h1 em, h2 em, .callout-section h2 em { font-style: italic; color: var(--color-olive-600); }
+.church-photo-hero-copy h1, .page-hero h1 { font-family: var(--font-display); font-weight: 700; color: var(--color-blue-700); font-size: clamp(2.5rem, 4.6vw, 4.6rem); line-height: 1.05; letter-spacing: -.045em; margin: 0; }
+.church-photo-hero-copy h1 em, .page-hero h1 em, h2 em, .callout-section h2 em { font-style: italic; color: var(--color-olive-600); }
 .hero-text { max-width: 500px; color: var(--color-muted-2); font-size: 1.02rem; margin: 22px 0 26px; }
 .hero-actions { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
 .play-button { border: 0; background: transparent; color: var(--color-blue-600); font-weight: 700; display: flex; align-items: center; gap: 9px; }
@@ -116,20 +113,96 @@ main { display: block; }
 .service-chip small { font-size: .7rem; color: var(--color-muted); }
 .service-chip a { margin-left: auto; border: 0; border-radius: var(--radius-sm); width: 29px; height: 29px; display: grid; place-items: center; background: var(--color-surface-raised); color: var(--color-blue-600); font-weight: 700; box-shadow: var(--shadow-raised-sm); }
 
-/* Hero art: an abstract soft-embossed emblem, not an illustration ------- */
-.hero-art { position: relative; min-height: 300px; align-self: center; border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-inset); display: grid; place-items: center; }
-.hero-emblem { width: 168px; height: 168px; border-radius: 50%; background: var(--color-surface); box-shadow: var(--shadow-raised-lg); display: grid; place-items: center; }
-.hero-emblem-cross { position: relative; width: 56px; height: 56px; }
-.hero-emblem-cross::before, .hero-emblem-cross::after { content: ""; position: absolute; background: var(--color-blue-600); border-radius: 5px; box-shadow: var(--shadow-raised-sm); }
-.hero-emblem-cross::before { left: 50%; top: 0; width: 12px; height: 56px; transform: translateX(-50%); }
-.hero-emblem-cross::after { top: 38%; left: 0; width: 56px; height: 12px; }
-.hero-float { position: absolute; background: var(--color-surface); border-radius: var(--radius-md); padding: 11px 15px 11px 44px; box-shadow: var(--shadow-raised); font-size: .69rem; color: var(--color-muted-2); max-width: 190px; }
-.hero-float span { position: absolute; left: 12px; top: 13px; width: 22px; height: 22px; display: grid; place-items: center; color: var(--color-blue-600); background: var(--color-surface); border-radius: var(--radius-sm); font-size: .78rem; box-shadow: var(--shadow-inset-sm); }
-.hero-float b, .hero-float small { display: block; }
-.hero-float b { color: var(--color-blue-700); }
-.float-one { bottom: 18px; left: 12px; }
-.float-two { top: 18px; right: 12px; }
-.float-two span { color: var(--color-olive-600); }
+/* Home hero: real church photo with a shaded overlay for the copy ------- */
+.church-photo-hero {
+  position: relative;
+  isolation: isolate;
+  max-width: 1280px;
+  min-height: 560px;
+  margin: 6px auto 0;
+  overflow: hidden;
+  border-radius: 28px;
+  box-shadow: var(--shadow-raised-lg);
+}
+
+.church-photo-hero-media,
+.church-photo-hero-media img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.church-photo-hero-media img {
+  object-fit: cover;
+  object-position: center;
+}
+
+.church-photo-hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(
+    90deg,
+    rgba(7, 22, 51, 0.82) 0%,
+    rgba(7, 22, 51, 0.56) 39%,
+    rgba(7, 22, 51, 0.05) 67%,
+    transparent 100%
+  );
+}
+
+.church-photo-hero-copy {
+  position: relative;
+  z-index: 2;
+  width: min(580px, 100%);
+  padding: 88px 56px;
+  color: #fff;
+}
+
+.church-photo-hero-copy h1,
+.church-photo-hero-copy .hero-text {
+  color: #fff;
+}
+
+.church-photo-hero-copy h1 em {
+  color: #d9e69a;
+}
+
+.church-photo-hero-copy .eyebrow {
+  color: #d9e69a;
+}
+
+/* The service chip and play button keep their own light/contrast-safe
+   colors regardless of the white text around them, since the chip is an
+   opaque card and the play button's label needs to read against the photo
+   rather than inherit white. */
+.church-photo-hero-copy .service-chip b {
+  color: var(--color-blue-700);
+}
+
+.church-photo-hero-copy .play-button {
+  color: #fff;
+}
+
+@media (max-width: 700px) {
+  .church-photo-hero {
+    min-height: 680px;
+    margin: 4px 12px 0;
+  }
+
+  .church-photo-hero-copy {
+    padding: 360px 24px 36px;
+  }
+
+  .church-photo-hero-overlay {
+    background: linear-gradient(
+      180deg,
+      transparent 0%,
+      rgba(7, 22, 51, 0.32) 34%,
+      rgba(7, 22, 51, 0.9) 64%
+    );
+  }
+}
 
 .page-hero { max-width: 1280px; margin: 7px auto 0; min-height: 320px; border-radius: 28px; padding: 56px clamp(24px, 8vw, 110px); background: var(--color-surface); box-shadow: var(--shadow-raised-lg); }
 .page-hero > p:not(.eyebrow) { max-width: 580px; color: var(--color-muted-2); font-size: 1rem; margin: 18px 0 0; }
@@ -199,11 +272,12 @@ main { display: block; }
 .event-body p { margin: 0; color: var(--color-muted); font-size: .78rem; }
 .event-row > a, .event-row > button { border: 0; width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--color-surface); color: var(--color-blue-600); box-shadow: var(--shadow-raised-sm); display: grid; place-items: center; flex-shrink: 0; }
 
-.callout-section { position: relative; overflow: hidden; max-width: 1280px; margin: 56px auto 0; min-height: 320px; border-radius: 28px; background: var(--color-blue-700); color: #fff; padding: 56px clamp(24px, 8vw, 110px); }
-.callout-section:before {
-  content: ""; position: absolute; inset: 0;
-  background: radial-gradient(600px 380px at 92% -10%, rgba(255,255,255,.10), transparent 65%),
-              radial-gradient(500px 320px at -5% 110%, rgba(207,224,160,.12), transparent 65%);
+.callout-section {
+  position: relative; overflow: hidden; max-width: 1280px; margin: 56px auto 0; min-height: 320px;
+  border-radius: 28px; color: #fff; padding: 56px clamp(24px, 8vw, 110px);
+  background:
+    linear-gradient(90deg, rgba(8, 27, 68, 0.18), rgba(8, 27, 68, 0.08)),
+    url("/images/church/church-cta-dark.png") center / cover no-repeat;
 }
 .callout-section h2 { color: #fff; position: relative; z-index: 1; margin: 0 0 24px; }
 .callout-section .eyebrow { position: relative; z-index: 1; }

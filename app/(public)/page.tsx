@@ -49,8 +49,15 @@ export default async function HomePage() {
       />
 
       <section aria-labelledby="hero-heading">
-        <div className="hero-shell">
-          <div className="hero-copy">
+        <div className="church-photo-hero">
+          <picture className="church-photo-hero-media">
+            <source media="(max-width: 700px)" srcSet="/images/church/church-hero-mobile.png" />
+            <img src="/images/church/church-hero-desktop.png" alt="Entrance to New Testament Church of God, Bull Bay" />
+          </picture>
+
+          <div className="church-photo-hero-overlay" />
+
+          <div className="church-photo-hero-copy">
             <p className="eyebrow">
               <span /> NEW TESTAMENT CHURCH OF GOD • BULL BAY
             </p>
@@ -83,21 +90,6 @@ export default async function HomePage() {
                 </Link>
               </div>
             )}
-          </div>
-          <div className="hero-art" aria-label="New Testament Church of God, Bull Bay">
-            <div className="hero-emblem">
-              <span className="hero-emblem-cross" aria-hidden="true" />
-            </div>
-            <div className="hero-float float-one">
-              <span>♡</span>
-              <b>Prayer is powerful</b>
-              <small>We are standing with you.</small>
-            </div>
-            <div className="hero-float float-two">
-              <span>✦</span>
-              <b>Find your people</b>
-              <small>Discover a ministry.</small>
-            </div>
           </div>
         </div>
 

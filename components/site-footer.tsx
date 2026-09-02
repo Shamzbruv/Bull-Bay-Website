@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getPrimaryCampus } from "@/lib/data/public";
 
 export async function SiteFooter() {
@@ -8,15 +9,14 @@ export async function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="footer-top">
-        <Link className="brand footer-brand" href="/">
-          <span className="brand-mark" aria-hidden="true">
-            <span />
-            <i />
-          </span>
-          <span>
-            <strong>NTCOG</strong>
-            <small>BULL BAY</small>
-          </span>
+        <Link className="brand footer-brand" href="/" aria-label="New Testament Church of God, Bull Bay home">
+          <Image
+            src="/images/brand/bull-bay-logo.png"
+            alt="New Testament Church of God, Bull Bay"
+            width={92}
+            height={92}
+            className="footer-logo"
+          />
         </Link>
         <p>A church family helping people worship, grow, serve and belong.</p>
         <Link href="/member" className="light-button">

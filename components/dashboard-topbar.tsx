@@ -1,13 +1,11 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export function DashboardTopbar({ label }: { label: string }) {
   return (
     <div className="site-header" style={{ maxWidth: 1280, margin: "0 auto" }}>
       <Link className="brand" href="/">
-        <span className="brand-mark" aria-hidden="true">
-          <span />
-          <i />
-        </span>
+        <Image src="/images/brand/bull-bay-symbol.png" alt="" width={44} height={44} className="brand-logo" />
         <span>
           <strong>NTCOG</strong>
           <small>BULL BAY</small>

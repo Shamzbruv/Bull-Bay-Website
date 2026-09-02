@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MainNav } from "@/components/main-nav";
 import { SearchDialog } from "@/components/search-dialog";
 import { HeaderAuth } from "@/components/header-auth";
@@ -19,10 +20,7 @@ export function SiteHeader() {
 
       <header className="site-header">
         <Link className="brand" href="/" aria-label="New Testament Church of God Bull Bay home">
-          <span className="brand-mark" aria-hidden="true">
-            <span />
-            <i />
-          </span>
+          <Image src="/images/brand/bull-bay-symbol.png" alt="" width={44} height={44} className="brand-logo" priority />
           <span>
             <strong>NTCOG</strong>
             <small>BULL BAY</small>
