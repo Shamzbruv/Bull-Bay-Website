@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "NTCOG Bull Bay digital church platform: public site, member portal, pastor workspace, and admin/ChMS on Next.js + Supabase.",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
