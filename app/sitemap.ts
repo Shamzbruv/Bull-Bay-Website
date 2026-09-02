@@ -1,6 +1,8 @@
 import type { MetadataRoute } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { SITE_URL } from "@/lib/org";
+
+export const revalidate = 300;
 
 const STATIC_PATHS = [
   "",
@@ -20,7 +22,7 @@ const STATIC_PATHS = [
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const [{ data: sermons }, { data: events }, { data: ministries }, { data: products }, { data: groups }] = await Promise.all([
     supabase.from("sermons").select("slug, updated_at").eq("status", "published"),
     supabase.from("events").select("slug, updated_at").eq("status", "published"),

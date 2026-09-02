@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getPrimaryCampus } from "@/lib/data/public";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "Plan Your Visit",
   description: "Everything you need to know for your first Sunday at Bull Bay — service times, what to expect, and directions.",

@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { MainNav } from "@/components/main-nav";
 import { SearchDialog } from "@/components/search-dialog";
-import { getSessionUser } from "@/lib/auth/session";
+import { HeaderAuth } from "@/components/header-auth";
 
-export async function SiteHeader() {
-  const user = await getSessionUser();
-
+// Deliberately not async / no cookies() read — see lib/supabase/public.ts.
+// The one bit that needs to know who's asking (HeaderAuth) is a client
+// component so the rest of this (and every page that renders it) can be
+// statically cached.
+export function SiteHeader() {
   return (
     <>
       <div className="announcement-bar" role="status">
@@ -31,9 +33,7 @@ export async function SiteHeader() {
 
         <div className="header-actions">
           <SearchDialog />
-          <Link href={user ? "/member" : "/login"} className="icon-button" aria-label={user ? "My church account" : "Sign in"}>
-            {user ? "☺" : "⇥"}
-          </Link>
+          <HeaderAuth />
           <Link href="/give" className="give-button">
             Give <span aria-hidden="true">↗</span>
           </Link>

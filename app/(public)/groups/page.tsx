@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublicGroups } from "@/lib/data/public";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "Small Groups",
   description: "Find a small group to grow in community at Bull Bay.",

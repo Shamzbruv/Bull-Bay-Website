@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getMinistries } from "@/lib/data/public";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "Ministries",
   description: "Find your place to grow and serve at Bull Bay.",

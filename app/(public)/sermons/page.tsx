@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getPublishedSermons } from "@/lib/data/public";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "Sermons",
   description: "Watch, listen and grow from faith-building teaching at Bull Bay.",

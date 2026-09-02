@@ -84,18 +84,9 @@ export default async function HomePage() {
               </div>
             )}
           </div>
-          <div className="hero-art" aria-label="Illustration representing the church community">
-            <div className="sun-disc" />
-            <div className="hill hill-one" />
-            <div className="hill hill-two" />
-            <div className="church-illustration">
-              <div className="cross" />
-              <div className="roof" />
-              <div className="building">
-                <i />
-                <i />
-                <i />
-              </div>
+          <div className="hero-art" aria-label="New Testament Church of God, Bull Bay">
+            <div className="hero-emblem">
+              <span className="hero-emblem-cross" aria-hidden="true" />
             </div>
             <div className="hero-float float-one">
               <span>♡</span>
@@ -263,8 +254,6 @@ export default async function HomePage() {
         </section>
 
         <section className="callout-section">
-          <div className="callout-orb orb-one" />
-          <div className="callout-orb orb-two" />
           <p className="eyebrow light">
             <span /> TAKE YOUR NEXT STEP
           </p>

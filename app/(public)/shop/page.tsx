@@ -4,6 +4,7 @@ import { getActiveProducts } from "@/lib/data/public";
 import { formatJmd } from "@/lib/money";
 import { CartBadge } from "@/components/cart-badge";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "Shop",
   description: "Shop ministry apparel, devotional resources, and digital church products.",

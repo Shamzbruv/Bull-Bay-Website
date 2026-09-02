@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PrayerForm } from "./prayer-form";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "Prayer Request",
   description: "Our prayer team would be honoured to stand with you in faith.",

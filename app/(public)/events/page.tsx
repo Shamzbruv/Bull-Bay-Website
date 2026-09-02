@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getUpcomingEvents } from "@/lib/data/public";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "Events",
   description: "Find a worship service, ministry gathering, outreach event, or something for your family.",

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { JsonLd } from "@/components/json-ld";
 import { SITE_NAME } from "@/lib/org";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "About",
   description: "The mission, vision and values of New Testament Church of God, Bull Bay.",
@@ -10,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <section className="view inner-view" aria-labelledby="about-title">
+    <section className="inner-view" aria-labelledby="about-title">
       <JsonLd data={{ "@context": "https://schema.org", "@type": "AboutPage", name: `About ${SITE_NAME}` }} />
       <div className="page-hero compact-hero blue-wash">
         <p className="eyebrow">

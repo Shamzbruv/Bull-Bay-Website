@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getUpcomingEvents } from "@/lib/data/public";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "Calendar",
   description: "Every upcoming service, ministry gathering and event at Bull Bay, with a downloadable calendar feed.",

@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { ORGANIZATION_SLUG, PRIMARY_CAMPUS_SLUG } from "@/lib/org";
 
 export async function getOrganization() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("organizations")
     .select("*")
@@ -12,7 +12,7 @@ export async function getOrganization() {
 }
 
 export async function getPrimaryCampus() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("campuses")
     .select("*")
@@ -22,7 +22,7 @@ export async function getPrimaryCampus() {
 }
 
 export async function getUpcomingEvents(limit = 6) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("events")
     .select("*")
@@ -34,13 +34,13 @@ export async function getUpcomingEvents(limit = 6) {
 }
 
 export async function getEventBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("events").select("*").eq("slug", slug).single();
   return data;
 }
 
 export async function getPublishedSermons(options: { topic?: string; query?: string; limit?: number } = {}) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   let request = supabase
     .from("sermons")
     .select("*")
@@ -62,13 +62,13 @@ export async function getPublishedSermons(options: { topic?: string; query?: str
 }
 
 export async function getSermonBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("sermons").select("*").eq("slug", slug).single();
   return data;
 }
 
 export async function getMinistries() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("ministries")
     .select("*")
@@ -78,13 +78,13 @@ export async function getMinistries() {
 }
 
 export async function getMinistryBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("ministries").select("*").eq("slug", slug).single();
   return data;
 }
 
 export async function getPublicGroups() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("groups")
     .select("*")
@@ -95,13 +95,13 @@ export async function getPublicGroups() {
 }
 
 export async function getGroupBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("groups").select("*").eq("slug", slug).single();
   return data;
 }
 
 export async function getVolunteerOpportunities() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("volunteer_opportunities")
     .select("*, volunteer_shifts(*)")
@@ -110,13 +110,13 @@ export async function getVolunteerOpportunities() {
 }
 
 export async function getActiveFunds() {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase.from("funds").select("*").eq("is_active", true).order("name");
   return data ?? [];
 }
 
 export async function getActiveProducts(kind?: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   let request = supabase.from("products").select("*").eq("status", "active").order("name");
   if (kind && kind !== "all") {
     request = request.eq("kind", kind);
@@ -126,7 +126,7 @@ export async function getActiveProducts(kind?: string) {
 }
 
 export async function getProductBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data: product } = await supabase
     .from("products")
     .select("*, product_variants(*)")
@@ -152,7 +152,7 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getPublishedPageBySlug(slug: string) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("pages")
     .select("*")
@@ -163,7 +163,7 @@ export async function getPublishedPageBySlug(slug: string) {
 }
 
 export async function getPublishedAnnouncements(limit = 5) {
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data } = await supabase
     .from("announcements")
     .select("*")

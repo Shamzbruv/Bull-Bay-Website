@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getPrimaryCampus } from "@/lib/data/public";
 import { ContactForm } from "./contact-form";
 
+export const revalidate = 120;
 export const metadata: Metadata = {
   title: "Contact & Next Steps",
   description: "Tell us a little about yourself and a member of our team will be in touch.",
