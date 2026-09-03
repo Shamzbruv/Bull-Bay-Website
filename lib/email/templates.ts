@@ -7,6 +7,18 @@ const INK = "#1d2b45";
 const MUTED = "#5c6a80";
 const SURFACE = "#eef1ec";
 
+/** Public form fields land in these emails unescaped otherwise — this is
+ * the only thing standing between a prayer request textarea and arbitrary
+ * HTML in a staff member's inbox. */
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 /**
  * The shared shell every outbound email renders inside: church logo on a
  * royal-blue band, a white content card, and a consistent footer. Built
@@ -134,5 +146,40 @@ export function renderDocumentReadyEmail(opts: { recipientName: string; document
       <p style="margin:0 0 8px;">Your requested document — <b>${opts.documentTitle}</b> — has been prepared and certified by the pastor's office.</p>
       ${button("View my document", opts.actionUrl)}
     `,
+  });
+}
+
+/**
+ * Internal notification for the office/pastor when a public form is
+ * submitted (contact card, prayer request, etc.) — not sent to the person
+ * who submitted it. Field values are escaped since they're unauthenticated
+ * user input landing straight in a staff inbox.
+ */
+export function renderStaffNotificationEmail(opts: {
+  heading: string;
+  intro?: string;
+  fields: { label: string; value: string | null }[];
+  actionLabel?: string;
+  actionUrl?: string;
+}) {
+  const rows = opts.fields
+    .map(
+      (f) => `<tr>
+        <td style="padding:8px 10px 8px 0;border-bottom:1px solid #e5e8e1;color:${MUTED};font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;width:130px;vertical-align:top;white-space:nowrap;">${escapeHtml(f.label)}</td>
+        <td style="padding:8px 0;border-bottom:1px solid #e5e8e1;color:${INK};font-size:14px;white-space:pre-wrap;">${f.value ? escapeHtml(f.value) : "—"}</td>
+      </tr>`,
+    )
+    .join("");
+
+  return shell({
+    preheader: opts.heading,
+    bodyHtml: `
+      <p style="margin:0 0 4px;color:${BRAND_OLIVE};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">New submission</p>
+      <h1 style="margin:0 0 12px;color:${BRAND_BLUE};font-family:Georgia,'Times New Roman',serif;font-size:22px;">${escapeHtml(opts.heading)}</h1>
+      ${opts.intro ? `<p style="margin:0 0 16px;">${escapeHtml(opts.intro)}</p>` : ""}
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px 0 4px;">${rows}</table>
+      ${opts.actionUrl ? button(opts.actionLabel ?? "Open in the church platform", opts.actionUrl) : ""}
+    `,
+    footerNote: "Sent automatically by the church platform when someone submits this form.",
   });
 }

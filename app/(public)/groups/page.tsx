@@ -20,8 +20,20 @@ export default async function GroupsPage() {
       <h1 style={{ fontFamily: "var(--font-display)", color: "var(--color-blue-700)", fontSize: "clamp(2rem,4vw,3rem)" }}>
         Find your small group.
       </h1>
+
+      <div className="panel" style={{ marginTop: 30, textAlign: "center" }}>
+        <h2 style={{ marginTop: 0 }}>Join us on GraceConnect</h2>
+        <p style={{ maxWidth: 560, margin: "0 auto 16px", color: "var(--color-muted-2)" }}>
+          Our small groups and Christian community live on GraceConnect — the home for connecting with Bull Bay
+          members and other believers, joining a group, and growing in faith together online.
+        </p>
+        <a className="primary-button" href="https://graceconnect.love" target="_blank" rel="noreferrer">
+          Join GraceConnect <span>→</span>
+        </a>
+      </div>
+
       <div className="ministry-grid" style={{ marginTop: 30 }}>
-        {groups.length === 0 && <p className="panel-empty">No groups listed yet — check back soon.</p>}
+        {groups.length === 0 && <p className="panel-empty">No groups listed here yet — join us on GraceConnect above in the meantime.</p>}
         {groups.map((group) => (
           <article className="ministry-card" key={group.id}>
             <span className="icon">✦</span>

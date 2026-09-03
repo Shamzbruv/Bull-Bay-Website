@@ -4,6 +4,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId } from "@/lib/auth/session";
 import { parseJmdToMinorUnits } from "@/lib/money";
 import { revalidatePath } from "next/cache";
+import { notifyOffice } from "@/lib/notify";
+import { renderStaffNotificationEmail } from "@/lib/email/templates";
+import { SITE_URL } from "@/lib/org";
 
 export type ActionState = { status: "idle" | "success" | "error"; message: string };
 
@@ -46,6 +49,28 @@ export async function submitPrayerRequest(_prev: ActionState, formData: FormData
   });
 
   if (error) return { status: "error", message: "We couldn't send your request. Please try again." };
+
+  // Metadata only, never the request itself — a prayer request marked
+  // confidential should stay inside the properly access-controlled
+  // dashboard, not get forwarded into whoever's inbox. This just makes
+  // sure someone knows to go look.
+  await notifyOffice(organizationId, {
+    subject: confidential ? "A confidential prayer request was submitted" : "A new prayer request was submitted",
+    html: renderStaffNotificationEmail({
+      heading: "New prayer request",
+      intro: confidential
+        ? "Marked confidential — the full request is only visible in Pastoral Care."
+        : "Open Pastoral Care to read and respond.",
+      fields: [
+        { label: "From", value: name || "Anonymous" },
+        { label: "Contact", value: contact || user?.email || null },
+        { label: "Confidential", value: confidential ? "Yes" : "No" },
+      ],
+      actionLabel: "Open Pastoral Care",
+      actionUrl: `${SITE_URL}/pastor/care`,
+    }),
+  }).catch(() => {});
+
   return {
     status: "success",
     message: "Your prayer request has been received. Our prayer team will be standing with you.",
@@ -80,6 +105,24 @@ export async function submitConnectionCard(_prev: ActionState, formData: FormDat
   });
 
   if (error) return { status: "error", message: "We couldn't send your message. Please try again." };
+
+  await notifyOffice(organizationId, {
+    subject: `New contact form message from ${firstName} ${lastName}`,
+    html: renderStaffNotificationEmail({
+      heading: "New contact form message",
+      intro: "Someone reached out through the website — follow up soon.",
+      fields: [
+        { label: "Name", value: `${firstName} ${lastName}` },
+        { label: "Email", value: email },
+        { label: "Phone", value: phone || null },
+        { label: "Interested in", value: interest || null },
+        { label: "Message", value: message || null },
+      ],
+      actionLabel: "Open in the church platform",
+      actionUrl: `${SITE_URL}/admin/visitors`,
+    }),
+  }).catch(() => {});
+
   return { status: "success", message: "Thanks for reaching out! A member of our team will be in touch soon." };
 }
 

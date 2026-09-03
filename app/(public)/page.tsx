@@ -71,7 +71,7 @@ const QUICK_LINKS: { href: string; title: string; copy: string; icon: IconName }
   { href: "/give", title: "Give online", copy: "Help make a difference", icon: "book" },
 ];
 
-const NEXT_STEPS: { href: string; eyebrow: string; title: string; copy: string; icon: IconName }[] = [
+const NEXT_STEPS: { href: string; eyebrow: string; title: string; copy: string; icon: IconName; external?: boolean }[] = [
   {
     href: "/prayer",
     eyebrow: "Receive care",
@@ -80,11 +80,15 @@ const NEXT_STEPS: { href: string; eyebrow: string; title: string; copy: string; 
     icon: "heart",
   },
   {
-    href: "/groups",
+    // GraceConnect is our members' home for small groups and Christian
+    // community online — this card sends people there directly rather
+    // than to an in-house /groups listing.
+    href: "https://graceconnect.love",
     eyebrow: "Find your people",
     title: "Life is better together",
-    copy: "Build real friendships and grow in faith in a community where you are known.",
+    copy: "Join GraceConnect, our home for small groups and Christian community online, and grow in faith with people who know you.",
     icon: "people",
+    external: true,
   },
   {
     href: "/serve",
@@ -278,10 +282,12 @@ export default async function HomePage() {
           </div>
           <div className="home-next-grid">
             {NEXT_STEPS.map((item) => (
-              <Link href={item.href} key={item.href}>
+              <Link href={item.href} key={item.href} {...(item.external ? { target: "_blank", rel: "noreferrer" } : {})}>
                 <span className="home-next-icon"><Icon name={item.icon} /></span>
                 <small>{item.eyebrow}</small><h3>{item.title}</h3><p>{item.copy}</p>
-                <span className="home-next-link">Take this step <Icon name="arrow" /></span>
+                <span className="home-next-link">
+                  {item.external ? "Visit GraceConnect" : "Take this step"} <Icon name="arrow" />
+                </span>
               </Link>
             ))}
           </div>
