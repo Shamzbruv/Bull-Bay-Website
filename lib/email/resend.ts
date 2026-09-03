@@ -26,7 +26,7 @@ export async function sendMail(input: SendMailInput): Promise<{ sent: boolean; e
     return { sent: false, error: "not_configured" };
   }
 
-  const from = input.from ?? process.env.RESEND_FROM_EMAIL ?? `${SITE_NAME} <notifications@bullbaychurch.org>`;
+  const from = input.from ?? process.env.RESEND_FROM_EMAIL ?? `${SITE_NAME} <notifications@bullbayntcog.org>`;
 
   try {
     const res = await fetch("https://api.resend.com/emails", {
