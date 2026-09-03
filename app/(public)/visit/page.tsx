@@ -36,8 +36,8 @@ export default async function VisitPage() {
       <div className="section" style={{ paddingBottom: 0 }}>
         <div className="church-photo-hero" style={{ minHeight: 320 }}>
           <picture className="church-photo-hero-media">
-            <source media="(max-width: 700px)" srcSet="/images/church/church-hero-mobile.png" />
-            <img src="/images/church/church-hero-desktop.png" alt="Entrance and sign of New Testament Church of God, Bull Bay" />
+            <source media="(max-width: 700px)" srcSet="/images/church/church-exterior-mobile.jpg" />
+            <img src="/images/church/church-exterior.jpg" alt="Entrance and sign of New Testament Church of God, Bull Bay" />
           </picture>
           <div className="church-photo-hero-overlay" />
           <div className="church-photo-hero-copy" style={{ padding: "40px 40px", width: "min(460px, 100%)" }}>

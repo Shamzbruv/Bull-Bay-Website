@@ -12,8 +12,8 @@ The previous static single-page site is preserved as reference in
 ## Stack
 
 Next.js 16 (App Router, TypeScript, React 19) · Supabase (Postgres 17,
-Auth, Storage, RLS) · plain CSS design system ported from the original
-site's claymorphism look.
+Auth, Storage, RLS) · a scoped editorial CSS system for the public site,
+with a compact interface for the member and staff workspaces.
 
 ## Getting started
 

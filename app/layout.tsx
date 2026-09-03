@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     description: "A place to worship, grow, serve and belong.",
     images: [
       {
-        url: "/images/church/church-hero-desktop.png",
+        url: "/images/church/church-exterior.jpg",
         width: 1672,
         height: 941,
         alt: "New Testament Church of God, Bull Bay",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#123b86",
+  themeColor: "#0a2340",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
