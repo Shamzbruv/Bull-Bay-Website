@@ -42,6 +42,24 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           <option value="phone">Phone</option>
         </select>
       </label>
+      <hr style={{ border: "none", borderTop: "1px solid var(--color-border)", margin: "18px 0" }} />
+      <p className="form-note" style={{ marginTop: 0 }}>
+        <b>Professional directory (optional).</b> Share your occupation and other members can request your help —
+        whether that&apos;s advice, a service, or hiring you. Nobody sees your email or phone through this; you
+        choose what to share once someone reaches out.
+      </p>
+      <label>
+        Occupation / profession
+        <input name="occupation" defaultValue={profile.occupation ?? ""} placeholder="e.g. Attorney-at-law, Electrician, Graphic Designer" />
+      </label>
+      <label>
+        About your work (optional)
+        <textarea name="professional_bio" defaultValue={profile.professional_bio ?? ""} placeholder="What you do and how you can help other members." />
+      </label>
+      <label className="check-label">
+        <input type="checkbox" name="open_to_professional_requests" defaultChecked={profile.open_to_professional_requests ?? false} />
+        List me in the member directory so others can request my help
+      </label>
       <FormStatus state={state} />
       <SubmitButton pendingLabel="Saving…">Save changes</SubmitButton>
     </form>

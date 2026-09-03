@@ -1,13 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "submitting" | "sent" | "error">("idle");
+  const [password, setPassword] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [error, setError] = useState("");
+  const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/member";
 
@@ -15,26 +18,18 @@ export function LoginForm() {
     e.preventDefault();
     setStatus("submitting");
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
-      },
-    });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setStatus("error");
-      setError(error.message);
+      setError(
+        error.message.toLowerCase().includes("invalid")
+          ? "That email and password don't match an account. If you're new here, check with the church office — accounts are set up by invitation."
+          : error.message,
+      );
       return;
     }
-    setStatus("sent");
-  }
-
-  if (status === "sent") {
-    return (
-      <div className="alert success">
-        Check <b>{email}</b> for a sign-in link. You can close this tab once you click it.
-      </div>
-    );
+    router.push(next);
+    router.refresh();
   }
 
   return (
@@ -50,13 +45,26 @@ export function LoginForm() {
           placeholder="you@example.com"
         />
       </label>
+      <label>
+        Password
+        <input
+          type="password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+      </label>
       {status === "error" && <div className="alert warn">{error}</div>}
       <button type="submit" className="primary-button" disabled={status === "submitting"} style={{ width: "100%", justifyContent: "center" }}>
-        {status === "submitting" ? "Sending link…" : "Send me a sign-in link"}
+        {status === "submitting" ? "Signing in…" : "Sign in"}
       </button>
-      <p className="form-note" style={{ marginTop: 16 }}>
-        No password needed — we&apos;ll email you a secure link. Staff and pastoral accounts also require a second
-        factor once enrolled.
+      <p className="form-note" style={{ marginTop: 16, textAlign: "center" }}>
+        <Link href="/forgot-password">Forgot your password?</Link>
+      </p>
+      <p className="form-note" style={{ marginTop: 8 }}>
+        Accounts are created by the church office. If you don&apos;t have one yet, contact us through the{" "}
+        <Link href="/contact">Contact page</Link>.
       </p>
     </form>
   );

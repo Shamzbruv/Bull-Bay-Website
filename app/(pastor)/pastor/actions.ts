@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getOrganizationId } from "@/lib/auth/session";
+import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import type { ActionState } from "@/app/(public)/actions";
 
 function slugify(input: string) {
@@ -71,4 +71,83 @@ export async function updatePrayerStatus(prayerId: string, status: string): Prom
   await supabase.from("prayer_requests").update({ status }).eq("id", prayerId);
   revalidatePath("/pastor");
   revalidatePath("/pastor/care");
+}
+
+// Counsel requests -----------------------------------------------------
+export async function scheduleCounselRequest(requestId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const supabase = await createClient();
+  const { data: request } = await supabase
+    .from("counsel_requests")
+    .select("id, reason, requested_with_profile_id")
+    .eq("id", requestId)
+    .maybeSingle();
+  if (!request?.requested_with_profile_id) return { status: "error", message: "This request can't be scheduled." };
+
+  const startsAt = String(formData.get("starts_at") || "");
+  const endsAt = String(formData.get("ends_at") || "");
+  if (!startsAt || !endsAt) return { status: "error", message: "Choose a start and end time." };
+  if (new Date(endsAt) <= new Date(startsAt)) return { status: "error", message: "End must be after start." };
+
+  const { data: event, error: eventError } = await supabase
+    .from("pastoral_calendar_events")
+    .insert({
+      profile_id: request.requested_with_profile_id,
+      title: `Counsel: ${request.reason}`,
+      kind: "appointment",
+      visibility: "private",
+      starts_at: new Date(startsAt).toISOString(),
+      ends_at: new Date(endsAt).toISOString(),
+      counsel_request_id: requestId,
+    })
+    .select("id")
+    .single();
+  if (eventError || !event) return { status: "error", message: "Couldn't add this to the calendar." };
+
+  const { error } = await supabase
+    .from("counsel_requests")
+    .update({ status: "scheduled", scheduled_event_id: event.id })
+    .eq("id", requestId);
+  if (error) return { status: "error", message: "Scheduled on the calendar, but couldn't update the request status." };
+
+  revalidatePath("/pastor/care");
+  revalidatePath("/member/counsel");
+  return { status: "success", message: "Scheduled and added to the calendar." };
+}
+
+export async function declineCounselRequest(requestId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const supabase = await createClient();
+  const note = String(formData.get("staff_notes") || "").trim();
+  const { error } = await supabase
+    .from("counsel_requests")
+    .update({ status: "declined", staff_notes: note || null })
+    .eq("id", requestId);
+  if (error) return { status: "error", message: "Couldn't update this request." };
+  revalidatePath("/pastor/care");
+  revalidatePath("/member/counsel");
+  return { status: "success", message: "Request declined." };
+}
+
+// Pastor's Desk broadcast ------------------------------------------------
+export async function sendBroadcast(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("broadcasts.send")) return { status: "error", message: "You don't have permission to do this." };
+
+  const profile = await getCurrentProfile();
+  const title = String(formData.get("title") || "").trim();
+  const body = String(formData.get("body") || "").trim();
+  if (!title || !body) return { status: "error", message: "Add a title and a message." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("pastor_broadcasts").insert({
+    organization_id: organizationId,
+    author_profile_id: profile?.id ?? null,
+    title,
+    body,
+  });
+  if (error) return { status: "error", message: "Couldn't send that broadcast." };
+
+  revalidatePath("/pastor");
+  revalidatePath("/member");
+  return { status: "success", message: "Sent to every member's dashboard." };
 }

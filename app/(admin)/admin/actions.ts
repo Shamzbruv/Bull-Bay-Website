@@ -161,6 +161,71 @@ export async function markDonationCompleted(donationId: string): Promise<void> {
   revalidatePath("/admin/giving");
 }
 
+export async function recordInServiceGiving(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("giving.manage")) return { status: "error", message: "You don't have permission to do this." };
+
+  const fundId = String(formData.get("fund_id") || "");
+  const amountMinor = parseJmdToMinorUnits(String(formData.get("amount") || ""));
+  const method = String(formData.get("method") || "cash");
+  const note = String(formData.get("note") || "").trim();
+  if (!fundId || amountMinor === null || amountMinor <= 0) return { status: "error", message: "Choose a fund and enter a valid amount." };
+
+  const supabase = await createClient();
+  const { data: donation, error } = await supabase
+    .from("donations")
+    .insert({
+      organization_id: organizationId,
+      donor_name: note || `In-service giving (${method})`,
+      amount_minor: amountMinor,
+      provider: "in_service",
+      status: "completed",
+    })
+    .select("id")
+    .single();
+  if (error || !donation) return { status: "error", message: "Couldn't record this." };
+
+  await supabase.from("donation_allocations").insert({ donation_id: donation.id, fund_id: fundId, amount_minor: amountMinor });
+
+  revalidatePath("/admin/giving");
+  return { status: "success", message: "Recorded." };
+}
+
+export async function recordExpense(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("giving.manage")) return { status: "error", message: "You don't have permission to do this." };
+
+  const category = String(formData.get("category") || "").trim();
+  const vendor = String(formData.get("vendor") || "").trim();
+  const description = String(formData.get("description") || "").trim();
+  const amountMinor = parseJmdToMinorUnits(String(formData.get("amount") || ""));
+  const expenseDate = String(formData.get("expense_date") || "") || new Date().toISOString().slice(0, 10);
+  const fundId = String(formData.get("fund_id") || "") || null;
+  if (!category || amountMinor === null || amountMinor <= 0) return { status: "error", message: "Enter a category and a valid amount." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { error } = await supabase.from("expenses").insert({
+    organization_id: organizationId,
+    category,
+    vendor: vendor || null,
+    description: description || null,
+    amount_minor: amountMinor,
+    expense_date: expenseDate,
+    fund_id: fundId,
+    recorded_by: user?.id ?? null,
+  });
+  if (error) return { status: "error", message: "Couldn't record this expense." };
+
+  revalidatePath("/admin/giving");
+  return { status: "success", message: "Expense recorded." };
+}
+
 // Shop ---------------------------------------------------------------------
 export async function saveProduct(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();

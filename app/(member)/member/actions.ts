@@ -29,6 +29,9 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
       last_name: String(formData.get("last_name") || "").trim() || null,
       phone: String(formData.get("phone") || "").trim() || null,
       preferred_contact_method: String(formData.get("preferred_contact_method") || "") || null,
+      occupation: String(formData.get("occupation") || "").trim() || null,
+      professional_bio: String(formData.get("professional_bio") || "").trim() || null,
+      open_to_professional_requests: formData.get("open_to_professional_requests") === "on",
     })
     .eq("id", profile.id);
 

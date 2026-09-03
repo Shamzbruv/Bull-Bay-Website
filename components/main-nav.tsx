@@ -17,6 +17,7 @@ const EXPLORE_LINKS = [
   { href: "/sermons", label: "Sermons" },
   { href: "/groups", label: "Groups" },
   { href: "/direction", label: "Church Direction" },
+  { href: "/gallery", label: "Gallery" },
 ];
 
 function MenuIcon({ open }: { open: boolean }) {

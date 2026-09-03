@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
+import { RealtimeRefresh } from "@/components/realtime-refresh";
 
 export const metadata: Metadata = { title: "My Church" };
 
@@ -9,7 +10,7 @@ export default async function MemberDashboardPage() {
   const supabase = await createClient();
   const profile = await getCurrentProfile();
 
-  const [{ data: registrations }, { data: groups }, { data: shifts }] = await Promise.all([
+  const [{ data: registrations }, { data: groups }, { data: shifts }, { data: broadcasts }, { data: announcements }, { data: lastAttendance }] = await Promise.all([
     supabase
       .from("event_registrations")
       .select("id, events(title, starts_at, slug)")
@@ -22,16 +23,65 @@ export default async function MemberDashboardPage() {
       .select("shift_id, status, volunteer_shifts(starts_at, volunteer_opportunities(title))")
       .eq("profile_id", profile?.id ?? "")
       .limit(3),
+    supabase.from("pastor_broadcasts").select("id, title, body, created_at").order("created_at", { ascending: false }).limit(3),
+    supabase.from("announcements").select("id, title, body, published_at").eq("status", "published").order("published_at", { ascending: false }).limit(4),
+    supabase.from("attendance_records").select("headcount, service_date, service_schedules(label)").order("service_date", { ascending: false }).limit(1).maybeSingle(),
   ]);
+
+  const lastService = lastAttendance?.service_schedules as unknown as { label: string } | null;
 
   return (
     <>
+      <RealtimeRefresh tables={["pastor_broadcasts", "announcements", "attendance_records"]} />
       <div className="dashboard-header">
         <div>
           <h1>Welcome{profile?.first_name ? `, ${profile.first_name}` : ""}.</h1>
           <p>Here&apos;s what&apos;s next for you at Bull Bay.</p>
         </div>
       </div>
+
+      {lastAttendance && (
+        <div className="panel" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
+          <div>
+            <h2 style={{ margin: 0 }}>{lastService?.label ?? "Last service"}</h2>
+            <p style={{ margin: "4px 0 0", color: "var(--color-muted-2)", fontSize: ".88rem" }}>
+              {new Date(lastAttendance.service_date).toLocaleDateString("en-JM", { dateStyle: "long" })}
+            </p>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <b style={{ fontSize: "1.8rem", color: "var(--color-blue-700)" }}>{lastAttendance.headcount}</b>
+            <div style={{ fontSize: ".78rem", color: "var(--color-muted-2)" }}>in attendance</div>
+          </div>
+          <Link className="link-button" href="/member/attendance">
+            See history <span>→</span>
+          </Link>
+        </div>
+      )}
+
+      {broadcasts && broadcasts.length > 0 && (
+        <div className="panel" style={{ borderLeft: "4px solid var(--color-blue-700)" }}>
+          <h2>From the Pastor&apos;s Desk</h2>
+          {broadcasts.map((b) => (
+            <div key={b.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--color-border)" }}>
+              <b>{b.title}</b>
+              <p style={{ margin: "4px 0 0", fontSize: ".88rem", whiteSpace: "pre-wrap" }}>{b.body}</p>
+              <small style={{ color: "var(--color-muted)" }}>{new Date(b.created_at).toLocaleDateString("en-JM", { dateStyle: "medium" })}</small>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {announcements && announcements.length > 0 && (
+        <div className="panel">
+          <h2>Bulletin</h2>
+          {announcements.map((a) => (
+            <div key={a.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
+              <b style={{ fontSize: ".9rem" }}>{a.title}</b>
+              <p style={{ margin: "2px 0 0", fontSize: ".85rem" }}>{a.body}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="panel">
         <h2>Upcoming registrations</h2>

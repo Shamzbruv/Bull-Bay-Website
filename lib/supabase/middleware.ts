@@ -46,5 +46,19 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
+  // Admin-issued temporary passwords must be replaced before the member can
+  // reach anything else — checked here so it's enforced everywhere, not
+  // just wherever a page remembers to check.
+  if (isProtected && user && path !== "/auth/update-password") {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("must_change_password")
+      .eq("auth_user_id", user.id)
+      .maybeSingle();
+    if (profile?.must_change_password) {
+      return NextResponse.redirect(new URL("/auth/update-password", request.url));
+    }
+  }
+
   return response;
 }

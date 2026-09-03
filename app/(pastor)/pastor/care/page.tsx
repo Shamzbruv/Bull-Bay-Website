@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId } from "@/lib/auth/session";
+import { CounselRequestRow } from "./counsel-request-row";
 
 export const metadata: Metadata = { title: "Pastoral Care" };
 
@@ -11,7 +12,7 @@ export default async function PastoralCarePage() {
 
   // RLS already scopes this to cases the signed-in pastor owns or has been
   // explicitly granted access to — no broad "admin sees everything" here.
-  const [{ data: cases }, { data: prayers }] = await Promise.all([
+  const [{ data: cases }, { data: prayers }, { data: counselRequests }] = await Promise.all([
     supabase
       .from("care_cases")
       .select("id, category, status, summary, created_at")
@@ -23,6 +24,12 @@ export default async function PastoralCarePage() {
       .eq("organization_id", organizationId ?? "")
       .order("created_at", { ascending: false })
       .limit(20),
+    supabase
+      .from("counsel_requests")
+      .select("id, reason, details, is_urgent, status, preferred_date, preferred_time, created_at, profiles:requester_profile_id(first_name, last_name)")
+      .order("is_urgent", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(30),
   ]);
 
   return (
@@ -43,6 +50,27 @@ export default async function PastoralCarePage() {
             <span className="badge">{c.status}</span>
           </Link>
         ))}
+      </div>
+
+      <div className="panel">
+        <h2>Counsel requests</h2>
+        {(!counselRequests || counselRequests.length === 0) && <p className="panel-empty">No counsel requests right now.</p>}
+        {counselRequests?.map((r) => {
+          const requester = r.profiles as unknown as { first_name: string | null; last_name: string | null } | null;
+          return (
+            <CounselRequestRow
+              key={r.id}
+              id={r.id}
+              reason={r.reason}
+              requesterName={`${requester?.first_name ?? ""} ${requester?.last_name ?? ""}`.trim() || "A member"}
+              details={r.details}
+              isUrgent={r.is_urgent}
+              preferredDate={r.preferred_date}
+              preferredTime={r.preferred_time}
+              status={r.status}
+            />
+          );
+        })}
       </div>
 
       <div className="panel">

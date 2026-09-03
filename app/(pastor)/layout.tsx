@@ -8,6 +8,8 @@ const NAV_ITEMS = [
   { href: "/pastor/direction", label: "Strategic Direction" },
   { href: "/pastor/sermons", label: "Sermons" },
   { href: "/pastor/care", label: "Pastoral Care" },
+  { href: "/pastor/documents", label: "Documents" },
+  { href: "/member/team-calendar", label: "My Calendar" },
 ];
 
 export default async function PastorLayout({ children }: { children: React.ReactNode }) {
@@ -15,7 +17,12 @@ export default async function PastorLayout({ children }: { children: React.React
   if (!organizationId) redirect("/");
 
   const permissions = await getUserPermissions(organizationId);
-  const isPastoralStaff = permissions.has("care.manage") || permissions.has("care.read") || permissions.has("sermons.manage");
+  const isPastoralStaff =
+    permissions.has("care.manage") ||
+    permissions.has("care.read") ||
+    permissions.has("sermons.manage") ||
+    permissions.has("documents.certify") ||
+    permissions.has("pastoral_calendar.manage");
   if (!isPastoralStaff) redirect("/member");
 
   const aal = await getAuthenticatorAssuranceLevel();

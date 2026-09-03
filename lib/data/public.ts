@@ -237,6 +237,21 @@ export async function getPublishedDoctrineStatements() {
   return data ?? [];
 }
 
+export async function getPublishedGalleryImages(limit = 60) {
+  const supabase = createPublicClient();
+  const { data } = await supabase
+    .from("gallery_images")
+    .select("id, storage_path, caption, story, created_at")
+    .eq("is_published", true)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []).map((img) => ({
+    ...img,
+    url: supabase.storage.from("gallery").getPublicUrl(img.storage_path).data.publicUrl,
+  }));
+}
+
 /** Only ministry leaders a church administrator has explicitly approved for
  * public display — never the full roster. */
 export async function getPublicMinistryLeaders(ministryId: string) {

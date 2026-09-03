@@ -145,6 +145,54 @@ export type Database = {
           },
         ]
       }
+      attendance_records: {
+        Row: {
+          headcount: number
+          id: string
+          notes: string | null
+          organization_id: string
+          service_date: string
+          service_schedule_id: string
+          submitted_at: string
+          submitted_by: string | null
+        }
+        Insert: {
+          headcount: number
+          id?: string
+          notes?: string | null
+          organization_id: string
+          service_date: string
+          service_schedule_id: string
+          submitted_at?: string
+          submitted_by?: string | null
+        }
+        Update: {
+          headcount?: number
+          id?: string
+          notes?: string | null
+          organization_id?: string
+          service_date?: string
+          service_schedule_id?: string
+          submitted_at?: string
+          submitted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_records_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_records_service_schedule_id_fkey"
+            columns: ["service_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "service_schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -338,6 +386,13 @@ export type Database = {
             foreignKeyName: "care_cases_subject_profile_id_fkey"
             columns: ["subject_profile_id"]
             isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "care_cases_subject_profile_id_fkey"
+            columns: ["subject_profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -437,6 +492,100 @@ export type Database = {
           },
         ]
       }
+      counsel_requests: {
+        Row: {
+          created_at: string
+          details: string | null
+          id: string
+          is_urgent: boolean
+          organization_id: string
+          preferred_date: string | null
+          preferred_time: string | null
+          reason: string
+          requested_with_profile_id: string | null
+          requester_profile_id: string | null
+          scheduled_event_id: string | null
+          staff_notes: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          is_urgent?: boolean
+          organization_id: string
+          preferred_date?: string | null
+          preferred_time?: string | null
+          reason: string
+          requested_with_profile_id?: string | null
+          requester_profile_id?: string | null
+          scheduled_event_id?: string | null
+          staff_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          id?: string
+          is_urgent?: boolean
+          organization_id?: string
+          preferred_date?: string | null
+          preferred_time?: string | null
+          reason?: string
+          requested_with_profile_id?: string | null
+          requester_profile_id?: string | null
+          scheduled_event_id?: string | null
+          staff_notes?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "counsel_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counsel_requests_requested_with_profile_id_fkey"
+            columns: ["requested_with_profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "counsel_requests_requested_with_profile_id_fkey"
+            columns: ["requested_with_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counsel_requests_requester_profile_id_fkey"
+            columns: ["requester_profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "counsel_requests_requester_profile_id_fkey"
+            columns: ["requester_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "counsel_requests_scheduled_event_id_fkey"
+            columns: ["scheduled_event_id"]
+            isOneToOne: false
+            referencedRelation: "pastoral_calendar_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       digital_entitlements: {
         Row: {
           created_at: string
@@ -496,6 +645,13 @@ export type Database = {
             foreignKeyName: "digital_entitlements_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "digital_entitlements_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -535,6 +691,145 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "doctrine_statements_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_requests: {
+        Row: {
+          assigned_to: string | null
+          certified_at: string | null
+          certified_by: string | null
+          created_at: string
+          denial_reason: string | null
+          details: Json
+          document_number: string | null
+          id: string
+          organization_id: string
+          pdf_path: string | null
+          prepared_body: string | null
+          purpose: string | null
+          requester_profile_id: string | null
+          status: string
+          template_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          certified_at?: string | null
+          certified_by?: string | null
+          created_at?: string
+          denial_reason?: string | null
+          details?: Json
+          document_number?: string | null
+          id?: string
+          organization_id: string
+          pdf_path?: string | null
+          prepared_body?: string | null
+          purpose?: string | null
+          requester_profile_id?: string | null
+          status?: string
+          template_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          certified_at?: string | null
+          certified_by?: string | null
+          created_at?: string
+          denial_reason?: string | null
+          details?: Json
+          document_number?: string | null
+          id?: string
+          organization_id?: string
+          pdf_path?: string | null
+          prepared_body?: string | null
+          purpose?: string | null
+          requester_profile_id?: string | null
+          status?: string
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requests_requester_profile_id_fkey"
+            columns: ["requester_profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "document_requests_requester_profile_id_fkey"
+            columns: ["requester_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "document_requests_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "document_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_templates: {
+        Row: {
+          body: string
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_templates_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -632,6 +927,13 @@ export type Database = {
             foreignKeyName: "donations_donor_profile_id_fkey"
             columns: ["donor_profile_id"]
             isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "donations_donor_profile_id_fkey"
+            columns: ["donor_profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -688,6 +990,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "events"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_registrations_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "event_registrations_profile_id_fkey"
@@ -788,6 +1097,69 @@ export type Database = {
           },
         ]
       }
+      expenses: {
+        Row: {
+          amount_minor: number
+          category: string
+          created_at: string
+          currency: string
+          description: string | null
+          expense_date: string
+          fund_id: string | null
+          id: string
+          organization_id: string
+          receipt_path: string | null
+          recorded_by: string | null
+          updated_at: string
+          vendor: string | null
+        }
+        Insert: {
+          amount_minor: number
+          category: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          expense_date?: string
+          fund_id?: string | null
+          id?: string
+          organization_id: string
+          receipt_path?: string | null
+          recorded_by?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Update: {
+          amount_minor?: number
+          category?: string
+          created_at?: string
+          currency?: string
+          description?: string | null
+          expense_date?: string
+          fund_id?: string | null
+          id?: string
+          organization_id?: string
+          receipt_path?: string | null
+          recorded_by?: string | null
+          updated_at?: string
+          vendor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_fund_id_fkey"
+            columns: ["fund_id"]
+            isOneToOne: false
+            referencedRelation: "funds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       funds: {
         Row: {
           code: string
@@ -819,6 +1191,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "funds_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gallery_images: {
+        Row: {
+          caption: string | null
+          created_at: string
+          id: string
+          is_published: boolean
+          organization_id: string
+          sort_order: number
+          storage_path: string
+          story: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          organization_id: string
+          sort_order?: number
+          storage_path: string
+          story?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          organization_id?: string
+          sort_order?: number
+          storage_path?: string
+          story?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gallery_images_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -858,6 +1274,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "groups"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "group_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
           },
           {
             foreignKeyName: "group_members_profile_id_fkey"
@@ -1053,6 +1476,13 @@ export type Database = {
             foreignKeyName: "ministries_leader_profile_id_fkey"
             columns: ["leader_profile_id"]
             isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ministries_leader_profile_id_fkey"
+            columns: ["leader_profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1137,6 +1567,13 @@ export type Database = {
             foreignKeyName: "ministry_assignments_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "ministry_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1168,6 +1605,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "notification_preferences_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
           {
             foreignKeyName: "notification_preferences_profile_id_fkey"
             columns: ["profile_id"]
@@ -1307,6 +1751,13 @@ export type Database = {
             foreignKeyName: "orders_customer_profile_id_fkey"
             columns: ["customer_profile_id"]
             isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "orders_customer_profile_id_fkey"
+            columns: ["customer_profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1392,6 +1843,222 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pastor_broadcasts: {
+        Row: {
+          author_profile_id: string | null
+          body: string
+          created_at: string
+          id: string
+          organization_id: string
+          title: string
+        }
+        Insert: {
+          author_profile_id?: string | null
+          body: string
+          created_at?: string
+          id?: string
+          organization_id: string
+          title: string
+        }
+        Update: {
+          author_profile_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          organization_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pastor_broadcasts_author_profile_id_fkey"
+            columns: ["author_profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "pastor_broadcasts_author_profile_id_fkey"
+            columns: ["author_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pastor_broadcasts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pastoral_calendar_availability: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          label: string | null
+          profile_id: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          label?: string | null
+          profile_id: string
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          label?: string | null
+          profile_id?: string
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pastoral_calendar_availability_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "pastoral_calendar_availability_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pastoral_calendar_events: {
+        Row: {
+          counsel_request_id: string | null
+          created_at: string
+          ends_at: string
+          id: string
+          kind: string
+          profile_id: string
+          starts_at: string
+          title: string
+          visibility: string
+        }
+        Insert: {
+          counsel_request_id?: string | null
+          created_at?: string
+          ends_at: string
+          id?: string
+          kind?: string
+          profile_id: string
+          starts_at: string
+          title: string
+          visibility?: string
+        }
+        Update: {
+          counsel_request_id?: string | null
+          created_at?: string
+          ends_at?: string
+          id?: string
+          kind?: string
+          profile_id?: string
+          starts_at?: string
+          title?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pastoral_calendar_events_counsel_request_fkey"
+            columns: ["counsel_request_id"]
+            isOneToOne: false
+            referencedRelation: "counsel_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pastoral_calendar_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "pastoral_calendar_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pastoral_team_members: {
+        Row: {
+          bio: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          is_pastor: boolean
+          is_trained_counselor: boolean
+          organization_id: string
+          profile_id: string
+          role_title: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_pastor?: boolean
+          is_trained_counselor?: boolean
+          organization_id: string
+          profile_id: string
+          role_title: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_pastor?: boolean
+          is_trained_counselor?: boolean
+          organization_id?: string
+          profile_id?: string
+          role_title?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pastoral_team_members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pastoral_team_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "pastoral_team_members_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -1527,6 +2194,13 @@ export type Database = {
             foreignKeyName: "prayer_requests_submitter_profile_id_fkey"
             columns: ["submitter_profile_id"]
             isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "prayer_requests_submitter_profile_id_fkey"
+            columns: ["submitter_profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1632,71 +2306,188 @@ export type Database = {
           },
         ]
       }
+      professional_help_requests: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          organization_id: string
+          requester_profile_id: string
+          status: string
+          target_profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          organization_id: string
+          requester_profile_id: string
+          status?: string
+          target_profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          organization_id?: string
+          requester_profile_id?: string
+          status?: string
+          target_profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "professional_help_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_help_requests_requester_profile_id_fkey"
+            columns: ["requester_profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "professional_help_requests_requester_profile_id_fkey"
+            columns: ["requester_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "professional_help_requests_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "professional_help_requests_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
+          address_line1: string | null
           auth_user_id: string | null
           avatar_path: string | null
           campus_id: string | null
+          city: string | null
           communication_email_opt_in: boolean
           communication_sms_opt_in: boolean
           created_at: string
           date_of_birth: string | null
           email: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          employer: string | null
           first_name: string | null
           gender: string | null
           household_id: string | null
           id: string
+          invited_at: string | null
+          invited_by: string | null
+          job_title: string | null
           joined_at: string | null
           last_name: string | null
+          marital_status: string | null
           membership_status: string
+          must_change_password: boolean
           notes: string | null
+          occupation: string | null
+          open_to_professional_requests: boolean
           organization_id: string
+          parish: string | null
           phone: string | null
           preferred_contact_method: string | null
+          professional_bio: string | null
+          signature_path: string | null
+          stamp_path: string | null
           updated_at: string
         }
         Insert: {
+          address_line1?: string | null
           auth_user_id?: string | null
           avatar_path?: string | null
           campus_id?: string | null
+          city?: string | null
           communication_email_opt_in?: boolean
           communication_sms_opt_in?: boolean
           created_at?: string
           date_of_birth?: string | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employer?: string | null
           first_name?: string | null
           gender?: string | null
           household_id?: string | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          job_title?: string | null
           joined_at?: string | null
           last_name?: string | null
+          marital_status?: string | null
           membership_status?: string
+          must_change_password?: boolean
           notes?: string | null
+          occupation?: string | null
+          open_to_professional_requests?: boolean
           organization_id: string
+          parish?: string | null
           phone?: string | null
           preferred_contact_method?: string | null
+          professional_bio?: string | null
+          signature_path?: string | null
+          stamp_path?: string | null
           updated_at?: string
         }
         Update: {
+          address_line1?: string | null
           auth_user_id?: string | null
           avatar_path?: string | null
           campus_id?: string | null
+          city?: string | null
           communication_email_opt_in?: boolean
           communication_sms_opt_in?: boolean
           created_at?: string
           date_of_birth?: string | null
           email?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          employer?: string | null
           first_name?: string | null
           gender?: string | null
           household_id?: string | null
           id?: string
+          invited_at?: string | null
+          invited_by?: string | null
+          job_title?: string | null
           joined_at?: string | null
           last_name?: string | null
+          marital_status?: string | null
           membership_status?: string
+          must_change_password?: boolean
           notes?: string | null
+          occupation?: string | null
+          open_to_professional_requests?: boolean
           organization_id?: string
+          parish?: string | null
           phone?: string | null
           preferred_contact_method?: string | null
+          professional_bio?: string | null
+          signature_path?: string | null
+          stamp_path?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1958,6 +2749,47 @@ export type Database = {
           },
         ]
       }
+      service_schedules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          id: string
+          is_active: boolean
+          label: string
+          organization_id: string
+          service_time: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          id?: string
+          is_active?: boolean
+          label: string
+          organization_id: string
+          service_time: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          is_active?: boolean
+          label?: string
+          organization_id?: string
+          service_time?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_schedules_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       strategic_goals: {
         Row: {
           created_at: string
@@ -2184,6 +3016,13 @@ export type Database = {
             foreignKeyName: "volunteer_assignments_profile_id_fkey"
             columns: ["profile_id"]
             isOneToOne: false
+            referencedRelation: "professional_directory"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "volunteer_assignments_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -2331,6 +3170,41 @@ export type Database = {
       }
     }
     Views: {
+      professional_directory: {
+        Row: {
+          first_name: string | null
+          last_name: string | null
+          occupation: string | null
+          organization_id: string | null
+          professional_bio: string | null
+          profile_id: string | null
+        }
+        Insert: {
+          first_name?: string | null
+          last_name?: string | null
+          occupation?: string | null
+          organization_id?: string | null
+          professional_bio?: string | null
+          profile_id?: string | null
+        }
+        Update: {
+          first_name?: string | null
+          last_name?: string | null
+          occupation?: string | null
+          organization_id?: string | null
+          professional_bio?: string | null
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       variant_stock_levels: {
         Row: {
           available: number | null
