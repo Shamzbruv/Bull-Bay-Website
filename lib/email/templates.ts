@@ -74,6 +74,14 @@ function button(label: string, url: string) {
   </table>`;
 }
 
+/**
+ * Not currently called — the actual invite email is Supabase's own
+ * (Auth → Email Templates, branded to match; see supabase/migrations
+ * comments on why it was moved there). `actionUrl` here would need a real
+ * one-time token from admin.auth.admin.generateLink() to work; a plain
+ * SITE_URL link does not authenticate anyone. Kept in case a future
+ * flow needs a fully custom invite send.
+ */
 export function renderInviteEmail(opts: { recipientName: string; actionUrl: string }) {
   return shell({
     preheader: "You've been invited to the Bull Bay church platform.",

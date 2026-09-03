@@ -5,17 +5,22 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getOrganizationId } from "@/lib/auth/session";
 import { SITE_URL } from "@/lib/org";
 import { sendMail } from "@/lib/email/resend";
-import { renderInviteEmail, renderTempPasswordEmail } from "@/lib/email/templates";
+import { renderTempPasswordEmail } from "@/lib/email/templates";
 import type { ActionState } from "@/app/(public)/actions";
 
 /**
  * The only way an account gets created — never public self-service. Uses
  * the Supabase Admin API (service role, server-only) to create the
  * auth.users row directly, then fills in the membership/job/personal
- * details the admin collected for the new profile. Supabase's own
- * invitation email always fires (built-in, no configuration needed) as a
- * dependable fallback; once RESEND_API_KEY is set we additionally send our
- * own branded version with the same link.
+ * details the admin collected for the new profile.
+ *
+ * The invite email itself is Supabase's own (its mailer_templates_invite
+ * are branded to match the site — see Auth → Email Templates), sent
+ * through the Resend SMTP relay. It is NOT duplicated with a second,
+ * separately-composed email here: an earlier version of this action also
+ * sent one via sendMail(), but that link had no auth token on it (only
+ * Supabase's own {{ .ConfirmationURL }} carries the real one-time code),
+ * so it went nowhere — Supabase's is the only one that actually works.
  */
 export async function inviteMember(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
@@ -81,14 +86,6 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
     entity_id: invited.user.id,
     metadata: { email },
   });
-
-  // Best-effort branded email alongside Supabase's own — never blocks the
-  // invite itself if Resend isn't configured yet.
-  await sendMail({
-    to: email,
-    subject: `You're invited to the Bull Bay church platform`,
-    html: renderInviteEmail({ recipientName: firstName, actionUrl: redirectTo }),
-  }).catch(() => {});
 
   revalidatePath("/admin/people");
   return { status: "success", message: `Invitation sent to ${email}.` };
