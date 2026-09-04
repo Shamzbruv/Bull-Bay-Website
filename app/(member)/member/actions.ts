@@ -180,8 +180,83 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
   revalidatePath("/member/profile");
   revalidatePath("/member");
   revalidatePath("/member/directory");
+  revalidatePath("/admin/profile");
+  revalidatePath("/pastor/profile");
   if (formData.get("onboarding") === "1") redirect("/member");
   return { status: "success", message: "Profile updated." };
+}
+
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+const AVATAR_EXT_BY_TYPE: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+/**
+ * Uploads to the private member-avatars bucket, into the caller's own
+ * auth-user-id folder — the only folder their Storage RLS policy
+ * ("member-avatars own read/write") lets them touch — then points
+ * profiles.avatar_path at it. Old files aren't left behind: each upload
+ * reuses the same fixed filename per type and any previous file under a
+ * different extension is removed first.
+ */
+export async function uploadAvatar(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const supabase = await createClient();
+  const profile = await requireProfileId(supabase);
+  if (!profile) return { status: "error", message: "Please sign in again." };
+
+  const file = formData.get("avatar");
+  if (!(file instanceof File) || file.size === 0) {
+    return { status: "error", message: "Choose a photo to upload." };
+  }
+  if (file.size > AVATAR_MAX_BYTES) {
+    return { status: "error", message: "Please choose a photo under 5 MB." };
+  }
+  const ext = AVATAR_EXT_BY_TYPE[file.type];
+  if (!ext) return { status: "error", message: "Please upload a JPG, PNG, or WEBP photo." };
+
+  const folder = profile.authUserId;
+  const path = `${folder}/avatar.${ext}`;
+
+  // Clean up a previous photo saved under a different extension, so
+  // switching from a .png to a .jpg doesn't leave the old file behind.
+  const otherExts = Object.values(AVATAR_EXT_BY_TYPE).filter((e) => e !== ext);
+  await supabase.storage.from("member-avatars").remove(otherExts.map((e) => `${folder}/avatar.${e}`));
+
+  const { error: uploadError } = await supabase.storage
+    .from("member-avatars")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (uploadError) return { status: "error", message: "We couldn't upload that photo. Please try again." };
+
+  const { error: profileError } = await supabase.from("profiles").update({ avatar_path: path }).eq("id", profile.id);
+  if (profileError) return { status: "error", message: "The photo uploaded, but we couldn't save it to your profile." };
+
+  revalidatePath("/member/profile");
+  revalidatePath("/member");
+  revalidatePath("/admin/profile");
+  revalidatePath("/pastor/profile");
+  revalidatePath("/admin");
+  revalidatePath("/pastor");
+  return { status: "success", message: "Profile photo updated." };
+}
+
+export async function removeAvatar(): Promise<ActionState> {
+  const supabase = await createClient();
+  const profile = await requireProfileId(supabase);
+  if (!profile) return { status: "error", message: "Please sign in again." };
+
+  const allExts = Object.values(AVATAR_EXT_BY_TYPE);
+  await supabase.storage.from("member-avatars").remove(allExts.map((e) => `${profile.authUserId}/avatar.${e}`));
+  await supabase.from("profiles").update({ avatar_path: null }).eq("id", profile.id);
+
+  revalidatePath("/member/profile");
+  revalidatePath("/member");
+  revalidatePath("/admin/profile");
+  revalidatePath("/pastor/profile");
+  revalidatePath("/admin");
+  revalidatePath("/pastor");
+  return { status: "success", message: "Profile photo removed." };
 }
 
 export async function saveHousehold(_prev: ActionState, formData: FormData): Promise<ActionState> {

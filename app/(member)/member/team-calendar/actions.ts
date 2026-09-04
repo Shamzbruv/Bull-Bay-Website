@@ -44,6 +44,7 @@ export async function addAvailability(_prev: ActionState, formData: FormData): P
   if (error) return { status: "error", message: "Couldn't save those hours." };
 
   revalidatePath("/member/team-calendar");
+  revalidatePath("/pastor/calendar");
   revalidatePath("/member/counsel");
   return { status: "success", message: "Hours added." };
 }
@@ -55,6 +56,7 @@ export async function removeAvailability(id: string): Promise<ActionState> {
   const { error } = await supabase.from("pastoral_calendar_availability").delete().eq("profile_id", profile.id).eq("id", id);
   if (error) return { status: "error", message: "Those hours could not be removed." };
   revalidatePath("/member/team-calendar");
+  revalidatePath("/pastor/calendar");
   revalidatePath("/member/counsel");
   return { status: "success", message: "Hours removed." };
 }
@@ -99,6 +101,7 @@ export async function addCalendarEvent(_prev: ActionState, formData: FormData): 
   if (error) return { status: "error", message: "Couldn't save that calendar entry." };
 
   revalidatePath("/member/team-calendar");
+  revalidatePath("/pastor/calendar");
   revalidatePath("/member/counsel");
   return { status: "success", message: "Added to your calendar." };
 }
@@ -117,6 +120,7 @@ export async function removeCalendarEvent(id: string): Promise<ActionState> {
   const { error } = await supabase.from("pastoral_calendar_events").delete().eq("profile_id", profile.id).eq("id", id);
   if (error) return { status: "error", message: "That calendar entry could not be removed." };
   revalidatePath("/member/team-calendar");
+  revalidatePath("/pastor/calendar");
   revalidatePath("/member/counsel");
   return { status: "success", message: "Calendar entry removed." };
 }

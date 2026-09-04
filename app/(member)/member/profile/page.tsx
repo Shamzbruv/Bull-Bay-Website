@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { getCurrentProfile } from "@/lib/auth/session";
+import { getAvatarUrl } from "@/lib/members/avatar";
 import { ProfileForm } from "./profile-form";
+import { AvatarUploader } from "./avatar-uploader";
 
 export const metadata: Metadata = { title: "My Profile" };
 
@@ -32,7 +34,13 @@ export default async function ProfilePage({
         </div>
       )}
       {profile ? (
-        <ProfileForm profile={profile} onboarding={isOnboarding} />
+        <>
+          <AvatarUploader
+            name={[profile.first_name, profile.last_name].filter(Boolean).join(" ") || profile.email || "Church member"}
+            avatarUrl={await getAvatarUrl(profile.avatar_path)}
+          />
+          <ProfileForm profile={profile} onboarding={isOnboarding} />
+        </>
       ) : (
         <div className="alert warn">We couldn&apos;t load your church profile. Please contact the church office.</div>
       )}

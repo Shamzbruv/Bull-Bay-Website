@@ -56,6 +56,21 @@ export default function AboutPage() {
         <p>New Testament Church of God, Bull Bay is a community of faith devoted to loving God and serving people.</p>
       </div>
 
+      <div className="section" style={{ paddingBottom: 0 }}>
+        <div className="church-photo-hero" style={{ minHeight: 340 }}>
+          <picture className="church-photo-hero-media">
+            <img src="/images/church/choir-pulpit.jpg" alt="The Bull Bay congregation gathered for worship" />
+          </picture>
+          <div className="church-photo-hero-overlay" />
+          <div className="church-photo-hero-copy" style={{ padding: "34px 36px", width: "min(420px, 100%)" }}>
+            <p className="eyebrow">
+              <span /> OUR CHURCH FAMILY
+            </p>
+            <h1 style={{ fontSize: "clamp(1.5rem, 3vw, 2rem)" }}>Bull Bay, Jamaica</h1>
+          </div>
+        </div>
+      </div>
+
       <section className="section">
         <p className="eyebrow">
           <span /> OUR VISION

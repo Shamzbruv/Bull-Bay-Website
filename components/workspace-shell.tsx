@@ -23,6 +23,11 @@ export function WorkspaceShell({
 }) {
   const [navigationOpen, setNavigationOpen] = useState(false);
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  // Each workspace has its own "My profile" route inside its own shell —
+  // linking a staff member's topbar avatar to /member/profile used to
+  // silently switch their whole workspace chrome over to Member, which
+  // read as "clicking anything logs me out of Admin/Pastor".
+  const profileHref = tone === "admin" ? "/admin/profile" : tone === "pastor" ? "/pastor/profile" : "/member/profile";
 
   const openNavigation = useCallback(() => {
     returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -106,6 +111,7 @@ export function WorkspaceShell({
         workspaces={workspaces}
         navigationOpen={navigationOpen}
         onOpenNavigation={openNavigation}
+        profileHref={profileHref}
       />
       <div className="workspace-frame">
         <DashboardNav

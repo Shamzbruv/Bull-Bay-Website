@@ -34,6 +34,19 @@ export default async function ServePage() {
       </h1>
       <p className="large-copy">Find a ministry to join — these are open opportunities, not a staff directory.</p>
 
+      <div className="church-photo-hero" style={{ minHeight: 300, marginTop: 30 }}>
+        <picture className="church-photo-hero-media">
+          <img src="/images/church/garden-ministry.jpg" alt="A Bull Bay member serving through a community garden ministry" />
+        </picture>
+        <div className="church-photo-hero-overlay" />
+        <div className="church-photo-hero-copy" style={{ padding: "30px 34px", width: "min(400px, 100%)" }}>
+          <p className="eyebrow">
+            <span /> HANDS READY TO HELP
+          </p>
+          <h1 style={{ fontSize: "clamp(1.4rem, 3vw, 1.9rem)" }}>Serve where you are.</h1>
+        </div>
+      </div>
+
       <div className="ministry-grid" style={{ marginTop: 24 }}>
         {SERVE_MINISTRIES.map((m) => (
           <Link key={m.slug} href={`/ministries/${m.slug}`} className="ministry-card">

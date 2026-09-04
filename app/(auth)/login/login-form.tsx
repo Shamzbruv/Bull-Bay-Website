@@ -75,8 +75,7 @@ export function LoginForm() {
         <Link href="/forgot-password">Forgot your password?</Link>
       </p>
       <p className="form-note" style={{ marginTop: 8 }}>
-        Accounts are created by the church office. If you don&apos;t have one yet, contact us through the{" "}
-        <Link href="/contact">Contact page</Link>.
+        New here? <Link href="/join">Request to join the church</Link> and we&apos;ll set up your account.
       </p>
     </form>
   );

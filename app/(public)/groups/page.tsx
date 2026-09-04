@@ -21,6 +21,19 @@ export default async function GroupsPage() {
         Find your small group.
       </h1>
 
+      <div className="church-photo-hero" style={{ minHeight: 300, marginTop: 24 }}>
+        <picture className="church-photo-hero-media">
+          <img src="/images/church/sanctuary-side.jpg" alt="Bull Bay members gathered together at church" />
+        </picture>
+        <div className="church-photo-hero-overlay" />
+        <div className="church-photo-hero-copy" style={{ padding: "30px 34px", width: "min(400px, 100%)" }}>
+          <p className="eyebrow">
+            <span /> BETTER TOGETHER
+          </p>
+          <h1 style={{ fontSize: "clamp(1.4rem, 3vw, 1.9rem)" }}>Grow with your people.</h1>
+        </div>
+      </div>
+
       <div className="panel" style={{ marginTop: 30, textAlign: "center" }}>
         <h2 style={{ marginTop: 0 }}>Join us on GraceConnect</h2>
         <p style={{ maxWidth: 560, margin: "0 auto 16px", color: "var(--color-muted-2)" }}>

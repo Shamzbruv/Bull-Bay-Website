@@ -164,7 +164,6 @@ export default async function HomePage() {
             </div>
             <Link href="/visit" aria-label="Get Sunday visit details"><Icon name="arrow" /></Link>
           </aside>
-          <span className="home-image-note">Illustrative community image</span>
         </section>
 
         <nav className="home-quick-links" aria-label="Popular next steps">
@@ -196,7 +195,7 @@ export default async function HomePage() {
 
           <figure className="home-intro-photo">
             <Image
-              src="/images/church/community-care.jpg"
+              src="/images/church/community-outreach.jpg"
               alt="Bull Bay church members serving the community together"
               fill
               sizes="(max-width: 850px) 100vw, 48vw"
@@ -338,8 +337,8 @@ export default async function HomePage() {
         <section className="section home-visit" aria-labelledby="visit-heading">
           <div className="home-visit-photo">
             <Image
-              src="/images/church/church-exterior.jpg"
-              alt="The entrance to New Testament Church of God, Bull Bay"
+              src="/images/church/congregation-full.jpg"
+              alt="The Bull Bay congregation gathered for Sunday worship"
               fill
               loading="eager"
               sizes="(max-width: 850px) 100vw, 56vw"

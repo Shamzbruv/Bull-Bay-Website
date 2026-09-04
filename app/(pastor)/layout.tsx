@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getAvatarUrl } from "@/lib/members/avatar";
 
 const ADMIN_PERMISSIONS = [
   "people.read",
@@ -47,9 +48,9 @@ export default async function PastorLayout({ children }: { children: React.React
       label: "Pastoral workspace",
       items: [
         { href: "/pastor", label: "Today", icon: "home" },
-        { href: "/member/profile", label: "My profile", icon: "person" },
+        { href: "/pastor/profile", label: "My profile", icon: "person" },
         { href: "/pastor/care", label: "Pastoral care", icon: "heart" },
-        { href: "/member/team-calendar", label: "My calendar", icon: "calendar" },
+        { href: "/pastor/calendar", label: "My calendar", icon: "calendar" },
       ],
     },
     {
@@ -70,6 +71,7 @@ export default async function PastorLayout({ children }: { children: React.React
   const user = {
     name: name || profile?.email?.split("@")[0] || "Pastoral team member",
     email: profile?.email,
+    avatarUrl: await getAvatarUrl(profile?.avatar_path),
   };
   const canUseAdmin = ADMIN_PERMISSIONS.some((permission) => permissions.has(permission));
   const workspaces: WorkspaceDestination[] = [

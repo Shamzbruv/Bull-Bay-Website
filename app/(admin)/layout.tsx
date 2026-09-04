@@ -3,6 +3,7 @@ import { WorkspaceShell } from "@/components/workspace-shell";
 import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getAvatarUrl } from "@/lib/members/avatar";
 
 const ADMIN_PERMISSIONS = [
   "people.read",
@@ -78,6 +79,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = {
     name: name || profile?.email?.split("@")[0] || "Church staff",
     email: profile?.email,
+    avatarUrl: await getAvatarUrl(profile?.avatar_path),
   };
   const allowed = (...required: string[]) => required.some((permission) => permissions.has(permission));
   const allSections: DashboardNavSection[] = [
@@ -85,7 +87,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       label: "Overview",
       items: [
         { href: "/admin", label: "Dashboard", icon: "home" },
-        { href: "/member/profile", label: "My profile", icon: "person" },
+        { href: "/admin/profile", label: "My profile", icon: "person" },
         ...(allowed("sites.manage", "roles.manage")
           ? [{ href: "/admin/setup", label: "Setup center", icon: "sparkles" as const }]
           : []),

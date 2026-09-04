@@ -11,12 +11,14 @@ export function DashboardTopbar({
   workspaces,
   navigationOpen,
   onOpenNavigation,
+  profileHref,
 }: {
   label: string;
   user: DashboardUser;
   workspaces: WorkspaceDestination[];
   navigationOpen: boolean;
   onOpenNavigation: () => void;
+  profileHref: string;
 }) {
   const initials =
     user.name
@@ -65,8 +67,13 @@ export function DashboardTopbar({
           <DashboardIcon name="church" />
           <span>View website</span>
         </Link>
-        <Link className="dashboard-topbar-user" href="/member/profile" aria-label={`Open profile for ${user.name}`}>
-          <span className="dashboard-avatar" aria-hidden="true">{initials}</span>
+        <Link className="dashboard-topbar-user" href={profileHref} aria-label={`Open profile for ${user.name}`}>
+          {user.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL, not an optimizable local/remote asset
+            <img className="dashboard-avatar dashboard-avatar-photo" src={user.avatarUrl} alt="" aria-hidden="true" />
+          ) : (
+            <span className="dashboard-avatar" aria-hidden="true">{initials}</span>
+          )}
           <span>
             <strong>{user.name}</strong>
             <small>My profile</small>

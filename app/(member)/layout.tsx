@@ -1,6 +1,7 @@
 import { WorkspaceShell } from "@/components/workspace-shell";
 import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getAvatarUrl } from "@/lib/members/avatar";
 
 const NAV_SECTIONS: DashboardNavSection[] = [
   {
@@ -81,6 +82,7 @@ export default async function MemberLayout({ children }: { children: React.React
   const user = {
     name: name || profile?.email?.split("@")[0] || "Church member",
     email: profile?.email,
+    avatarUrl: await getAvatarUrl(profile?.avatar_path),
   };
   const canUseAdmin = ADMIN_PERMISSIONS.some((permission) => permissions.has(permission));
   const canUsePastor = PASTORAL_PERMISSIONS.some((permission) => permissions.has(permission));

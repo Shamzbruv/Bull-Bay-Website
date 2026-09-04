@@ -9,7 +9,7 @@ import { DashboardIcon, type DashboardIconName } from "@/components/dashboard-ic
 export type DashboardNavItem = { href: string; label: string; icon: DashboardIconName; badge?: string | number };
 export type DashboardNavSection = { label: string; items: DashboardNavItem[] };
 export type WorkspaceDestination = { href: string; label: string; icon: DashboardIconName; active?: boolean };
-export type DashboardUser = { name: string; email?: string | null };
+export type DashboardUser = { name: string; email?: string | null; avatarUrl?: string | null };
 
 function routeIsActive(pathname: string, href: string) {
   if (pathname === href) return true;
@@ -106,14 +106,19 @@ export function DashboardNav({
             </div>
           )}
           <div className="dashboard-sidebar-user">
-            <span className="dashboard-avatar" aria-hidden="true">
-              {user.name
-                .split(/\s+/)
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((part) => part[0]?.toUpperCase())
-                .join("") || "BB"}
-            </span>
+            {user.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL, not an optimizable local/remote asset
+              <img className="dashboard-avatar dashboard-avatar-photo" src={user.avatarUrl} alt="" aria-hidden="true" />
+            ) : (
+              <span className="dashboard-avatar" aria-hidden="true">
+                {user.name
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((part) => part[0]?.toUpperCase())
+                  .join("") || "BB"}
+              </span>
+            )}
             <span>
               <strong>{user.name}</strong>
               {user.email && <small>{user.email}</small>}

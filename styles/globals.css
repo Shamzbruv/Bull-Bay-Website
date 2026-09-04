@@ -1632,6 +1632,8 @@ table.data-table tr:last-child td { border-bottom: 0; }
   letter-spacing: .03em;
 }
 
+.workspace-root .dashboard-avatar-photo { object-fit: cover; background: var(--workspace-evergreen); }
+
 .workspace-root .dashboard-signout {
   width: 100%;
   min-height: 40px;
