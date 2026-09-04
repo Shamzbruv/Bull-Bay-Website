@@ -318,22 +318,26 @@ export function SetupItem({
   title,
   description,
   complete,
+  unavailable = false,
 }: {
   href: string;
   title: string;
   description: string;
   complete: boolean;
+  unavailable?: boolean;
 }) {
   return (
     <Link className={styles.setupItem} href={href}>
-      <span className={complete ? styles.setupComplete : styles.setupPending} aria-hidden="true">
-        {complete ? "✓" : ""}
+      <span className={complete ? styles.setupComplete : unavailable ? styles.setupUnavailable : styles.setupPending} aria-hidden="true">
+        {complete ? "✓" : unavailable ? "!" : ""}
       </span>
       <span>
         <strong>{title}</strong>
         <span>{description}</span>
       </span>
-      <StatusPill tone={complete ? "green" : "gold"}>{complete ? "Ready" : "Set up"}</StatusPill>
+      <StatusPill tone={complete ? "green" : unavailable ? "rose" : "gold"}>
+        {complete ? "Ready" : unavailable ? "Unavailable" : "Set up"}
+      </StatusPill>
     </Link>
   );
 }

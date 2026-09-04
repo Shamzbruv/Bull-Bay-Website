@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { saveServiceSchedule, submitAttendance, toggleScheduleActive } from "./actions";
-import { initialActionState } from "@/app/(public)/actions";
+import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
 
@@ -42,11 +42,33 @@ export function ScheduleForm() {
 }
 
 export function ScheduleToggle({ id, isActive }: { id: string; isActive: boolean }) {
+  const [checked, setChecked] = useState(isActive);
+  const [message, setMessage] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
   return (
-    <label className="check-label" style={{ marginBottom: 0 }}>
-      <input type="checkbox" defaultChecked={isActive} onChange={(e) => toggleScheduleActive(id, e.target.checked)} />
-      Active
-    </label>
+    <span className="inline-action">
+      <label className="check-label" style={{ marginBottom: 0 }}>
+        <input
+          type="checkbox"
+          checked={checked}
+          disabled={pending}
+          onChange={(event) => {
+            const previous = checked;
+            const next = event.target.checked;
+            setChecked(next);
+            setMessage(null);
+            startTransition(async () => {
+              const result = await toggleScheduleActive(id, next);
+              setMessage(result.message);
+              if (result.status === "error") setChecked(previous);
+            });
+          }}
+        />
+        {pending ? "Saving…" : "Active"}
+      </label>
+      {message && <small role="status">{message}</small>}
+    </span>
   );
 }
 

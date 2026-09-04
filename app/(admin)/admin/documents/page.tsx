@@ -5,6 +5,7 @@ import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { TemplateForm } from "./template-form";
 import { ClaimButton, DenyButton } from "./request-actions";
+import { TemplateStatusButton } from "./template-status-button";
 
 export const metadata: Metadata = { title: "Documents" };
 
@@ -33,19 +34,35 @@ export default async function AdminDocumentsPage() {
       </div>
 
       <div className="panel">
-        <h2>New template</h2>
-        <TemplateForm />
+        <details className="dashboard-disclosure">
+          <summary>+ Create a custom template</summary>
+          <TemplateForm />
+        </details>
       </div>
 
       <div className="panel">
-        <h2>Existing templates</h2>
-        {templates?.map((t) => (
-          <div key={t.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
-            <span>
-              {t.name} {t.category && <span className="badge gray">{t.category}</span>}
-            </span>
-            <span className={`badge ${t.is_active ? "blue" : "gray"}`}>{t.is_active ? "active" : "inactive"}</span>
+        <div className="panel-heading">
+          <div>
+            <p className="section-kicker">Church office library</p>
+            <h2>Document templates</h2>
           </div>
+          <span className="badge blue">{templates?.length ?? 0} templates</span>
+        </div>
+        {templates?.map((t) => (
+          <details key={t.id} className="dashboard-disclosure template-disclosure">
+            <summary>
+              <span>
+                <b>{t.name}</b>
+                {t.description && <small>{t.description}</small>}
+              </span>
+              <span className={`badge ${t.is_active ? "blue" : "gray"}`}>{t.is_active ? "Available" : "Hidden"}</span>
+            </summary>
+            <div className="button-row" style={{ marginBottom: 14 }}>
+              {t.category && <span className="badge gray">{t.category}</span>}
+              <TemplateStatusButton templateId={t.id} isActive={t.is_active} />
+            </div>
+            <TemplateForm template={t} />
+          </details>
         ))}
         {(!templates || templates.length === 0) && <p className="panel-empty">No templates yet.</p>}
       </div>

@@ -7,7 +7,7 @@ import {
   toggleAssignmentVisibility,
   unlinkAssignmentFromProfile,
 } from "@/app/(admin)/admin/actions";
-import { initialActionState } from "@/app/(public)/actions";
+import { initialActionState } from "@/lib/action-state";
 
 type Props = {
   id: string;

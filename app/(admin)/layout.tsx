@@ -1,32 +1,8 @@
 import { redirect } from "next/navigation";
-import { SimpleDashboardNav } from "@/components/simple-dashboard-nav";
-import { SimpleDashboardTopbar } from "@/components/simple-dashboard-topbar";
-import { getAuthenticatorAssuranceLevel, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
-
-const NAV_ITEMS = [
-  { href: "/admin", label: "Dashboard" },
-  { href: "/admin/people", label: "People" },
-  { href: "/admin/visitors", label: "Visitors" },
-  { href: "/admin/events", label: "Events" },
-  { href: "/admin/groups", label: "Groups" },
-  { href: "/admin/volunteers", label: "Volunteers" },
-  { href: "/admin/media", label: "Media" },
-  { href: "/admin/giving", label: "Finance" },
-  { href: "/admin/shop", label: "Shop" },
-  { href: "/admin/direction", label: "Church Direction" },
-  { href: "/admin/ministry-assignments", label: "Ministry Assignments" },
-  { href: "/admin/annual-plan", label: "Annual Plan" },
-  { href: "/admin/conference-document", label: "Conference Document" },
-  { href: "/admin/documents", label: "Documents" },
-  { href: "/admin/pastoral-team", label: "Pastoral Team" },
-  { href: "/admin/attendance", label: "Attendance" },
-  { href: "/admin/bulletin", label: "Bulletin" },
-  { href: "/admin/gallery", label: "Gallery" },
-  { href: "/admin/communications", label: "Communications" },
-  { href: "/admin/roles", label: "Roles" },
-  { href: "/admin/audit", label: "Audit Log" },
-  { href: "/admin/settings", label: "Settings" },
-];
+import { WorkspaceShell } from "@/components/workspace-shell";
+import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
+import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatorAssuranceLevel, getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 
 const ADMIN_PERMISSIONS = [
   "people.read",
@@ -52,27 +28,162 @@ const ADMIN_PERMISSIONS = [
   "attendance.submit",
 ];
 
-// Uses SimpleDashboardNav/Topbar, not components/dashboard-nav.tsx or
-// dashboard-topbar.tsx — those are mid-rewrite into a new workspace-switcher
-// shell with no matching CSS yet. See components/simple-dashboard-nav.tsx.
+const PASTORAL_PERMISSIONS = [
+  "pastoral_workspace.access",
+  "care.manage",
+  "care.read",
+  "sermons.manage",
+  "documents.certify",
+  "pastoral_calendar.manage",
+] as const;
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const organizationId = await getOrganizationId();
   if (!organizationId) redirect("/");
 
-  const permissions = await getUserPermissions(organizationId);
+  const [permissions, aal, profile] = await Promise.all([
+    getUserPermissions(organizationId),
+    getAuthenticatorAssuranceLevel(),
+    getCurrentProfile(),
+  ]);
   const isStaff = ADMIN_PERMISSIONS.some((p) => permissions.has(p));
   if (!isStaff) redirect("/member");
 
-  const aal = await getAuthenticatorAssuranceLevel();
   if (aal !== "aal2") redirect(`/member/security?next=${encodeURIComponent("/admin")}`);
 
+  const supabase = await createClient();
+  const { data: roleRows } = profile?.auth_user_id
+    ? await supabase
+        .from("user_roles")
+        .select("roles(code)")
+        .eq("organization_id", organizationId)
+        .eq("user_id", profile.auth_user_id)
+    : { data: [] };
+  const roleCodes = new Set(
+    (roleRows ?? []).flatMap((row) => {
+      const role = row.roles as unknown as { code: string } | null;
+      return role?.code ? [role.code] : [];
+    }),
+  );
+  const title =
+    roleCodes.has("super_admin") ||
+    roleCodes.has("church_admin") ||
+    permissions.has("sites.manage") ||
+    permissions.has("roles.manage")
+    ? "Church Admin"
+    : roleCodes.has("secretary") || (permissions.has("documents.manage") && permissions.has("attendance.submit"))
+      ? "Secretary Office"
+      : roleCodes.has("finance_officer") || permissions.has("giving.manage")
+        ? "Finance Office"
+        : roleCodes.has("media_coordinator") || roleCodes.has("content_editor") || permissions.has("media.manage")
+          ? "Media Team"
+          : roleCodes.has("store_manager") || permissions.has("shop.manage")
+            ? "Church Store"
+            : "Team Workspace";
+  const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
+  const user = {
+    name: name || profile?.email?.split("@")[0] || "Church staff",
+    email: profile?.email,
+  };
+  const allowed = (...required: string[]) => required.some((permission) => permissions.has(permission));
+  const allSections: DashboardNavSection[] = [
+    {
+      label: "Overview",
+      items: [
+        { href: "/admin", label: "Dashboard", icon: "home" },
+        ...(allowed("sites.manage", "roles.manage")
+          ? [{ href: "/admin/setup", label: "Setup center", icon: "sparkles" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "People & ministry",
+      items: [
+        ...(allowed("people.read") ? [{ href: "/admin/people", label: "People", icon: "people" as const }] : []),
+        ...(allowed("people.write") ? [{ href: "/admin/visitors", label: "Visitors", icon: "person" as const }] : []),
+        ...(allowed("events.manage") ? [{ href: "/admin/events", label: "Events", icon: "calendar" as const }] : []),
+        ...(allowed("groups.manage") ? [{ href: "/admin/groups", label: "Groups", icon: "users" as const }] : []),
+        ...(allowed("volunteers.manage") ? [{ href: "/admin/volunteers", label: "Volunteers", icon: "heart" as const }] : []),
+        ...(allowed("ministry_assignments.manage")
+          ? [{ href: "/admin/ministry-assignments", label: "Ministry assignments", icon: "team" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "Office",
+      items: [
+        ...(allowed("attendance.manage", "attendance.submit")
+          ? [{ href: "/admin/attendance", label: "Attendance", icon: "checklist" as const }]
+          : []),
+        ...(allowed("documents.manage") ? [{ href: "/admin/documents", label: "Documents", icon: "file" as const }] : []),
+        ...(allowed("pastoral_calendar.manage")
+          ? [{ href: "/admin/pastoral-team", label: "Pastoral team", icon: "calendar" as const }]
+          : []),
+        ...(allowed("communications.send")
+          ? [{ href: "/admin/communications", label: "Communications", icon: "mail" as const }]
+          : []),
+      ],
+    },
+    {
+      label: "Publishing",
+      items: [
+        ...(allowed("content.manage") ? [{ href: "/admin/bulletin", label: "Bulletin", icon: "clipboard" as const }] : []),
+        ...(allowed("sermons.manage") ? [{ href: "/admin/media", label: "Sermon media", icon: "media" as const }] : []),
+        ...(allowed("media.manage") ? [{ href: "/admin/gallery", label: "Gallery", icon: "gallery" as const }] : []),
+      ],
+    },
+    {
+      label: "Finance & store",
+      items: [
+        ...(allowed("giving.read", "giving.manage")
+          ? [{ href: "/admin/giving", label: "Finance", icon: "coins" as const }]
+          : []),
+        ...(allowed("shop.manage") ? [{ href: "/admin/shop", label: "Church store", icon: "shop" as const }] : []),
+      ],
+    },
+    {
+      label: "Planning",
+      items: [
+        ...(allowed("direction.manage")
+          ? [
+              { href: "/admin/direction", label: "Church direction", icon: "chart" as const },
+              { href: "/admin/conference-document", label: "Conference document", icon: "book" as const },
+            ]
+          : []),
+        ...(allowed("events.manage") ? [{ href: "/admin/annual-plan", label: "Annual plan", icon: "calendar" as const }] : []),
+      ],
+    },
+    {
+      label: "Administration",
+      items: [
+        ...(allowed("roles.manage")
+          ? [
+              { href: "/admin/roles", label: "Roles & access", icon: "shield" as const },
+              { href: "/admin/audit", label: "Audit log", icon: "archive" as const },
+            ]
+          : []),
+        ...(allowed("sites.manage") ? [{ href: "/admin/settings", label: "Settings", icon: "settings" as const }] : []),
+      ],
+    },
+  ];
+  const sections = allSections.filter((section) => section.items.length > 0);
+  const canUsePastor = PASTORAL_PERMISSIONS.some((permission) => permissions.has(permission));
+  const workspaces: WorkspaceDestination[] = [
+    { href: "/member", label: "Member", icon: "home" },
+    { href: "/admin", label: "Admin", icon: "briefcase", active: true },
+    ...(canUsePastor ? [{ href: "/pastor", label: "Pastor", icon: "heart" as const }] : []),
+  ];
+
   return (
-    <>
-      <SimpleDashboardTopbar label="Church Admin" />
-      <div className="dashboard-shell">
-        <SimpleDashboardNav title="Church Admin" items={NAV_ITEMS} />
-        <div className="dashboard-main">{children}</div>
-      </div>
-    </>
+    <WorkspaceShell
+      title={title}
+      subtitle="Operations workspace"
+      tone="admin"
+      sections={sections}
+      user={user}
+      workspaces={workspaces}
+    >
+      {children}
+    </WorkspaceShell>
   );
 }

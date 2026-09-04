@@ -39,9 +39,9 @@ export default async function AdminRolesPage() {
       </div>
 
       <div className="panel">
-        <h2>Invite staff</h2>
+        <h2>Invite or assign staff</h2>
         <InviteForm roles={roles ?? []} />
-        <p className="form-note">Invited staff must enable two-factor authentication before they can access any workspace.</p>
+        <p className="form-note">If the email already belongs to a member, the role is added immediately. New people receive a branded invitation and must enable two-factor authentication before opening a staff workspace.</p>
       </div>
 
       <div className="panel">

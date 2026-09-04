@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { addAvailability, addCalendarEvent, removeAvailability, removeCalendarEvent } from "./actions";
-import { initialActionState } from "@/app/(public)/actions";
+import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
 import { DAY_NAMES } from "@/lib/pastoral/reasons";
@@ -45,10 +45,15 @@ export function AvailabilityForm() {
 }
 
 export function RemoveAvailabilityButton({ id }: { id: string }) {
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
   return (
-    <button type="button" className="link-button" onClick={() => removeAvailability(id)}>
-      remove
-    </button>
+    <span className="inline-action">
+      <button type="button" className="link-button" disabled={pending} onClick={() => startTransition(async () => setMessage((await removeAvailability(id)).message))}>
+        {pending ? "removing…" : "remove"}
+      </button>
+      {message && <small role="status">{message}</small>}
+    </span>
   );
 }
 
@@ -92,9 +97,14 @@ export function EventForm() {
 }
 
 export function RemoveEventButton({ id }: { id: string }) {
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
   return (
-    <button type="button" className="link-button" onClick={() => removeCalendarEvent(id)}>
-      remove
-    </button>
+    <span className="inline-action">
+      <button type="button" className="link-button" disabled={pending} onClick={() => startTransition(async () => setMessage((await removeCalendarEvent(id)).message))}>
+        {pending ? "removing…" : "remove"}
+      </button>
+      {message && <small role="status">{message}</small>}
+    </span>
   );
 }

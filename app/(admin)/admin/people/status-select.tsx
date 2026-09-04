@@ -1,21 +1,40 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import { updateMembershipStatus } from "@/app/(admin)/admin/actions";
 
 const STATUSES = ["visitor", "returning_visitor", "attendee", "prospective_member", "member", "inactive"];
 
 export function StatusSelect({ profileId, status }: { profileId: string; status: string }) {
+  const [value, setValue] = useState(status);
+  const [message, setMessage] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
   return (
-    <select
-      defaultValue={status}
-      onChange={(e) => updateMembershipStatus(profileId, e.target.value)}
-      style={{ borderRadius: 8, border: "1px solid var(--color-border)", padding: "4px 8px", fontSize: ".78rem" }}
-    >
-      {STATUSES.map((s) => (
-        <option key={s} value={s}>
-          {s.replace("_", " ")}
-        </option>
-      ))}
-    </select>
+    <span className="inline-action">
+      <select
+        value={value}
+        disabled={pending}
+        aria-label="Membership status"
+        onChange={(event) => {
+          const previous = value;
+          const next = event.target.value;
+          setValue(next);
+          setMessage(null);
+          startTransition(async () => {
+            const result = await updateMembershipStatus(profileId, next);
+            setMessage(result.message);
+            if (result.status === "error") setValue(previous);
+          });
+        }}
+      >
+        {STATUSES.map((item) => (
+          <option key={item} value={item}>
+            {item.replaceAll("_", " ")}
+          </option>
+        ))}
+      </select>
+      {message && <small role="status">{message}</small>}
+    </span>
   );
 }

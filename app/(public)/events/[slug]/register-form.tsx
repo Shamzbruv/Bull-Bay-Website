@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { registerForEvent, initialActionState } from "@/app/(public)/actions";
+import { registerForEvent } from "@/app/(public)/actions";
+import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
 

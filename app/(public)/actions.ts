@@ -8,9 +8,12 @@ import { notifyOffice } from "@/lib/notify";
 import { renderStaffNotificationEmail } from "@/lib/email/templates";
 import { SITE_URL } from "@/lib/org";
 
+// initialActionState moved to lib/action-state.ts — this file has "use
+// server" and Next.js requires every export here to be an async function;
+// a plain object constant isn't allowed (webpack enforces this even though
+// Turbopack silently didn't). The type stays here since type exports are
+// compiled away and never exist at runtime.
 export type ActionState = { status: "idle" | "success" | "error"; message: string };
-
-export const initialActionState: ActionState = { status: "idle", message: "" };
 
 async function currentProfileId() {
   const supabase = await createClient();

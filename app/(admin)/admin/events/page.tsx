@@ -14,7 +14,7 @@ export default async function AdminEventsPage() {
   const supabase = await createClient();
   const { data: events } = await supabase
     .from("events")
-    .select("id, title, starts_at, status, visibility, event_registrations(id)")
+    .select("id, title, category, description, location_name, starts_at, status, visibility, event_registrations(id)")
     .eq("organization_id", organizationId ?? "")
     .order("starts_at", { ascending: false })
     .limit(100);
@@ -28,8 +28,10 @@ export default async function AdminEventsPage() {
         </div>
       </div>
       <div className="panel">
-        <h2>New event</h2>
-        <EventForm />
+        <details className="dashboard-disclosure">
+          <summary>+ Create an event</summary>
+          <EventForm />
+        </details>
       </div>
       <div className="panel">
         <h2>All events</h2>
@@ -46,7 +48,12 @@ export default async function AdminEventsPage() {
             <tbody>
               {events?.map((e) => (
                 <tr key={e.id}>
-                  <td>{e.title}</td>
+                  <td>
+                    <details className="table-editor">
+                      <summary>{e.title}</summary>
+                      <EventForm event={e} />
+                    </details>
+                  </td>
                   <td>{new Date(e.starts_at).toLocaleString("en-JM", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Jamaica" })}</td>
                   <td>
                     <span className={`badge ${e.status === "published" ? "" : "gray"}`}>{e.status}</span>

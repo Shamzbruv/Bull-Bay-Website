@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { sendHelpRequest, updateHelpRequestStatus } from "./actions";
-import { initialActionState } from "@/app/(public)/actions";
+import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
 

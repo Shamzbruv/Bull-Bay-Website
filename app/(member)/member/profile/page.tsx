@@ -17,17 +17,18 @@ export default async function ProfilePage({
     <>
       <div className="dashboard-header">
         <div>
-          <h1>{isOnboarding ? "Tell us about yourself" : "My Profile"}</h1>
+          <h1>{isOnboarding ? "Finish setting up your account" : "My Profile"}</h1>
           <p>
             {isOnboarding
-              ? "Complete your church record so the office and ministry team can serve you well."
+              ? "Tell us what you would like the church office and ministry team to know."
               : "Keep your church, contact and professional details up to date."}
           </p>
         </div>
       </div>
       {isOnboarding && (
         <div className="alert info" style={{ marginBottom: 20 }}>
-          Your password is ready. This is the final step before entering your church dashboard.
+          <strong>Your password is ready.</strong> Work through the three short sections below, then continue to your
+          dashboard. Only your name is required, so you can leave optional details for later.
         </div>
       )}
       {profile ? (

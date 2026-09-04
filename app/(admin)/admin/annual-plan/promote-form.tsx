@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { promoteAnnualPlanItemToEvent } from "@/app/(admin)/admin/actions";
-import { initialActionState } from "@/app/(public)/actions";
+import { initialActionState } from "@/lib/action-state";
 import { FormStatus } from "@/components/form-status";
 
 export function PromoteForm({ itemId }: { itemId: string }) {

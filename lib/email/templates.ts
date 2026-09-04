@@ -19,6 +19,13 @@ function escapeHtml(input: string): string {
     .replace(/'/g, "&#39;");
 }
 
+function paragraphsFromPlainText(input: string): string {
+  return input
+    .split(/\n\s*\n/)
+    .map((paragraph) => `<p style="margin:0 0 14px;">${escapeHtml(paragraph).replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+}
+
 /**
  * The shared shell every outbound email renders inside: church logo on a
  * royal-blue band, a white content card, and a consistent footer. Built
@@ -145,12 +152,12 @@ export function renderTempPasswordEmail(opts: { recipientName: string; tempPassw
 
 /** Used by Admin → Communications for one-off or bulk messages the
  * secretary/media team compose themselves. */
-export function renderComposedEmail(opts: { heading: string; bodyHtml: string; senderName?: string }) {
+export function renderComposedEmail(opts: { heading: string; bodyText: string; senderName?: string }) {
   return shell({
     bodyHtml: `
-      <h1 style="margin:0 0 16px;color:${BRAND_BLUE};font-family:Georgia,'Times New Roman',serif;font-size:22px;">${opts.heading}</h1>
-      <div>${opts.bodyHtml}</div>
-      ${opts.senderName ? `<p style="margin:24px 0 0;color:${MUTED};font-size:13px;">— ${opts.senderName}</p>` : ""}
+      <h1 style="margin:0 0 16px;color:${BRAND_BLUE};font-family:Georgia,'Times New Roman',serif;font-size:22px;">${escapeHtml(opts.heading)}</h1>
+      <div>${paragraphsFromPlainText(opts.bodyText)}</div>
+      ${opts.senderName ? `<p style="margin:24px 0 0;color:${MUTED};font-size:13px;">— ${escapeHtml(opts.senderName)}</p>` : ""}
     `,
     footerNote: "This message was sent to you by New Testament Church of God, Bull Bay through the church platform.",
   });

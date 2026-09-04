@@ -6,6 +6,9 @@ import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { SITE_URL } from "@/lib/org";
 import { parseJmdToMinorUnits } from "@/lib/money";
+import { sendMail } from "@/lib/email/resend";
+import { renderInviteEmail } from "@/lib/email/templates";
+import { generateAuthLink } from "@/lib/supabase/generate-link";
 import type { ActionState } from "@/app/(public)/actions";
 
 function slugify(input: string) {
@@ -16,10 +19,23 @@ function slugify(input: string) {
 }
 
 // People -----------------------------------------------------------------
-export async function updateMembershipStatus(profileId: string, status: string): Promise<void> {
+export async function updateMembershipStatus(profileId: string, status: string): Promise<ActionState> {
+  const allowed = new Set(["visitor", "returning_visitor", "attendee", "prospective_member", "member", "inactive"]);
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("people.write")) {
+    return { status: "error", message: "You don't have permission to update membership records." };
+  }
+  if (!allowed.has(status)) return { status: "error", message: "Choose a valid membership status." };
   const supabase = await createClient();
-  await supabase.from("profiles").update({ membership_status: status }).eq("id", profileId);
+  const { error } = await supabase
+    .from("profiles")
+    .update({ membership_status: status })
+    .eq("organization_id", organizationId)
+    .eq("id", profileId);
+  if (error) return { status: "error", message: "The membership status could not be saved." };
   revalidatePath("/admin/people");
+  return { status: "success", message: "Membership status saved." };
 }
 
 export async function updateVisitorStatus(submissionId: string, status: string): Promise<void> {
@@ -31,7 +47,10 @@ export async function updateVisitorStatus(submissionId: string, status: string):
 // Events -------------------------------------------------------------------
 export async function saveEvent(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
-  if (!organizationId) return { status: "error", message: "Something went wrong." };
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("events.manage")) {
+    return { status: "error", message: "You don't have permission to manage events." };
+  }
   const supabase = await createClient();
 
   const id = String(formData.get("id") || "");
@@ -39,6 +58,8 @@ export async function saveEvent(_prev: ActionState, formData: FormData): Promise
   if (!title) return { status: "error", message: "Please enter a title." };
   const startsAt = String(formData.get("starts_at") || "");
   if (!startsAt) return { status: "error", message: "Please choose a start date/time." };
+  const startsAtJamaica = new Date(`${startsAt}:00-05:00`);
+  if (Number.isNaN(startsAtJamaica.getTime())) return { status: "error", message: "Choose a valid start date and time." };
 
   const payload = {
     organization_id: organizationId,
@@ -47,13 +68,13 @@ export async function saveEvent(_prev: ActionState, formData: FormData): Promise
     category: String(formData.get("category") || "").trim() || null,
     description: String(formData.get("description") || "").trim() || null,
     location_name: String(formData.get("location_name") || "").trim() || null,
-    starts_at: new Date(startsAt).toISOString(),
+    starts_at: startsAtJamaica.toISOString(),
     status: String(formData.get("status") || "draft"),
     visibility: String(formData.get("visibility") || "public"),
   };
 
   const { error } = id
-    ? await supabase.from("events").update(payload).eq("id", id)
+    ? await supabase.from("events").update(payload).eq("organization_id", organizationId).eq("id", id)
     : await supabase.from("events").insert(payload);
 
   if (error) return { status: "error", message: "We couldn't save this event. Check the slug is unique." };
@@ -65,7 +86,10 @@ export async function saveEvent(_prev: ActionState, formData: FormData): Promise
 // Groups ---------------------------------------------------------------
 export async function saveGroup(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
-  if (!organizationId) return { status: "error", message: "Something went wrong." };
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("groups.manage")) {
+    return { status: "error", message: "You don't have permission to manage groups." };
+  }
   const supabase = await createClient();
 
   const id = String(formData.get("id") || "");
@@ -84,7 +108,7 @@ export async function saveGroup(_prev: ActionState, formData: FormData): Promise
   };
 
   const { error } = id
-    ? await supabase.from("groups").update(payload).eq("id", id)
+    ? await supabase.from("groups").update(payload).eq("organization_id", organizationId).eq("id", id)
     : await supabase.from("groups").insert(payload);
 
   if (error) return { status: "error", message: "We couldn't save this group. Check the slug is unique." };
@@ -302,37 +326,103 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
   if (!selectedRole) return { status: "error", message: "Choose a valid role for this church." };
 
   const admin = createServiceRoleClient();
-  const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
-    redirectTo: `${SITE_URL}/auth/callback?next=${encodeURIComponent("/member")}`,
-  });
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("auth_user_id, first_name")
+    .eq("organization_id", organizationId)
+    .ilike("email", email)
+    .maybeSingle();
 
-  if (error || !data.user) {
-    return { status: "error", message: error?.message ?? "We couldn't send the invitation." };
+  let userId = existingProfile?.auth_user_id ?? null;
+  let actionLink: string | null = null;
+  if (!userId) {
+    const redirectTo = `${SITE_URL}/auth/callback?next=${encodeURIComponent("/auth/update-password")}`;
+    const generated = await generateAuthLink({ type: "invite", email: email.toLowerCase(), redirectTo });
+    if (generated.error || !generated.userId || !generated.actionLink) {
+      return { status: "error", message: generated.error ?? "We couldn't create the staff invitation." };
+    }
+    userId = generated.userId;
+    actionLink = generated.actionLink;
   }
 
   const {
     data: { user: currentUser },
   } = await supabase.auth.getUser();
 
-  const { error: roleError } = await supabase.from("user_roles").insert({
+  const { data: existingGrant } = await admin
+    .from("user_roles")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("user_id", userId)
+    .eq("role_id", roleId)
+    .maybeSingle();
+  if (existingGrant) return { status: "success", message: "That staff role is already assigned." };
+
+  const { error: roleError } = await admin.from("user_roles").insert({
     organization_id: organizationId,
-    user_id: data.user.id,
+    user_id: userId,
     role_id: roleId,
     granted_by: currentUser?.id,
   });
 
   if (roleError) {
-    return { status: "error", message: "Invitation sent, but the role couldn't be assigned. Assign it manually below." };
+    return { status: "error", message: "The account is ready, but the role couldn't be assigned. Try again." };
+  }
+
+  if (actionLink) {
+    const result = await sendMail({
+      to: email,
+      subject: "You're invited to the Bull Bay church platform",
+      html: renderInviteEmail({ recipientName: existingProfile?.first_name ?? "there", actionUrl: actionLink }),
+    });
+    if (!result.sent) {
+      revalidatePath("/admin/roles");
+      return { status: "error", message: "The role was assigned, but the invitation email could not be sent. Use People → Reset password to issue access." };
+    }
   }
 
   revalidatePath("/admin/roles");
-  return { status: "success", message: `Invitation sent to ${email}.` };
+  return {
+    status: "success",
+    message: actionLink ? `Invitation sent to ${email}.` : `Role assigned to ${email}.`,
+  };
 }
 
-export async function revokeRole(userRoleId: string): Promise<void> {
+export async function revokeRole(userRoleId: string): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("roles.manage")) {
+    return { status: "error", message: "You don't have permission to revoke staff roles." };
+  }
   const supabase = await createClient();
-  await supabase.from("user_roles").delete().eq("id", userRoleId);
+  const { data: grant } = await supabase
+    .from("user_roles")
+    .select("id, user_id, roles(code)")
+    .eq("organization_id", organizationId)
+    .eq("id", userRoleId)
+    .maybeSingle();
+  if (!grant) return { status: "error", message: "That role assignment no longer exists." };
+
+  const role = grant.roles as unknown as { code: string } | null;
+  if (role?.code === "super_admin") {
+    const { count } = await supabase
+      .from("user_roles")
+      .select("id, roles!inner(code)", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("roles.code", "super_admin");
+    if ((count ?? 0) <= 1) {
+      return { status: "error", message: "Assign another super administrator before removing the last one." };
+    }
+  }
+
+  const { error } = await supabase
+    .from("user_roles")
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("id", userRoleId);
+  if (error) return { status: "error", message: "The role could not be revoked." };
   revalidatePath("/admin/roles");
+  return { status: "success", message: "Role revoked." };
 }
 
 // Settings -------------------------------------------------------------

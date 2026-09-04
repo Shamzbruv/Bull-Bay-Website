@@ -46,7 +46,13 @@ export function DashboardNav({
   return (
     <>
       <button className={`dashboard-nav-backdrop${open ? " is-open" : ""}`} type="button" aria-label="Close navigation" onClick={onClose} />
-      <aside className={`dashboard-sidebar${open ? " is-open" : ""}`} id="workspace-navigation">
+      <aside
+        className={`dashboard-sidebar${open ? " is-open" : ""}`}
+        id="workspace-navigation"
+        aria-label={`${title} workspace navigation`}
+        role={open ? "dialog" : undefined}
+        aria-modal={open ? true : undefined}
+      >
         <div className="dashboard-sidebar-head">
           <Link className="dashboard-brand" href="/" aria-label="NTCOG Bull Bay website">
             <span className="dashboard-brand-mark">

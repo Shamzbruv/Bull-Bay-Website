@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrganizationId } from "@/lib/auth/session";
+import { COUNSEL_REQUEST_REASONS } from "@/lib/pastoral/reasons";
 import type { ActionState } from "@/app/(public)/actions";
 
 export async function submitCounselRequest(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -16,16 +17,31 @@ export async function submitCounselRequest(_prev: ActionState, formData: FormDat
   const preferredDate = String(formData.get("preferred_date") || "").trim() || null;
   const preferredTime = String(formData.get("preferred_time") || "").trim() || null;
 
-  if (!reason) return { status: "error", message: "Please choose a reason." };
+  if (!COUNSEL_REQUEST_REASONS.includes(reason as (typeof COUNSEL_REQUEST_REASONS)[number])) {
+    return { status: "error", message: "Please choose a valid reason." };
+  }
 
   const supabase = await createClient();
+  if (!requestedWith) return { status: "error", message: "Choose a member of the pastoral team." };
+  const { data: requestedTeamMember } = await supabase
+    .from("pastoral_team_members")
+    .select("profile_id")
+    .eq("organization_id", organizationId)
+    .eq("profile_id", requestedWith)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!requestedTeamMember) return { status: "error", message: "That pastoral team member is not currently available for requests." };
+
+  if (preferredDate && preferredDate < new Date().toLocaleDateString("en-CA", { timeZone: "America/Jamaica" })) {
+    return { status: "error", message: "Choose today or a future date." };
+  }
 
   // Outside published hours (or on a published day off) → flagged urgent so
   // it stands out to whoever picks it up, rather than silently waiting for
   // a slot that was never actually open.
   let isUrgent = false;
   if (requestedWith && preferredDate) {
-    const dayOfWeek = new Date(`${preferredDate}T00:00:00`).getDay();
+    const dayOfWeek = new Date(`${preferredDate}T12:00:00-05:00`).getUTCDay();
     const { data: availability } = await supabase
       .from("pastoral_calendar_availability")
       .select("start_time, end_time")
@@ -44,8 +60,8 @@ export async function submitCounselRequest(_prev: ActionState, formData: FormDat
       .select("id")
       .eq("profile_id", requestedWith)
       .eq("kind", "day_off")
-      .lte("starts_at", `${preferredDate}T23:59:59`)
-      .gte("ends_at", `${preferredDate}T00:00:00`);
+      .lt("starts_at", `${preferredDate}T23:59:59-05:00`)
+      .gt("ends_at", `${preferredDate}T00:00:00-05:00`);
     if (dayOff && dayOff.length > 0) isUrgent = true;
   }
 

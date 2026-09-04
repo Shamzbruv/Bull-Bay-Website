@@ -1,25 +1,43 @@
 import { redirect } from "next/navigation";
-import { SimpleDashboardNav } from "@/components/simple-dashboard-nav";
-import { SimpleDashboardTopbar } from "@/components/simple-dashboard-topbar";
-import { getAuthenticatorAssuranceLevel, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { WorkspaceShell } from "@/components/workspace-shell";
+import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
+import { getAuthenticatorAssuranceLevel, getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 
-const NAV_ITEMS = [
-  { href: "/pastor", label: "Today" },
-  { href: "/pastor/direction", label: "Strategic Direction" },
-  { href: "/pastor/sermons", label: "Sermons" },
-  { href: "/pastor/care", label: "Pastoral Care" },
-  { href: "/pastor/documents", label: "Documents" },
-  { href: "/member/team-calendar", label: "My Calendar" },
-];
+const ADMIN_PERMISSIONS = [
+  "people.read",
+  "people.write",
+  "events.manage",
+  "groups.manage",
+  "volunteers.manage",
+  "sermons.manage",
+  "content.manage",
+  "giving.read",
+  "giving.manage",
+  "shop.manage",
+  "roles.manage",
+  "sites.manage",
+  "direction.manage",
+  "ministry_assignments.manage",
+  "documents.manage",
+  "documents.certify",
+  "media.manage",
+  "pastoral_calendar.manage",
+  "communications.send",
+  "attendance.manage",
+  "attendance.submit",
+] as const;
 
-// See components/simple-dashboard-nav.tsx for why this doesn't use
-// components/dashboard-nav.tsx / dashboard-topbar.tsx.
 export default async function PastorLayout({ children }: { children: React.ReactNode }) {
   const organizationId = await getOrganizationId();
   if (!organizationId) redirect("/");
 
-  const permissions = await getUserPermissions(organizationId);
+  const [permissions, aal, profile] = await Promise.all([
+    getUserPermissions(organizationId),
+    getAuthenticatorAssuranceLevel(),
+    getCurrentProfile(),
+  ]);
   const isPastoralStaff =
+    permissions.has("pastoral_workspace.access") ||
     permissions.has("care.manage") ||
     permissions.has("care.read") ||
     permissions.has("sermons.manage") ||
@@ -27,16 +45,54 @@ export default async function PastorLayout({ children }: { children: React.React
     permissions.has("pastoral_calendar.manage");
   if (!isPastoralStaff) redirect("/member");
 
-  const aal = await getAuthenticatorAssuranceLevel();
   if (aal !== "aal2") redirect(`/member/security?next=${encodeURIComponent("/pastor")}`);
 
+  const allowed = (...required: string[]) => required.some((permission) => permissions.has(permission));
+  const allSections: DashboardNavSection[] = [
+    {
+      label: "Pastoral workspace",
+      items: [
+        { href: "/pastor", label: "Today", icon: "home" },
+        { href: "/pastor/care", label: "Pastoral care", icon: "heart" },
+        { href: "/member/team-calendar", label: "My calendar", icon: "calendar" },
+      ],
+    },
+    {
+      label: "Ministry tools",
+      items: [
+        ...(allowed("direction.manage")
+          ? [{ href: "/pastor/direction", label: "Strategic direction", icon: "chart" as const }]
+          : []),
+        ...(allowed("sermons.manage") ? [{ href: "/pastor/sermons", label: "Sermons", icon: "book" as const }] : []),
+        ...(allowed("documents.certify")
+          ? [{ href: "/pastor/documents", label: "Documents", icon: "file" as const }]
+          : []),
+      ],
+    },
+  ];
+  const sections = allSections.filter((section) => section.items.length > 0);
+  const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
+  const user = {
+    name: name || profile?.email?.split("@")[0] || "Pastoral team member",
+    email: profile?.email,
+  };
+  const canUseAdmin = ADMIN_PERMISSIONS.some((permission) => permissions.has(permission));
+  const workspaces: WorkspaceDestination[] = [
+    { href: "/member", label: "Member", icon: "home" },
+    ...(canUseAdmin ? [{ href: "/admin", label: "Admin", icon: "briefcase" as const }] : []),
+    { href: "/pastor", label: "Pastor", icon: "heart", active: true },
+  ];
+
   return (
-    <>
-      <SimpleDashboardTopbar label="Pastor Workspace" />
-      <div className="dashboard-shell">
-        <SimpleDashboardNav title="Pastor" items={NAV_ITEMS} />
-        <div className="dashboard-main">{children}</div>
-      </div>
-    </>
+    <WorkspaceShell
+      title="Pastor Workspace"
+      subtitle="Care & ministry"
+      tone="pastor"
+      sections={sections}
+      user={user}
+      workspaces={workspaces}
+    >
+      {children}
+    </WorkspaceShell>
   );
 }

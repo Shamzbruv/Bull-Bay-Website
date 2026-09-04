@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from "react";
 import { sendComposedEmail } from "./actions";
-import { initialActionState } from "@/app/(public)/actions";
+import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
 
@@ -14,8 +14,8 @@ export function ComposeForm({ emailReady }: { emailReady: boolean }) {
     <form className="clay-form" action={formAction}>
       {!emailReady && (
         <p className="form-note" style={{ color: "#a8341f" }}>
-          Email sending isn&apos;t connected yet. Everything here is ready to go — compose and save your message, and
-          it will send as soon as the Resend API key is added.
+          Email sending isn&apos;t connected yet. You can prepare your message here, but sending stays disabled until
+          the Resend API key is configured.
         </p>
       )}
       <label>
@@ -45,7 +45,7 @@ export function ComposeForm({ emailReady }: { emailReady: boolean }) {
         <span className="form-note">Required — this platform sends as a no-reply address, so replies go here instead.</span>
       </label>
       <FormStatus state={state} />
-      <SubmitButton pendingLabel="Sending…">Send</SubmitButton>
+      <SubmitButton pendingLabel="Sending…" disabled={!emailReady}>Send email</SubmitButton>
     </form>
   );
 }

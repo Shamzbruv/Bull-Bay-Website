@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { submitCounselRequest } from "./actions";
-import { initialActionState } from "@/app/(public)/actions";
+import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
 import { COUNSEL_REQUEST_REASONS } from "@/lib/pastoral/reasons";

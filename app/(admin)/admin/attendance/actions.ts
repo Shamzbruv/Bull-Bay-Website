@@ -35,12 +35,18 @@ export async function saveServiceSchedule(_prev: ActionState, formData: FormData
   return { status: "success", message: `${label} added — ${DAY_NAMES[dayOfWeek]}s.` };
 }
 
-export async function toggleScheduleActive(id: string, isActive: boolean): Promise<void> {
-  const { canManage } = await permissions();
-  if (!canManage) return;
+export async function toggleScheduleActive(id: string, isActive: boolean): Promise<ActionState> {
+  const { organizationId, canManage } = await permissions();
+  if (!organizationId || !canManage) return { status: "error", message: "You don't have permission to change service schedules." };
   const supabase = await createClient();
-  await supabase.from("service_schedules").update({ is_active: isActive }).eq("id", id);
+  const { error } = await supabase
+    .from("service_schedules")
+    .update({ is_active: isActive })
+    .eq("organization_id", organizationId)
+    .eq("id", id);
+  if (error) return { status: "error", message: "The schedule status could not be saved." };
   revalidatePath("/admin/attendance");
+  return { status: "success", message: isActive ? "Service schedule activated." : "Service schedule paused." };
 }
 
 export async function submitAttendance(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -56,6 +62,15 @@ export async function submitAttendance(_prev: ActionState, formData: FormData): 
   }
 
   const supabase = await createClient();
+  const { data: schedule } = await supabase
+    .from("service_schedules")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("id", serviceScheduleId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!schedule) return { status: "error", message: "Choose an active service for this church." };
+
   const {
     data: { user },
   } = await supabase.auth.getUser();

@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getOrganizationId } from "@/lib/auth/session";
 import type { ActionState } from "@/app/(public)/actions";
 
@@ -22,13 +22,21 @@ export async function submitDocumentRequest(_prev: ActionState, formData: FormDa
   const purpose = String(formData.get("purpose") || "").trim();
   if (!templateId || !purpose) return { status: "error", message: "Please choose a document type and describe what it's for." };
 
-  const { data: template } = await supabase.from("document_templates").select("name").eq("id", templateId).maybeSingle();
+  const admin = createServiceRoleClient();
+  const { data: template } = await admin
+    .from("document_templates")
+    .select("name")
+    .eq("organization_id", organizationId)
+    .eq("id", templateId)
+    .eq("is_active", true)
+    .maybeSingle();
+  if (!template) return { status: "error", message: "Choose an available document type." };
 
   const { error } = await supabase.from("document_requests").insert({
     organization_id: organizationId,
     requester_profile_id: profile.id,
     template_id: templateId,
-    title: template?.name ?? "Document request",
+    title: template.name,
     purpose,
     status: "submitted",
   });

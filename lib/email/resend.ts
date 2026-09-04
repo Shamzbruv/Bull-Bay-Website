@@ -9,6 +9,11 @@ export type SendMailInput = {
    * system notification), the UI must collect this and pass it through. */
   replyTo?: string;
   from?: string;
+  attachments?: {
+    filename: string;
+    content: Buffer | Uint8Array | string;
+    contentType?: string;
+  }[];
 };
 
 /**
@@ -41,6 +46,18 @@ export async function sendMail(input: SendMailInput): Promise<{ sent: boolean; e
         subject: input.subject,
         html: input.html,
         ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+        ...(input.attachments?.length
+          ? {
+              attachments: input.attachments.map((attachment) => ({
+                filename: attachment.filename,
+                content:
+                  typeof attachment.content === "string"
+                    ? attachment.content
+                    : Buffer.from(attachment.content).toString("base64"),
+                ...(attachment.contentType ? { content_type: attachment.contentType } : {}),
+              })),
+            }
+          : {}),
       }),
     });
 

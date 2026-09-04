@@ -26,6 +26,32 @@ export default async function AdminAttendancePage() {
   ]);
 
   const activeSchedules = (schedules ?? []).filter((s) => s.is_active);
+  const jamaicaNowParts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Jamaica",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date());
+  const part = (type: Intl.DateTimeFormatPartTypes) => jamaicaNowParts.find((item) => item.type === type)?.value ?? "00";
+  const todayKey = `${part("year")}-${part("month")}-${part("day")}`;
+  const todayAtNoon = new Date(`${todayKey}T12:00:00-05:00`);
+  const currentMinutes = Number(part("hour")) * 60 + Number(part("minute"));
+  const recordedKeys = new Set((recent ?? []).map((record) => `${record.service_date}:${(record.service_schedules as unknown as { label: string } | null)?.label ?? ""}`));
+  const dueServices = activeSchedules.flatMap((schedule) => {
+    const daysBack = (todayAtNoon.getUTCDay() - schedule.day_of_week + 7) % 7;
+    const occurrence = new Date(todayAtNoon);
+    occurrence.setUTCDate(occurrence.getUTCDate() - daysBack);
+    const occurrenceKey = occurrence.toISOString().slice(0, 10);
+    const [hours = 0, minutes = 0] = schedule.service_time.split(":").map(Number);
+    const cutoff = schedule.day_of_week === 0 ? 13 * 60 : hours * 60 + minutes + 120;
+    const isDue = daysBack > 0 || currentMinutes >= cutoff;
+    return isDue && !recordedKeys.has(`${occurrenceKey}:${schedule.label}`)
+      ? [{ ...schedule, occurrenceKey }]
+      : [];
+  });
 
   return (
     <>
@@ -38,6 +64,24 @@ export default async function AdminAttendancePage() {
           </p>
         </div>
       </div>
+
+      {dueServices.length > 0 && (
+        <section className="attention-panel" aria-labelledby="attendance-due-title">
+          <div>
+            <p className="section-kicker">Action needed</p>
+            <h2 id="attendance-due-title">{dueServices.length} attendance {dueServices.length === 1 ? "count is" : "counts are"} due</h2>
+            <p>Record these now so the member and pastor dashboards stay current.</p>
+          </div>
+          <div className="attention-list">
+            {dueServices.map((schedule) => (
+              <a href="#record-attendance" key={`${schedule.id}-${schedule.occurrenceKey}`}>
+                <b>{schedule.label}</b>
+                <span>{new Date(`${schedule.occurrenceKey}T12:00:00-05:00`).toLocaleDateString("en-JM", { dateStyle: "long", timeZone: "America/Jamaica" })}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      )}
 
       {canManage && (
         <div className="panel">
@@ -57,12 +101,12 @@ export default async function AdminAttendancePage() {
         </div>
       )}
 
-      <div className="panel">
+      <div className="panel" id="record-attendance">
         <h2>Record this week&apos;s attendance</h2>
         {activeSchedules.length === 0 ? (
           <p className="panel-empty">No active services set up yet.</p>
         ) : (
-          <AttendanceSubmitForm schedules={activeSchedules.map((s) => ({ id: s.id, label: s.label }))} />
+            <AttendanceSubmitForm schedules={activeSchedules.map((s) => ({ id: s.id, label: s.label }))} />
         )}
       </div>
 

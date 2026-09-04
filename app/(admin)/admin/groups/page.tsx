@@ -14,7 +14,7 @@ export default async function AdminGroupsPage() {
 
   const supabase = await createClient();
   const [{ data: groups }, { data: requests }] = await Promise.all([
-    supabase.from("groups").select("id, name, category, is_active, group_members(id)").eq("organization_id", organizationId ?? "").order("name"),
+    supabase.from("groups").select("id, name, category, description, meeting_schedule, visibility, is_active, group_members(id)").eq("organization_id", organizationId ?? "").order("name"),
     supabase.from("group_members").select("id, profiles(first_name, last_name), groups(name)").eq("status", "requested"),
   ]);
 
@@ -46,8 +46,10 @@ export default async function AdminGroupsPage() {
       )}
 
       <div className="panel">
-        <h2>New group</h2>
-        <GroupForm />
+        <details className="dashboard-disclosure">
+          <summary>+ Create a group or ministry team</summary>
+          <GroupForm />
+        </details>
       </div>
 
       <div className="panel">
@@ -65,7 +67,12 @@ export default async function AdminGroupsPage() {
             <tbody>
               {groups?.map((g) => (
                 <tr key={g.id}>
-                  <td>{g.name}</td>
+                  <td>
+                    <details className="table-editor">
+                      <summary>{g.name}</summary>
+                      <GroupForm group={g} />
+                    </details>
+                  </td>
                   <td>{g.category}</td>
                   <td>{g.group_members?.length ?? 0}</td>
                   <td>{g.is_active ? "Yes" : "No"}</td>

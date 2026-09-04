@@ -698,7 +698,8 @@
 }
 
 .setupComplete,
-.setupPending {
+.setupPending,
+.setupUnavailable {
   display: grid;
   place-items: center;
   width: 24px;
@@ -716,6 +717,11 @@
 .setupPending {
   background: #fff;
   border: 2px solid #d9b260;
+}
+
+.setupUnavailable {
+  color: #fff;
+  background: #a64c57;
 }
 
 .setupItem > span:nth-child(2) {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { submitPrayerRequest, initialActionState } from "@/app/(public)/actions";
+import { submitPrayerRequest } from "@/app/(public)/actions";
+import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
 

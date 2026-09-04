@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { RequestForm } from "./request-form";
 import { DownloadButton } from "./download-button";
@@ -19,9 +19,19 @@ const STATUS_LABELS: Record<string, string> = {
 export default async function MyDocumentsPage() {
   const profile = await getCurrentProfile();
   const supabase = await createClient();
+  const admin = createServiceRoleClient();
 
   const [{ data: templates }, { data: requests }] = await Promise.all([
-    supabase.from("document_templates").select("id, name, description").eq("is_active", true).order("name"),
+    // The service client is intentionally limited to the active catalogue
+    // for this signed-in member's organization. This keeps the request form
+    // usable while older deployed databases receive the same-org member RLS
+    // policy from the hardening migration.
+    admin
+      .from("document_templates")
+      .select("id, name, description")
+      .eq("organization_id", profile?.organization_id ?? "")
+      .eq("is_active", true)
+      .order("name"),
     supabase
       .from("document_requests")
       .select("id, title, purpose, status, created_at, document_number")

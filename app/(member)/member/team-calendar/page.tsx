@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { DAY_NAMES } from "@/lib/pastoral/reasons";
+import { CounselRequestRow } from "@/app/(pastor)/pastor/care/counsel-request-row";
+import { PrayerRequestRow } from "@/app/(pastor)/pastor/care/prayer-request-row";
 import { AvailabilityForm, EventForm, RemoveAvailabilityButton, RemoveEventButton } from "./calendar-forms";
 
 export const metadata: Metadata = { title: "My Pastoral Calendar" };
@@ -11,6 +13,7 @@ export default async function TeamCalendarPage() {
   if (!profile) return null;
 
   const supabase = await createClient();
+  const admin = createServiceRoleClient();
   const { data: teamRow } = await supabase
     .from("pastoral_team_members")
     .select("role_title, is_pastor, is_active")
@@ -29,9 +32,25 @@ export default async function TeamCalendarPage() {
     );
   }
 
-  const [{ data: availability }, { data: events }] = await Promise.all([
+  const [{ data: availability }, { data: events }, { data: counselRequests }, { data: assignedPrayers }] = await Promise.all([
     supabase.from("pastoral_calendar_availability").select("id, day_of_week, start_time, end_time, label").eq("profile_id", profile.id).order("day_of_week"),
     supabase.from("pastoral_calendar_events").select("id, title, starts_at, ends_at, kind, visibility").eq("profile_id", profile.id).order("starts_at", { ascending: false }).limit(30),
+    supabase
+      .from("counsel_requests")
+      .select("id, reason, details, is_urgent, status, preferred_date, preferred_time, profiles:requester_profile_id(first_name, last_name)")
+      .eq("requested_with_profile_id", profile.id)
+      .in("status", ["requested", "scheduled"])
+      .order("is_urgent", { ascending: false })
+      .order("created_at", { ascending: false }),
+    profile.auth_user_id
+      ? admin
+          .from("prayer_requests")
+          .select("id, submitter_name, request_body, visibility, status, assigned_to, created_at")
+          .eq("organization_id", profile.organization_id)
+          .eq("assigned_to", profile.auth_user_id)
+          .in("status", ["new", "in_progress"])
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
   ]);
 
   return (
@@ -46,6 +65,61 @@ export default async function TeamCalendarPage() {
             {!teamRow.is_active && <span className="badge gray" style={{ marginLeft: 8 }}>currently inactive</span>}
           </p>
         </div>
+      </div>
+
+      {assignedPrayers && assignedPrayers.length > 0 && (
+        <div className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="section-kicker">Prayer care</p>
+              <h2>Assigned to you</h2>
+            </div>
+            <span className="badge gold">{assignedPrayers.length} open</span>
+          </div>
+          {assignedPrayers.map((prayer) => (
+            <PrayerRequestRow
+              key={prayer.id}
+              id={prayer.id}
+              name={prayer.submitter_name ?? "Anonymous"}
+              body={prayer.request_body}
+              visibility={prayer.visibility}
+              status={prayer.status}
+              createdAt={prayer.created_at}
+              assignedTo={prayer.assigned_to}
+              assignees={[]}
+              canAssign={false}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className="panel">
+        <div className="panel-heading">
+          <div>
+            <p className="section-kicker">Your care inbox</p>
+            <h2>Meeting requests</h2>
+          </div>
+          <span className="badge blue">{counselRequests?.length ?? 0} open</span>
+        </div>
+        {(!counselRequests || counselRequests.length === 0) && (
+          <p className="panel-empty">No requests are assigned to you right now.</p>
+        )}
+        {counselRequests?.map((request) => {
+          const requester = request.profiles as unknown as { first_name: string | null; last_name: string | null } | null;
+          return (
+            <CounselRequestRow
+              key={request.id}
+              id={request.id}
+              reason={request.reason}
+              requesterName={`${requester?.first_name ?? ""} ${requester?.last_name ?? ""}`.trim() || "A member"}
+              details={request.details}
+              isUrgent={request.is_urgent}
+              preferredDate={request.preferred_date}
+              preferredTime={request.preferred_time}
+              status={request.status}
+            />
+          );
+        })}
       </div>
 
       <div className="panel">

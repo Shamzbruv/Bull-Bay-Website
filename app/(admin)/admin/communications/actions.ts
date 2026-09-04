@@ -26,22 +26,25 @@ export async function sendComposedEmail(_prev: ActionState, formData: FormData):
 
   if (!heading || !bodyText) return { status: "error", message: "Add a heading and a message." };
   if (!replyTo) return { status: "error", message: "This inbox doesn't accept replies — add an email address people should reply to." };
+  if (!/^\S+@\S+\.\S+$/.test(replyTo)) return { status: "error", message: "Enter a valid reply-to email address." };
   if (audience === "single" && !singleEmail) return { status: "error", message: "Enter the recipient's email." };
+  if (audience === "single" && !/^\S+@\S+\.\S+$/.test(singleEmail)) return { status: "error", message: "Enter a valid recipient email address." };
 
   const senderProfile = await getCurrentProfile();
   const senderName = senderProfile ? `${senderProfile.first_name ?? ""} ${senderProfile.last_name ?? ""}`.trim() : undefined;
-  const bodyHtml = bodyText
-    .split(/\n\s*\n/)
-    .map((p) => `<p style="margin:0 0 14px;">${p.replace(/\n/g, "<br/>")}</p>`)
-    .join("");
-  const html = renderComposedEmail({ heading, bodyHtml, senderName });
+  const html = renderComposedEmail({ heading, bodyText, senderName });
 
   const supabase = await createClient();
   let recipients: string[] = [];
   if (audience === "single") {
     recipients = [singleEmail];
   } else {
-    const { data } = await supabase.from("profiles").select("email").eq("organization_id", organizationId).not("email", "is", null);
+    const { data } = await supabase
+      .from("profiles")
+      .select("email")
+      .eq("organization_id", organizationId)
+      .eq("communication_email_opt_in", true)
+      .not("email", "is", null);
     recipients = [...new Set((data ?? []).map((p) => p.email).filter((e): e is string => Boolean(e)))];
   }
   if (recipients.length === 0) return { status: "error", message: "No recipients found." };

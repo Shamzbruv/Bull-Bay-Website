@@ -11,6 +11,12 @@ import { SITE_URL } from "@/lib/org";
 import type { ActionState } from "@/app/(public)/actions";
 
 export async function uploadSignatureAsset(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("documents.certify")) {
+    return { status: "error", message: "You don't have permission to manage certification assets." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -24,9 +30,23 @@ export async function uploadSignatureAsset(_prev: ActionState, formData: FormDat
   let signaturePath: string | undefined;
   let stampPath: string | undefined;
 
+  const imageExtension = (file: File) => {
+    if (file.type === "image/png") return "png";
+    if (file.type === "image/jpeg") return "jpg";
+    return null;
+  };
+
+  const validateImage = (file: File) => {
+    if (!imageExtension(file)) return "Use a PNG or JPEG image.";
+    if (file.size > 2 * 1024 * 1024) return "Keep each image under 2 MB.";
+    return null;
+  };
+
   const signatureFile = formData.get("signature");
   if (signatureFile instanceof File && signatureFile.size > 0) {
-    signaturePath = `signatures/${profile.id}-${Date.now()}.png`;
+    const validationError = validateImage(signatureFile);
+    if (validationError) return { status: "error", message: `Signature: ${validationError}` };
+    signaturePath = `signatures/${profile.id}-${Date.now()}.${imageExtension(signatureFile)}`;
     const buf = Buffer.from(await signatureFile.arrayBuffer());
     const { error } = await admin.storage.from("staff-assets").upload(signaturePath, buf, { contentType: signatureFile.type, upsert: true });
     if (error) return { status: "error", message: "Couldn't upload the signature image." };
@@ -34,7 +54,9 @@ export async function uploadSignatureAsset(_prev: ActionState, formData: FormDat
 
   const stampFile = formData.get("stamp");
   if (stampFile instanceof File && stampFile.size > 0) {
-    stampPath = `stamps/${profile.id}-${Date.now()}.png`;
+    const validationError = validateImage(stampFile);
+    if (validationError) return { status: "error", message: `Stamp: ${validationError}` };
+    stampPath = `stamps/${profile.id}-${Date.now()}.${imageExtension(stampFile)}`;
     const buf = Buffer.from(await stampFile.arrayBuffer());
     const { error } = await admin.storage.from("staff-assets").upload(stampPath, buf, { contentType: stampFile.type, upsert: true });
     if (error) return { status: "error", message: "Couldn't upload the stamp image." };
@@ -45,7 +67,12 @@ export async function uploadSignatureAsset(_prev: ActionState, formData: FormDat
   if (stampPath) update.stamp_path = stampPath;
   if (Object.keys(update).length === 0) return { status: "error", message: "Choose at least one image to upload." };
 
-  await supabase.from("profiles").update(update).eq("id", profile.id);
+  const { error: profileError } = await admin
+    .from("profiles")
+    .update(update)
+    .eq("organization_id", organizationId)
+    .eq("id", profile.id);
+  if (profileError) return { status: "error", message: "The files uploaded, but the profile could not be updated." };
   revalidatePath("/pastor/documents");
   return { status: "success", message: "Saved. Your signature/stamp will now appear on certified documents." };
 }
@@ -70,6 +97,7 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
   const { data: request } = await supabase
     .from("document_requests")
     .select("*, profiles:requester_profile_id(id, first_name, last_name, email)")
+    .eq("organization_id", organizationId ?? "")
     .eq("id", requestId)
     .maybeSingle();
 
@@ -84,52 +112,77 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
     getStaffAssetBuffer(signerProfile?.stamp_path ?? null),
   ]);
 
+  if (!signatureImage || !stampImage) {
+    return { status: "error", message: "Upload both the authorized signature and church stamp before certifying a document." };
+  }
+
   const admin = createServiceRoleClient();
   const pdfPath = `documents/${requestId}.pdf`;
 
-  // Flip status to completed first so the DB trigger assigns the real
-  // document_number — the PDF body should show that number, not a
-  // placeholder, so the number has to exist before we render it.
+  // Move to the intermediate stamped state so the database assigns the
+  // official number. Any PDF/render/upload failure below rolls this back to
+  // pending_pastor, so a request is never left falsely marked complete.
   const { data: numbered, error: numberError } = await supabase
     .from("document_requests")
-    .update({ status: "completed", certified_by: user.id, certified_at: new Date().toISOString() })
+    .update({ status: "stamped", certified_by: user.id, certified_at: new Date().toISOString() })
     .eq("id", requestId)
     .select("document_number")
     .single();
   if (numberError || !numbered?.document_number) return { status: "error", message: "Couldn't finalize this document." };
 
-  const pdfBuffer = await generateDocumentPdf({
-    documentNumber: numbered.document_number,
-    title: request.title,
-    bodyParagraphs: request.prepared_body.split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean),
-    recipientName,
-    issuedDate: new Date().toLocaleDateString("en-JM", { dateStyle: "long" }),
-    signer: {
-      name: `${signerProfile?.first_name ?? ""} ${signerProfile?.last_name ?? ""}`.trim() || "Senior Pastor",
-      title: "Senior Pastor, New Testament Church of God, Bull Bay",
-      signatureImage,
-      stampImage,
-    },
-    logoImage: logo,
-  });
+  let pdfBuffer: Buffer;
+  try {
+    pdfBuffer = await generateDocumentPdf({
+      documentNumber: numbered.document_number,
+      title: request.title,
+      bodyParagraphs: request.prepared_body.split(/\n\s*\n/).map((p: string) => p.trim()).filter(Boolean),
+      recipientName,
+      issuedDate: new Date().toLocaleDateString("en-JM", { dateStyle: "long" }),
+      signer: {
+        name: `${signerProfile?.first_name ?? ""} ${signerProfile?.last_name ?? ""}`.trim() || "Senior Pastor",
+        title: "Senior Pastor, New Testament Church of God, Bull Bay",
+        signatureImage,
+        stampImage,
+      },
+      logoImage: logo,
+    });
+  } catch {
+    await supabase
+      .from("document_requests")
+      .update({ status: "pending_pastor", certified_by: null, certified_at: null })
+      .eq("id", requestId);
+    return { status: "error", message: "The PDF could not be generated. The request remains on the pastor's desk." };
+  }
 
   const { error: uploadError } = await admin.storage.from("member-resources").upload(pdfPath, pdfBuffer, {
     contentType: "application/pdf",
     upsert: true,
   });
-  if (uploadError) return { status: "error", message: "The document was certified but the PDF failed to save — try again from the request." };
+  if (uploadError) {
+    await supabase
+      .from("document_requests")
+      .update({ status: "pending_pastor", certified_by: null, certified_at: null })
+      .eq("id", requestId);
+    return { status: "error", message: "The PDF failed to save. The request remains on the pastor's desk." };
+  }
 
   const { data: updated, error: updateError } = await supabase
     .from("document_requests")
-    .update({ pdf_path: pdfPath })
+    .update({ pdf_path: pdfPath, status: "completed" })
     .eq("id", requestId)
     .select("document_number")
     .single();
 
-  if (updateError) return { status: "error", message: "Couldn't finalize this document." };
+  if (updateError) {
+    await admin.storage.from("member-resources").remove([pdfPath]);
+    await supabase
+      .from("document_requests")
+      .update({ status: "pending_pastor", certified_by: null, certified_at: null, pdf_path: null })
+      .eq("id", requestId);
+    return { status: "error", message: "Couldn't finalize this document. The request remains on the pastor's desk." };
+  }
 
   if (requester?.email) {
-    const { data: signed } = await admin.storage.from("member-resources").createSignedUrl(pdfPath, 60 * 60 * 24);
     await sendMail({
       to: requester.email,
       subject: `Your document is ready — ${request.title}`,
@@ -138,8 +191,14 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
         documentTitle: request.title,
         actionUrl: `${SITE_URL}/member/documents`,
       }),
+      attachments: [
+        {
+          filename: `${numbered.document_number}.pdf`,
+          content: pdfBuffer,
+          contentType: "application/pdf",
+        },
+      ],
     }).catch(() => {});
-    void signed;
   }
 
   revalidatePath("/pastor/documents");
