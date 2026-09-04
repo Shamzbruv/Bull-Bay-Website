@@ -5,6 +5,15 @@
 -- provisions a real login for the applicant (see lib/members/invite.ts),
 -- exactly like inviting a member by hand, so nothing about this feature
 -- is a dead end that just relabels a status.
+--
+-- NOT REQUIRED for the feature to work: the app code was later changed
+-- (see lib/members/membership-request.ts) to store these under the
+-- already-valid kind='connection_card' + a fixed `interest` marker
+-- instead of the dedicated values below, once it became clear this
+-- migration couldn't be applied to the live database promptly and
+-- people were actually blocked from joining. Applying this migration is
+-- still worthwhile for the pastor people.write grant and for schema
+-- clarity, but /join already works without it.
 
 alter table public.contact_submissions
   drop constraint contact_submissions_kind_check;

@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { notifyOffice } from "@/lib/notify";
 import { renderStaffNotificationEmail } from "@/lib/email/templates";
 import { SITE_URL } from "@/lib/org";
+import { MEMBERSHIP_REQUEST_MARKER } from "@/lib/members/membership-request";
 
 // initialActionState moved to lib/action-state.ts — this file has "use
 // server" and Next.js requires every export here to be an async function;
@@ -153,12 +154,12 @@ export async function submitMembershipRequest(_prev: ActionState, formData: Form
   const supabase = await createClient();
   const { error } = await supabase.from("contact_submissions").insert({
     organization_id: organizationId,
-    kind: "membership_request",
+    kind: "connection_card",
     first_name: firstName,
     last_name: lastName,
     email,
     phone: phone || null,
-    interest: "Becoming a member",
+    interest: MEMBERSHIP_REQUEST_MARKER,
     message: message || null,
   });
 

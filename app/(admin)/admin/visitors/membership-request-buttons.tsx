@@ -3,12 +3,11 @@
 import { useState, useTransition } from "react";
 import { approveMembershipRequest, declineMembershipRequest } from "./actions";
 
-export function MembershipRequestButtons({ id, status }: { id: string; status: string }) {
+export function MembershipRequestButtons({ id, status, approved }: { id: string; status: string; approved: boolean }) {
   const [isPending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
-  if (status === "approved") return <span className="badge">Approved</span>;
-  if (status === "declined") return <span className="badge gray">Declined</span>;
+  if (status === "closed") return <span className={approved ? "badge" : "badge gray"}>{approved ? "Approved" : "Declined"}</span>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>

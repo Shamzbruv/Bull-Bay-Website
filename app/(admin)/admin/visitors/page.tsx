@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
+import { isMembershipRequest } from "@/lib/members/membership-request";
 import { StatusButtons } from "./status-buttons";
 import { MembershipRequestButtons } from "./membership-request-buttons";
 
@@ -10,7 +11,6 @@ export const metadata: Metadata = { title: "Visitor Follow-up" };
 const KIND_LABELS: Record<string, string> = {
   contact: "Contact form",
   connection_card: "Connection card",
-  membership_request: "Request to join",
 };
 
 export default async function AdminVisitorsPage() {
@@ -26,7 +26,7 @@ export default async function AdminVisitorsPage() {
     .order("created_at", { ascending: false })
     .limit(100);
 
-  const pendingJoinRequests = (submissions ?? []).filter((s) => s.kind === "membership_request" && s.status === "new").length;
+  const pendingJoinRequests = (submissions ?? []).filter((s) => isMembershipRequest(s.interest) && s.status !== "closed").length;
 
   return (
     <>
@@ -55,34 +55,39 @@ export default async function AdminVisitorsPage() {
             </tr>
           </thead>
           <tbody>
-            {submissions?.map((s) => (
-              <tr key={s.id}>
-                <td>
-                  <span className={s.kind === "membership_request" ? "badge gold" : "badge gray"}>
-                    {KIND_LABELS[s.kind] ?? s.kind}
-                  </span>
-                </td>
-                <td>
-                  {s.first_name} {s.last_name}
-                </td>
-                <td>
-                  {s.email}
-                  {s.phone ? ` • ${s.phone}` : ""}
-                </td>
-                <td>{s.interest}</td>
-                <td style={{ maxWidth: 240 }}>{s.message}</td>
-                <td>
-                  <span className="badge">{s.status}</span>
-                </td>
-                <td>
-                  {s.kind === "membership_request" ? (
-                    <MembershipRequestButtons id={s.id} status={s.status} />
-                  ) : (
-                    <StatusButtons id={s.id} status={s.status} />
-                  )}
-                </td>
-              </tr>
-            ))}
+            {submissions?.map((s) => {
+              const joinRequest = isMembershipRequest(s.interest);
+              return (
+                <tr key={s.id}>
+                  <td>
+                    <span className={joinRequest ? "badge gold" : "badge gray"}>
+                      {joinRequest ? "Request to join" : (KIND_LABELS[s.kind] ?? s.kind)}
+                    </span>
+                  </td>
+                  <td>
+                    {s.first_name} {s.last_name}
+                  </td>
+                  <td>
+                    {s.email}
+                    {s.phone ? ` • ${s.phone}` : ""}
+                  </td>
+                  <td>{joinRequest ? "—" : s.interest}</td>
+                  <td style={{ maxWidth: 240 }}>{s.message}</td>
+                  <td>
+                    <span className="badge">
+                      {joinRequest && s.status === "closed" ? (s.assigned_to ? "approved" : "declined") : s.status}
+                    </span>
+                  </td>
+                  <td>
+                    {joinRequest ? (
+                      <MembershipRequestButtons id={s.id} status={s.status} approved={Boolean(s.assigned_to)} />
+                    ) : (
+                      <StatusButtons id={s.id} status={s.status} />
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

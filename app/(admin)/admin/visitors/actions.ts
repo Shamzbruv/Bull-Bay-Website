@@ -4,14 +4,15 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { createInvitedMember } from "@/lib/members/invite";
+import { isMembershipRequest } from "@/lib/members/membership-request";
 import type { ActionState } from "@/app/(public)/actions";
 
 /**
  * Approving a "request to join" submission provisions a real member
  * account — same invite path admin/people uses by hand — and marks the
- * submission approved so it drops out of the pending queue. Visible to
+ * submission closed so it drops out of the pending queue. Visible to
  * whoever can already see this screen (people.write): church_admin,
- * super_admin, and now pastor.
+ * super_admin, and (once its migration is applied) pastor.
  */
 export async function approveMembershipRequest(submissionId: string): Promise<ActionState> {
   const organizationId = await getOrganizationId();
@@ -23,15 +24,15 @@ export async function approveMembershipRequest(submissionId: string): Promise<Ac
   const supabase = await createClient();
   const { data: submission } = await supabase
     .from("contact_submissions")
-    .select("id, kind, status, first_name, last_name, email, phone")
+    .select("id, interest, status, assigned_to, first_name, last_name, email, phone")
     .eq("organization_id", organizationId)
     .eq("id", submissionId)
     .maybeSingle();
 
-  if (!submission || submission.kind !== "membership_request") {
+  if (!submission || !isMembershipRequest(submission.interest)) {
     return { status: "error", message: "This isn't a pending membership request." };
   }
-  if (submission.status === "approved") {
+  if (submission.status === "closed" && submission.assigned_to) {
     return { status: "success", message: "Already approved." };
   }
   if (!submission.first_name || !submission.last_name || !submission.email) {
@@ -53,9 +54,12 @@ export async function approveMembershipRequest(submissionId: string): Promise<Ac
   });
   if (!result.ok) return { status: "error", message: result.message };
 
+  // status='closed' + assigned_to set is how "approved" is told apart from
+  // "declined" (also status='closed', but assigned_to stays null) — see
+  // lib/members/membership-request.ts for why.
   await supabase
     .from("contact_submissions")
-    .update({ status: "approved", assigned_to: actor?.id ?? null })
+    .update({ status: "closed", assigned_to: actor?.id ?? null })
     .eq("organization_id", organizationId)
     .eq("id", submissionId);
 
@@ -72,7 +76,7 @@ export async function declineMembershipRequest(submissionId: string): Promise<vo
   const supabase = await createClient();
   await supabase
     .from("contact_submissions")
-    .update({ status: "declined" })
+    .update({ status: "closed", assigned_to: null })
     .eq("organization_id", organizationId)
     .eq("id", submissionId);
   revalidatePath("/admin/visitors");
