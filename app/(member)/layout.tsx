@@ -1,5 +1,5 @@
-import { DashboardNav } from "@/components/dashboard-nav";
-import { DashboardTopbar } from "@/components/dashboard-topbar";
+import { SimpleDashboardNav } from "@/components/simple-dashboard-nav";
+import { SimpleDashboardTopbar } from "@/components/simple-dashboard-topbar";
 
 const NAV_ITEMS = [
   { href: "/member", label: "Home" },
@@ -19,12 +19,14 @@ const NAV_ITEMS = [
   { href: "/member/security", label: "Security" },
 ];
 
+// See components/simple-dashboard-nav.tsx for why this doesn't use
+// components/dashboard-nav.tsx / dashboard-topbar.tsx.
 export default function MemberLayout({ children }: { children: React.ReactNode }) {
   return (
     <>
-      <DashboardTopbar label="My Church" />
+      <SimpleDashboardTopbar label="My Church" />
       <div className="dashboard-shell">
-        <DashboardNav title="My Church" items={NAV_ITEMS} />
+        <SimpleDashboardNav title="My Church" items={NAV_ITEMS} />
         <div className="dashboard-main">{children}</div>
       </div>
     </>

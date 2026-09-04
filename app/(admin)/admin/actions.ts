@@ -283,11 +283,23 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
 // Roles & staff ------------------------------------------------------------
 export async function inviteStaffMember(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
-  if (!organizationId) return { status: "error", message: "Something went wrong." };
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("roles.manage")) {
+    return { status: "error", message: "You don't have permission to invite staff." };
+  }
 
   const email = String(formData.get("email") || "").trim();
   const roleId = String(formData.get("roleId") || "");
   if (!email || !roleId) return { status: "error", message: "Please provide an email and choose a role." };
+
+  const supabase = await createClient();
+  const { data: selectedRole } = await supabase
+    .from("roles")
+    .select("id")
+    .eq("id", roleId)
+    .eq("organization_id", organizationId)
+    .maybeSingle();
+  if (!selectedRole) return { status: "error", message: "Choose a valid role for this church." };
 
   const admin = createServiceRoleClient();
   const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
@@ -298,7 +310,6 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
     return { status: "error", message: error?.message ?? "We couldn't send the invitation." };
   }
 
-  const supabase = await createClient();
   const {
     data: { user: currentUser },
   } = await supabase.auth.getUser();

@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { randomInt } from "node:crypto";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { getOrganizationId } from "@/lib/auth/session";
+import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { SITE_URL } from "@/lib/org";
 import { sendMail } from "@/lib/email/resend";
-import { renderTempPasswordEmail } from "@/lib/email/templates";
+import { renderInviteEmail, renderTempPasswordEmail } from "@/lib/email/templates";
 import type { ActionState } from "@/app/(public)/actions";
 
 /**
@@ -14,17 +15,18 @@ import type { ActionState } from "@/app/(public)/actions";
  * auth.users row directly, then fills in the membership/job/personal
  * details the admin collected for the new profile.
  *
- * The invite email itself is Supabase's own (its mailer_templates_invite
- * are branded to match the site — see Auth → Email Templates), sent
- * through the Resend SMTP relay. It is NOT duplicated with a second,
- * separately-composed email here: an earlier version of this action also
- * sent one via sendMail(), but that link had no auth token on it (only
- * Supabase's own {{ .ConfirmationURL }} carries the real one-time code),
- * so it went nowhere — Supabase's is the only one that actually works.
+ * The invite email is entirely ours: admin.auth.admin.generateLink() mints
+ * a real, working one-time invite link but — unlike inviteUserByEmail() —
+ * never sends anything itself, so the only email that goes out is the one
+ * sendMail() sends here, through Resend directly. Supabase's own mailer
+ * (and its per-address rate limit) is never involved in this flow.
  */
 export async function inviteMember(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
-  if (!organizationId) return { status: "error", message: "Something went wrong." };
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("people.write")) {
+    return { status: "error", message: "You don't have permission to invite members." };
+  }
 
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const firstName = String(formData.get("first_name") || "").trim();
@@ -36,13 +38,19 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
   const admin = createServiceRoleClient();
   const redirectTo = `${SITE_URL}/auth/callback?next=${encodeURIComponent("/auth/update-password")}`;
 
-  const { data: invited, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo });
-  if (inviteError || !invited.user) {
+  const { data: linkData, error: inviteError } = await admin.auth.admin.generateLink({
+    type: "invite",
+    email,
+    options: { redirectTo },
+  });
+  const invitedUser = linkData?.user;
+  const actionLink = linkData?.properties?.action_link;
+  if (inviteError || !invitedUser || !actionLink) {
     return {
       status: "error",
-      message: inviteError?.message?.includes("already registered")
+      message: inviteError?.message?.toLowerCase().includes("already been registered")
         ? "This email already has an account."
-        : "We couldn't send the invitation. Please try again.",
+        : "We couldn't create the invitation. Please try again.",
     };
   }
 
@@ -53,7 +61,7 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
 
   // The new-auth-user trigger already created a bare profile row for this
   // email — fill in everything the admin collected.
-  const { error: profileError } = await supabase
+  const { error: profileError } = await admin
     .from("profiles")
     .update({
       first_name: firstName,
@@ -72,29 +80,37 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
       invited_by: actor?.id ?? null,
       invited_at: new Date().toISOString(),
     })
-    .eq("auth_user_id", invited.user.id);
+    .eq("auth_user_id", invitedUser.id);
 
   if (profileError) {
-    return { status: "error", message: "Invitation sent, but we couldn't save their details. Edit their profile below." };
+    return { status: "error", message: "The account was created, but we couldn't save their details — edit their profile below, then send the invite." };
   }
 
-  await supabase.from("audit_logs").insert({
+  await admin.from("audit_logs").insert({
     organization_id: organizationId,
     actor_id: actor?.id ?? null,
     action: "member.invited",
     entity_type: "profiles",
-    entity_id: invited.user.id,
+    entity_id: invitedUser.id,
     metadata: { email },
   });
 
+  const { sent } = await sendMail({
+    to: email,
+    subject: `You're invited to the Bull Bay church platform`,
+    html: renderInviteEmail({ recipientName: firstName, actionUrl: actionLink }),
+  });
+
   revalidatePath("/admin/people");
-  return { status: "success", message: `Invitation sent to ${email}.` };
+  return sent
+    ? { status: "success", message: `Invitation sent to ${email}.` }
+    : { status: "error", message: `Account created for ${email}, but the invite email couldn't be sent. Use "Reset password" instead to get them a temporary password.` };
 }
 
 function generateTempPassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let out = "";
-  for (let i = 0; i < 12; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 14; i++) out += chars[randomInt(chars.length)];
   return out;
 }
 
@@ -105,8 +121,19 @@ function generateTempPassword() {
  * is configured — never stored anywhere in the clear afterward.
  */
 export async function resetMemberPassword(profileId: string): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("people.write")) {
+    return { status: "error", message: "You don't have permission to reset member passwords." };
+  }
+
   const supabase = await createClient();
-  const { data: profile } = await supabase.from("profiles").select("auth_user_id, email, first_name").eq("id", profileId).maybeSingle();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("auth_user_id, email, first_name")
+    .eq("organization_id", organizationId)
+    .eq("id", profileId)
+    .maybeSingle();
   if (!profile?.auth_user_id) return { status: "error", message: "This person doesn't have a login account yet." };
 
   const tempPassword = generateTempPassword();
@@ -114,7 +141,14 @@ export async function resetMemberPassword(profileId: string): Promise<ActionStat
   const { error } = await admin.auth.admin.updateUserById(profile.auth_user_id, { password: tempPassword });
   if (error) return { status: "error", message: "Couldn't reset the password. Please try again." };
 
-  await supabase.from("profiles").update({ must_change_password: true }).eq("id", profileId);
+  const { error: flagError } = await admin
+    .from("profiles")
+    .update({ must_change_password: true })
+    .eq("organization_id", organizationId)
+    .eq("id", profileId);
+  if (flagError) {
+    return { status: "error", message: "The password changed, but the required-reset flag could not be saved. Contact technical support." };
+  }
 
   if (profile.email) {
     await sendMail({

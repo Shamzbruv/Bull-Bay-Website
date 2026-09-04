@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { DashboardNav } from "@/components/dashboard-nav";
-import { DashboardTopbar } from "@/components/dashboard-topbar";
+import { SimpleDashboardNav } from "@/components/simple-dashboard-nav";
+import { SimpleDashboardTopbar } from "@/components/simple-dashboard-topbar";
 import { getAuthenticatorAssuranceLevel, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 
 const NAV_ITEMS = [
@@ -12,6 +12,8 @@ const NAV_ITEMS = [
   { href: "/member/team-calendar", label: "My Calendar" },
 ];
 
+// See components/simple-dashboard-nav.tsx for why this doesn't use
+// components/dashboard-nav.tsx / dashboard-topbar.tsx.
 export default async function PastorLayout({ children }: { children: React.ReactNode }) {
   const organizationId = await getOrganizationId();
   if (!organizationId) redirect("/");
@@ -30,9 +32,9 @@ export default async function PastorLayout({ children }: { children: React.React
 
   return (
     <>
-      <DashboardTopbar label="Pastor Workspace" />
+      <SimpleDashboardTopbar label="Pastor Workspace" />
       <div className="dashboard-shell">
-        <DashboardNav title="Pastor" items={NAV_ITEMS} />
+        <SimpleDashboardNav title="Pastor" items={NAV_ITEMS} />
         <div className="dashboard-main">{children}</div>
       </div>
     </>

@@ -87,12 +87,11 @@ function button(label: string, url: string) {
 }
 
 /**
- * Not currently called — the actual invite email is Supabase's own
- * (Auth → Email Templates, branded to match; see supabase/migrations
- * comments on why it was moved there). `actionUrl` here would need a real
- * one-time token from admin.auth.admin.generateLink() to work; a plain
- * SITE_URL link does not authenticate anyone. Kept in case a future
- * flow needs a fully custom invite send.
+ * `actionUrl` must be the real `action_link` returned by
+ * admin.auth.admin.generateLink({ type: "invite", ... }) — generateLink()
+ * mints the one-time token but never sends anything itself, which is the
+ * whole point: this is the only place that email goes out, straight
+ * through Resend, with nothing routed through Supabase's own mailer.
  */
 export function renderInviteEmail(opts: { recipientName: string; actionUrl: string }) {
   return shell({
@@ -104,6 +103,26 @@ export function renderInviteEmail(opts: { recipientName: string; actionUrl: stri
       <p style="margin:16px 0 0;">Click below to set your password and get started:</p>
       ${button("Set your password", opts.actionUrl)}
       <p style="margin:0;color:${MUTED};font-size:13px;">If the button doesn't work, copy and paste this link into your browser:<br/><span style="word-break:break-all;">${opts.actionUrl}</span></p>
+    `,
+  });
+}
+
+/**
+ * `actionUrl` must be the real `action_link` from
+ * admin.auth.admin.generateLink({ type: "recovery", ... }) — same reasoning
+ * as renderInviteEmail above: mint-only, we send it, nothing touches
+ * Supabase's mailer.
+ */
+export function renderRecoveryEmail(opts: { actionUrl: string }) {
+  return shell({
+    preheader: "Reset your Bull Bay church platform password.",
+    bodyHtml: `
+      <p style="margin:0 0 4px;color:${BRAND_OLIVE};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Password reset</p>
+      <h1 style="margin:0 0 16px;color:${BRAND_BLUE};font-family:Georgia,'Times New Roman',serif;font-size:24px;">Reset your password.</h1>
+      <p style="margin:0 0 8px;">We received a request to reset the password for your Bull Bay church platform account. Click below to choose a new one.</p>
+      ${button("Reset password", opts.actionUrl)}
+      <p style="margin:0 0 8px;color:${MUTED};font-size:13px;">If the button doesn't work, copy and paste this link into your browser:<br/><span style="word-break:break-all;">${opts.actionUrl}</span></p>
+      <p style="margin:0;color:${MUTED};font-size:13px;">If you didn't request this, you can safely ignore this email — your password won't change. Open this link on the same device and browser you requested it from.</p>
     `,
   });
 }

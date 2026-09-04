@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { DashboardNav } from "@/components/dashboard-nav";
-import { DashboardTopbar } from "@/components/dashboard-topbar";
+import { SimpleDashboardNav } from "@/components/simple-dashboard-nav";
+import { SimpleDashboardTopbar } from "@/components/simple-dashboard-topbar";
 import { getAuthenticatorAssuranceLevel, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 
 const NAV_ITEMS = [
@@ -52,6 +52,9 @@ const ADMIN_PERMISSIONS = [
   "attendance.submit",
 ];
 
+// Uses SimpleDashboardNav/Topbar, not components/dashboard-nav.tsx or
+// dashboard-topbar.tsx — those are mid-rewrite into a new workspace-switcher
+// shell with no matching CSS yet. See components/simple-dashboard-nav.tsx.
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const organizationId = await getOrganizationId();
   if (!organizationId) redirect("/");
@@ -65,9 +68,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <>
-      <DashboardTopbar label="Church Admin" />
+      <SimpleDashboardTopbar label="Church Admin" />
       <div className="dashboard-shell">
-        <DashboardNav title="Church Admin" items={NAV_ITEMS} />
+        <SimpleDashboardNav title="Church Admin" items={NAV_ITEMS} />
         <div className="dashboard-main">{children}</div>
       </div>
     </>

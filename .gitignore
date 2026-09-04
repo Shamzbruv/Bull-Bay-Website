@@ -24,6 +24,7 @@ npm-debug.log*
 
 # Supabase local
 .supabase/
+supabase/.temp/
 
 # Misc
 *.tsbuildinfo
