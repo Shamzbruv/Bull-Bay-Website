@@ -133,14 +133,15 @@ export default async function HomePage() {
 
       <div className="home-page">
         <section className="home-hero" aria-labelledby="hero-heading">
-          <Image
-            className="home-hero-image"
-            src="/images/church/church-exterior.jpg"
-            alt="The entrance to New Testament Church of God, Bull Bay"
-            fill
-            priority
-            sizes="(max-width: 768px) 100vw, 1400px"
-          />
+          <picture className="home-hero-picture">
+            <source media="(max-width: 768px)" srcSet="/images/church/church-exterior-mobile.jpg" />
+            <img
+              className="home-hero-image"
+              src="/images/church/church-exterior.jpg"
+              alt="The entrance to New Testament Church of God, Bull Bay"
+              fetchPriority="high"
+            />
+          </picture>
           <div className="home-hero-shade" />
           <div className="home-hero-content">
             <p className="home-kicker"><span /> Welcome to Bull Bay</p>
