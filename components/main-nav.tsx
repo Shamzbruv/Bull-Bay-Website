@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/live", label: "Watch" },
   { href: "/ministries", label: "Ministries" },
   { href: "/events", label: "Events" },
+  { href: "/shop", label: "Shop" },
 ];
 
 const EXPLORE_LINKS = [
@@ -18,7 +19,6 @@ const EXPLORE_LINKS = [
   { href: "/groups", label: "Groups" },
   { href: "/direction", label: "Church Direction" },
   { href: "/gallery", label: "Gallery" },
-  { href: "/shop", label: "Shop" },
 ];
 
 function MenuIcon({ open }: { open: boolean }) {

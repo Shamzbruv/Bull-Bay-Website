@@ -196,8 +196,8 @@ export default async function HomePage() {
 
           <figure className="home-intro-photo">
             <Image
-              src="/images/church/community-care-illustrative.jpg"
-              alt="Illustrative scene of a Jamaican church community serving neighbours together"
+              src="/images/church/community-care.jpg"
+              alt="Bull Bay church members serving the community together"
               fill
               sizes="(max-width: 850px) 100vw, 48vw"
             />
@@ -205,7 +205,6 @@ export default async function HomePage() {
               <Icon name="heart" />
               <span><b>Love in action</b><small>Serving Bull Bay together</small></span>
             </div>
-            <figcaption>Illustrative community image</figcaption>
           </figure>
         </section>
 
