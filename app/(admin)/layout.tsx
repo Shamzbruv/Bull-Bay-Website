@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
 import { createClient } from "@/lib/supabase/server";
-import { getAuthenticatorAssuranceLevel, getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 
 const ADMIN_PERMISSIONS = [
   "people.read",
@@ -41,15 +41,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const organizationId = await getOrganizationId();
   if (!organizationId) redirect("/");
 
-  const [permissions, aal, profile] = await Promise.all([
-    getUserPermissions(organizationId),
-    getAuthenticatorAssuranceLevel(),
-    getCurrentProfile(),
-  ]);
+  const [permissions, profile] = await Promise.all([getUserPermissions(organizationId), getCurrentProfile()]);
   const isStaff = ADMIN_PERMISSIONS.some((p) => permissions.has(p));
   if (!isStaff) redirect("/member");
-
-  if (aal !== "aal2") redirect(`/member/security?next=${encodeURIComponent("/admin")}`);
 
   const supabase = await createClient();
   const { data: roleRows } = profile?.auth_user_id

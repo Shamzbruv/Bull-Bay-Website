@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/workspace-shell";
 import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
-import { getAuthenticatorAssuranceLevel, getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 
 const ADMIN_PERMISSIONS = [
   "people.read",
@@ -31,11 +31,7 @@ export default async function PastorLayout({ children }: { children: React.React
   const organizationId = await getOrganizationId();
   if (!organizationId) redirect("/");
 
-  const [permissions, aal, profile] = await Promise.all([
-    getUserPermissions(organizationId),
-    getAuthenticatorAssuranceLevel(),
-    getCurrentProfile(),
-  ]);
+  const [permissions, profile] = await Promise.all([getUserPermissions(organizationId), getCurrentProfile()]);
   const isPastoralStaff =
     permissions.has("pastoral_workspace.access") ||
     permissions.has("care.manage") ||
@@ -44,8 +40,6 @@ export default async function PastorLayout({ children }: { children: React.React
     permissions.has("documents.certify") ||
     permissions.has("pastoral_calendar.manage");
   if (!isPastoralStaff) redirect("/member");
-
-  if (aal !== "aal2") redirect(`/member/security?next=${encodeURIComponent("/pastor")}`);
 
   const allowed = (...required: string[]) => required.some((permission) => permissions.has(permission));
   const allSections: DashboardNavSection[] = [
