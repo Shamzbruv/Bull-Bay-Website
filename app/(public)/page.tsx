@@ -135,8 +135,8 @@ export default async function HomePage() {
         <section className="home-hero" aria-labelledby="hero-heading">
           <Image
             className="home-hero-image"
-            src="/images/church/worship-hero-illustrative.jpg"
-            alt="Illustrative scene of a multigenerational Jamaican church community worshipping together"
+            src="/images/church/church-exterior.jpg"
+            alt="The entrance to New Testament Church of God, Bull Bay"
             fill
             priority
             sizes="(max-width: 768px) 100vw, 1400px"
