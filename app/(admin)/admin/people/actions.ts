@@ -7,6 +7,7 @@ import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { SITE_URL } from "@/lib/org";
 import { sendMail } from "@/lib/email/resend";
 import { renderInviteEmail, renderTempPasswordEmail } from "@/lib/email/templates";
+import { generateAuthLink } from "@/lib/supabase/generate-link";
 import type { ActionState } from "@/app/(public)/actions";
 
 /**
@@ -15,11 +16,15 @@ import type { ActionState } from "@/app/(public)/actions";
  * auth.users row directly, then fills in the membership/job/personal
  * details the admin collected for the new profile.
  *
- * The invite email is entirely ours: admin.auth.admin.generateLink() mints
- * a real, working one-time invite link but — unlike inviteUserByEmail() —
- * never sends anything itself, so the only email that goes out is the one
- * sendMail() sends here, through Resend directly. Supabase's own mailer
- * (and its per-address rate limit) is never involved in this flow.
+ * The invite email is entirely ours: generateAuthLink() mints a real,
+ * working one-time invite link but sends nothing itself, so the only
+ * email that goes out is the one sendMail() sends here, through Resend
+ * directly. Supabase's own mailer (and its per-address rate limit) is
+ * never involved. Uses a raw REST call rather than
+ * admin.auth.admin.generateLink() — the installed supabase-js sends the
+ * redirect target in a field GoTrue's REST API silently ignores, so every
+ * link it minted redirected to the bare site root with no path. See
+ * lib/supabase/generate-link.ts.
  */
 export async function inviteMember(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
@@ -38,17 +43,11 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
   const admin = createServiceRoleClient();
   const redirectTo = `${SITE_URL}/auth/callback?next=${encodeURIComponent("/auth/update-password")}`;
 
-  const { data: linkData, error: inviteError } = await admin.auth.admin.generateLink({
-    type: "invite",
-    email,
-    options: { redirectTo },
-  });
-  const invitedUser = linkData?.user;
-  const actionLink = linkData?.properties?.action_link;
-  if (inviteError || !invitedUser || !actionLink) {
+  const { actionLink, userId, error: inviteError } = await generateAuthLink({ type: "invite", email, redirectTo });
+  if (inviteError || !userId || !actionLink) {
     return {
       status: "error",
-      message: inviteError?.message?.toLowerCase().includes("already been registered")
+      message: inviteError?.toLowerCase().includes("already been registered")
         ? "This email already has an account."
         : "We couldn't create the invitation. Please try again.",
     };
@@ -80,7 +79,7 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
       invited_by: actor?.id ?? null,
       invited_at: new Date().toISOString(),
     })
-    .eq("auth_user_id", invitedUser.id);
+    .eq("auth_user_id", userId);
 
   if (profileError) {
     return { status: "error", message: "The account was created, but we couldn't save their details — edit their profile below, then send the invite." };
@@ -91,7 +90,7 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
     actor_id: actor?.id ?? null,
     action: "member.invited",
     entity_type: "profiles",
-    entity_id: invitedUser.id,
+    entity_id: userId,
     metadata: { email },
   });
 

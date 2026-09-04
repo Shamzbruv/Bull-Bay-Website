@@ -6,9 +6,9 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
-  no_code: "That link is missing information it needs — it may have been forwarded or copied incorrectly. Please request a new one.",
-  exchange_failed:
-    "That link didn't work — this usually happens if it's opened on a different device or browser than the one you requested it from, or if it's already been used or has expired. Request a fresh one below and open it on the same device.",
+  no_code: "That link is missing information it needs — it may have been forwarded or copied incorrectly, or already used. Please request a new one.",
+  link_error: "That link has expired or was already used. Please request a new one.",
+  exchange_failed: "That link didn't work — it may have expired or already been used. Please request a fresh one below.",
   no_session: "We verified your link but couldn't start your session. Please try again — if it keeps happening, let the church office know.",
   session_not_found: "Your session expired before you could set a password. Please request a new reset link.",
   auth_failed: "That link didn't work or has expired. Please request a new one.",
