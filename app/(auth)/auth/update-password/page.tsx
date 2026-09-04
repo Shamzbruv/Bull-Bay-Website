@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: "Set Password" };
 
 export default async function UpdatePasswordPage() {
   const user = await getSessionUser();
-  if (!user) redirect("/login");
+  if (!user) redirect("/login?error=session_not_found");
   const profile = await getCurrentProfile();
 
   return (
