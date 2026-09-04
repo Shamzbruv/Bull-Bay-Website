@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId } from "@/lib/auth/session";
+import { DeleteButton } from "@/components/delete-button";
+import { deleteSermon } from "@/app/(pastor)/pastor/actions";
 import { SermonForm } from "./sermon-form";
 
 export const metadata: Metadata = { title: "Sermons" };
@@ -41,6 +43,7 @@ export default async function PastorSermonsPage() {
                   <th>Preached</th>
                   <th>Status</th>
                   <th />
+                  <th />
                 </tr>
               </thead>
               <tbody>
@@ -53,6 +56,9 @@ export default async function PastorSermonsPage() {
                     </td>
                     <td>
                       <Link href={`/pastor/sermons/${s.id}`}>Edit</Link>
+                    </td>
+                    <td>
+                      <DeleteButton action={deleteSermon} id={s.id} confirmText={`Delete "${s.title}" permanently?`} />
                     </td>
                   </tr>
                 ))}

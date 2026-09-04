@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useActionState } from "react";
 import { saveSermon } from "@/app/(pastor)/pastor/actions";
 import { initialActionState } from "@/lib/action-state";
@@ -11,10 +12,14 @@ type Sermon = Database["public"]["Tables"]["sermons"]["Row"];
 
 export function SermonForm({ sermon }: { sermon?: Sermon }) {
   const [state, formAction] = useActionState(saveSermon, initialActionState);
+  const [videoSource, setVideoSource] = useState(() =>
+    sermon?.video_provider === "upload" ? "upload" : sermon?.video_provider === "youtube" ? "youtube" : "none",
+  );
 
   return (
     <form className="clay-form" action={formAction}>
       {sermon && <input type="hidden" name="id" value={sermon.id} />}
+      {sermon?.video_path && <input type="hidden" name="existing_video_path" value={sermon.video_path} />}
       <div className="form-row">
         <label>
           Title
@@ -43,19 +48,59 @@ export function SermonForm({ sermon }: { sermon?: Sermon }) {
         Summary
         <textarea name="summary" defaultValue={sermon?.summary ?? ""} />
       </label>
-      <div className="form-row">
-        <label>
-          Video provider
-          <select name="video_provider" defaultValue={sermon?.video_provider ?? ""}>
-            <option value="">None yet</option>
-            <option value="youtube">YouTube</option>
-            <option value="cloudflare_stream">Cloudflare Stream</option>
-          </select>
-        </label>
-        <label>
-          Video ID
-          <input name="video_id" defaultValue={sermon?.video_id ?? ""} placeholder="YouTube video ID" />
-        </label>
+      <div>
+        <strong style={{ display: "block", marginBottom: 8, fontSize: ".82rem", color: "var(--color-blue-700)" }}>Video</strong>
+        <div className="form-row">
+          <label>
+            <input
+              type="radio"
+              name="video_source"
+              value="none"
+              checked={videoSource === "none"}
+              onChange={() => setVideoSource("none")}
+            />{" "}
+            No video yet
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="video_source"
+              value="youtube"
+              checked={videoSource === "youtube"}
+              onChange={() => setVideoSource("youtube")}
+            />{" "}
+            YouTube link
+          </label>
+          <label>
+            <input
+              type="radio"
+              name="video_source"
+              value="upload"
+              checked={videoSource === "upload"}
+              onChange={() => setVideoSource("upload")}
+            />{" "}
+            Upload a video file
+          </label>
+        </div>
+        {videoSource === "youtube" && (
+          <label>
+            YouTube link (or video ID)
+            <input
+              name="video_url"
+              defaultValue={sermon?.video_provider === "youtube" ? sermon.video_id ?? "" : ""}
+              placeholder="https://www.youtube.com/watch?v=…"
+            />
+          </label>
+        )}
+        {videoSource === "upload" && (
+          <label>
+            Video file
+            <input type="file" name="video_file" accept="video/mp4,video/webm,video/quicktime" />
+            {sermon?.video_path && (
+              <span className="form-note">A video is already uploaded — choose a new file only to replace it.</span>
+            )}
+          </label>
+        )}
       </div>
       <label>
         Transcript (optional)

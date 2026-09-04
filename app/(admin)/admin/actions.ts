@@ -83,6 +83,20 @@ export async function saveEvent(_prev: ActionState, formData: FormData): Promise
   redirect("/admin/events");
 }
 
+export async function deleteEvent(id: string): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("events.manage")) {
+    return { status: "error", message: "You don't have permission to delete events." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from("events").delete().eq("organization_id", organizationId).eq("id", id);
+  if (error) return { status: "error", message: "Couldn't delete this event." };
+  revalidatePath("/admin/events");
+  revalidatePath("/events");
+  return { status: "success", message: "Event deleted." };
+}
+
 // Groups ---------------------------------------------------------------
 export async function saveGroup(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
@@ -115,6 +129,20 @@ export async function saveGroup(_prev: ActionState, formData: FormData): Promise
   revalidatePath("/admin/groups");
   revalidatePath("/groups");
   return { status: "success", message: "Group saved." };
+}
+
+export async function deleteGroup(id: string): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("groups.manage")) {
+    return { status: "error", message: "You don't have permission to delete groups." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from("groups").delete().eq("organization_id", organizationId).eq("id", id);
+  if (error) return { status: "error", message: "Couldn't delete this group." };
+  revalidatePath("/admin/groups");
+  revalidatePath("/groups");
+  return { status: "success", message: "Group deleted." };
 }
 
 export async function respondToGroupRequest(memberId: string, approve: boolean): Promise<void> {
@@ -253,49 +281,84 @@ export async function recordExpense(_prev: ActionState, formData: FormData): Pro
 // Shop ---------------------------------------------------------------------
 export async function saveProduct(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
-  if (!organizationId) return { status: "error", message: "Something went wrong." };
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("shop.manage")) {
+    return { status: "error", message: "You don't have permission to manage products." };
+  }
   const supabase = await createClient();
 
+  const id = String(formData.get("id") || "");
   const name = String(formData.get("name") || "").trim();
   if (!name) return { status: "error", message: "Please enter a product name." };
   const priceMinor = parseJmdToMinorUnits(String(formData.get("price") || ""));
   if (priceMinor === null) return { status: "error", message: "Please enter a valid price." };
 
-  const { data: product, error } = await supabase
-    .from("products")
-    .insert({
-      organization_id: organizationId,
-      slug: slugify(String(formData.get("slug") || name)),
-      name,
-      description: String(formData.get("description") || "").trim() || null,
-      kind: String(formData.get("kind") || "physical"),
-      status: String(formData.get("status") || "draft"),
-      price_minor: priceMinor,
-    })
-    .select("id, kind")
-    .single();
+  // Existing photos the admin didn't uncheck, plus any newly chosen files —
+  // together they become the product's full image_urls array.
+  const keepImages = formData.getAll("keep_images").map(String).filter(Boolean);
+  const newFiles = formData.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
+  const uploadedUrls: string[] = [];
+  for (const file of newFiles) {
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${organizationId}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { error: uploadError } = await supabase.storage.from("shop").upload(path, buffer, { contentType: file.type || "image/jpeg" });
+    if (!uploadError) uploadedUrls.push(supabase.storage.from("shop").getPublicUrl(path).data.publicUrl);
+  }
+  const imageUrls = [...keepImages, ...uploadedUrls];
+
+  const payload = {
+    organization_id: organizationId,
+    slug: slugify(String(formData.get("slug") || name)),
+    name,
+    description: String(formData.get("description") || "").trim() || null,
+    kind: String(formData.get("kind") || "physical"),
+    status: String(formData.get("status") || "draft"),
+    price_minor: priceMinor,
+    image_urls: imageUrls,
+  };
+
+  const { data: product, error } = id
+    ? await supabase.from("products").update(payload).eq("organization_id", organizationId).eq("id", id).select("id, kind").single()
+    : await supabase.from("products").insert(payload).select("id, kind").single();
 
   if (error || !product) return { status: "error", message: "We couldn't save this product. Check the slug is unique." };
 
-  const { data: variant } = await supabase
-    .from("product_variants")
-    .insert({
-      product_id: product.id,
-      sku: `${slugify(name).toUpperCase()}-DEFAULT-${Date.now()}`,
-      name: "Default",
-      track_inventory: product.kind === "physical",
-    })
-    .select("id")
-    .single();
+  if (!id) {
+    const { data: variant } = await supabase
+      .from("product_variants")
+      .insert({
+        product_id: product.id,
+        sku: `${slugify(name).toUpperCase()}-DEFAULT-${Date.now()}`,
+        name: "Default",
+        track_inventory: product.kind === "physical",
+      })
+      .select("id")
+      .single();
 
-  const initialStock = Number(formData.get("initial_stock") || 0);
-  if (variant && product.kind === "physical" && initialStock > 0) {
-    await supabase.from("inventory_movements").insert({ variant_id: variant.id, quantity_delta: initialStock, reason: "initial_stock" });
+    const initialStock = Number(formData.get("initial_stock") || 0);
+    if (variant && product.kind === "physical" && initialStock > 0) {
+      await supabase.from("inventory_movements").insert({ variant_id: variant.id, quantity_delta: initialStock, reason: "initial_stock" });
+    }
   }
 
   revalidatePath("/admin/shop");
   revalidatePath("/shop");
-  return { status: "success", message: "Product created." };
+  return { status: "success", message: id ? "Product updated." : "Product created." };
+}
+
+export async function deleteProduct(id: string): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("shop.manage")) {
+    return { status: "error", message: "You don't have permission to delete products." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from("products").delete().eq("organization_id", organizationId).eq("id", id);
+  if (error) return { status: "error", message: "Couldn't delete this product." };
+  revalidatePath("/admin/shop");
+  revalidatePath("/shop");
+  return { status: "success", message: "Product deleted." };
 }
 
 export async function updateOrderStatus(orderId: string, status: string): Promise<void> {

@@ -13,6 +13,28 @@ function slugify(input: string) {
     .replace(/(^-|-$)/g, "");
 }
 
+/** Accepts a pasted YouTube URL in any common shape (watch, youtu.be,
+ * embed, shorts) or a bare 11-character video ID, and returns just the
+ * ID — so pasting the address bar URL "just works" instead of requiring
+ * whoever's adding the sermon to know how to extract the ID by hand. */
+function parseYouTubeId(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (/^[\w-]{11}$/.test(trimmed)) return trimmed;
+  try {
+    const url = new URL(trimmed);
+    if (url.hostname.includes("youtu.be")) return url.pathname.slice(1).split("/")[0] || null;
+    if (url.hostname.includes("youtube.com")) {
+      if (url.searchParams.get("v")) return url.searchParams.get("v");
+      const match = url.pathname.match(/\/(embed|shorts)\/([\w-]{11})/);
+      if (match) return match[2] ?? null;
+    }
+  } catch {
+    // Not a URL — fall through to null below.
+  }
+  return null;
+}
+
 export async function saveSermon(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
   if (!organizationId) return { status: "error", message: "Something went wrong." };
@@ -21,6 +43,40 @@ export async function saveSermon(_prev: ActionState, formData: FormData): Promis
   const id = String(formData.get("id") || "");
   const title = String(formData.get("title") || "").trim();
   if (!title) return { status: "error", message: "Please enter a title." };
+
+  const videoSource = String(formData.get("video_source") || "none");
+  let videoProvider: string | null = null;
+  let videoId: string | null = null;
+  let videoPath: string | null = String(formData.get("existing_video_path") || "") || null;
+
+  if (videoSource === "youtube") {
+    const raw = String(formData.get("video_url") || "").trim();
+    const parsed = parseYouTubeId(raw);
+    if (!parsed) return { status: "error", message: "Paste a valid YouTube link (or its video ID)." };
+    videoProvider = "youtube";
+    videoId = parsed;
+    videoPath = null;
+  } else if (videoSource === "upload") {
+    const file = formData.get("video_file");
+    if (file instanceof File && file.size > 0) {
+      const ext = file.name.split(".").pop() || "mp4";
+      const path = `${organizationId}/${slugify(title)}-${Date.now()}.${ext}`;
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const { error: uploadError } = await supabase.storage
+        .from("sermon-video")
+        .upload(path, buffer, { contentType: file.type || "video/mp4" });
+      if (uploadError) return { status: "error", message: "The video upload failed. Please try again." };
+      videoProvider = "upload";
+      videoPath = path;
+    } else if (videoPath) {
+      // Editing an existing sermon without choosing a new file — keep it.
+      videoProvider = "upload";
+    } else {
+      return { status: "error", message: "Choose a video file to upload." };
+    }
+  } else {
+    videoPath = null;
+  }
 
   const payload = {
     organization_id: organizationId,
@@ -33,8 +89,9 @@ export async function saveSermon(_prev: ActionState, formData: FormData): Promis
       .filter(Boolean),
     summary: String(formData.get("summary") || "").trim() || null,
     transcript: String(formData.get("transcript") || "").trim() || null,
-    video_provider: String(formData.get("video_provider") || "") || null,
-    video_id: String(formData.get("video_id") || "").trim() || null,
+    video_provider: videoProvider,
+    video_id: videoId,
+    video_path: videoPath,
     preached_at: String(formData.get("preached_at") || "") || null,
     status: String(formData.get("status") || "draft"),
     published_at: formData.get("status") === "published" ? new Date().toISOString() : null,
@@ -48,6 +105,24 @@ export async function saveSermon(_prev: ActionState, formData: FormData): Promis
   revalidatePath("/pastor/sermons");
   revalidatePath("/sermons");
   redirect("/pastor/sermons");
+}
+
+export async function deleteSermon(id: string): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("sermons.manage")) {
+    return { status: "error", message: "You don't have permission to delete sermons." };
+  }
+  const supabase = await createClient();
+  const { data: sermon } = await supabase.from("sermons").select("video_path").eq("id", id).maybeSingle();
+  const { error } = await supabase.from("sermons").delete().eq("organization_id", organizationId).eq("id", id);
+  if (error) return { status: "error", message: "Couldn't delete this sermon." };
+  if (sermon?.video_path) {
+    await supabase.storage.from("sermon-video").remove([sermon.video_path]);
+  }
+  revalidatePath("/pastor/sermons");
+  revalidatePath("/sermons");
+  return { status: "success", message: "Sermon deleted." };
 }
 
 export async function updateCareCase(caseId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {

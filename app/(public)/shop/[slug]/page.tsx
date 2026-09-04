@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
 import { AddToCartButton } from "@/components/add-to-cart-button";
+import { ProductGallery } from "@/components/product-gallery";
 import { getProductBySlug } from "@/lib/data/public";
 import { formatJmd } from "@/lib/money";
 
@@ -39,9 +40,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
         }}
       />
       <div>
-        <div className="product-thumb" style={{ minHeight: 260, fontSize: "2rem" }}>
-          {product.kind === "digital" ? "✦ Digital" : product.name.split(" ")[0]}
-        </div>
+        {product.image_urls && product.image_urls.length > 0 ? (
+          <ProductGallery images={product.image_urls} name={product.name} />
+        ) : (
+          <div className="product-thumb" style={{ minHeight: 260, fontSize: "2rem" }}>
+            {product.kind === "digital" ? "✦ Digital" : product.name.split(" ")[0]}
+          </div>
+        )}
       </div>
       <div>
         <span className="tag">{product.kind.toUpperCase()}</span>

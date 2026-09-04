@@ -2677,6 +2677,7 @@ export type Database = {
           transcript: string | null
           updated_at: string
           video_id: string | null
+          video_path: string | null
           video_provider: string | null
         }
         Insert: {
@@ -2700,6 +2701,7 @@ export type Database = {
           transcript?: string | null
           updated_at?: string
           video_id?: string | null
+          video_path?: string | null
           video_provider?: string | null
         }
         Update: {
@@ -2723,6 +2725,7 @@ export type Database = {
           transcript?: string | null
           updated_at?: string
           video_id?: string | null
+          video_path?: string | null
           video_provider?: string | null
         }
         Relationships: [

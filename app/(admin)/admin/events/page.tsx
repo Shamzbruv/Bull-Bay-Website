@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
+import { DeleteButton } from "@/components/delete-button";
+import { deleteEvent } from "@/app/(admin)/admin/actions";
 import { EventForm } from "./event-form";
 
 export const metadata: Metadata = { title: "Events" };
@@ -43,6 +45,7 @@ export default async function AdminEventsPage() {
                 <th>Starts</th>
                 <th>Status</th>
                 <th>Registrations</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -59,6 +62,13 @@ export default async function AdminEventsPage() {
                     <span className={`badge ${e.status === "published" ? "" : "gray"}`}>{e.status}</span>
                   </td>
                   <td>{e.event_registrations?.length ?? 0}</td>
+                  <td>
+                    <DeleteButton
+                      action={deleteEvent}
+                      id={e.id}
+                      confirmText={`Delete "${e.title}" permanently? This also removes its registrations.`}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

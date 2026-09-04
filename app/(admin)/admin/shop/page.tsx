@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
+import { DeleteButton } from "@/components/delete-button";
+import { deleteProduct } from "@/app/(admin)/admin/actions";
 import { formatJmd } from "@/lib/money";
 import { ProductForm } from "./product-form";
 import { OrderStatus } from "./order-status";
@@ -15,7 +17,11 @@ export default async function AdminShopPage() {
 
   const supabase = await createClient();
   const [{ data: products }, { data: orders }] = await Promise.all([
-    supabase.from("products").select("id, name, kind, status, price_minor").eq("organization_id", organizationId ?? "").order("name"),
+    supabase
+      .from("products")
+      .select("id, name, description, kind, status, price_minor, image_urls")
+      .eq("organization_id", organizationId ?? "")
+      .order("name"),
     supabase
       .from("orders")
       .select("id, order_number, customer_name, customer_email, total_minor, status, created_at")
@@ -44,20 +50,42 @@ export default async function AdminShopPage() {
           <table className="data-table">
             <thead>
               <tr>
+                <th>Photo</th>
                 <th>Name</th>
                 <th>Kind</th>
                 <th>Price</th>
                 <th>Status</th>
+                <th />
               </tr>
             </thead>
             <tbody>
               {products?.map((p) => (
                 <tr key={p.id}>
-                  <td>{p.name}</td>
+                  <td>
+                    {p.image_urls?.[0] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.image_urls[0]} alt="" style={{ width: 44, height: 44, objectFit: "cover", borderRadius: 8 }} />
+                    ) : (
+                      <span style={{ color: "var(--color-muted)" }}>—</span>
+                    )}
+                  </td>
+                  <td>
+                    <details className="table-editor">
+                      <summary>{p.name}</summary>
+                      <ProductForm product={p} />
+                    </details>
+                  </td>
                   <td>{p.kind}</td>
                   <td>{formatJmd(p.price_minor)}</td>
                   <td>
                     <span className={`badge ${p.status === "active" ? "" : "gray"}`}>{p.status}</span>
+                  </td>
+                  <td>
+                    <DeleteButton
+                      action={deleteProduct}
+                      id={p.id}
+                      confirmText={`Delete "${p.name}" permanently? Past orders keep their record of it, but it disappears from the store.`}
+                    />
                   </td>
                 </tr>
               ))}

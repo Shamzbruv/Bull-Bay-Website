@@ -74,9 +74,23 @@ export function LoginForm() {
       <p className="form-note" style={{ marginTop: 16, textAlign: "center" }}>
         <Link href="/forgot-password">Forgot your password?</Link>
       </p>
-      <p className="form-note" style={{ marginTop: 8 }}>
-        New here? <Link href="/join">Request to join the church</Link> and we&apos;ll set up your account.
-      </p>
+      <div
+        style={{
+          marginTop: 18,
+          padding: "16px 18px",
+          borderRadius: 14,
+          background: "rgba(214,173,87,.14)",
+          border: "1px solid rgba(214,173,87,.45)",
+          textAlign: "center",
+        }}
+      >
+        <p style={{ margin: "0 0 10px", fontSize: ".85rem", color: "var(--color-blue-700)", fontWeight: 700 }}>
+          New here? We&apos;d love to have you.
+        </p>
+        <Link className="primary-button compact" href="/join" style={{ justifyContent: "center", width: "100%" }}>
+          Request to join the church <span>→</span>
+        </Link>
+      </div>
     </form>
   );
 }

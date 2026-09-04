@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
+import { DeleteButton } from "@/components/delete-button";
+import { deleteGroup } from "@/app/(admin)/admin/actions";
 import { GroupForm } from "./group-form";
 import { RequestButtons } from "./request-buttons";
 
@@ -62,6 +64,7 @@ export default async function AdminGroupsPage() {
                 <th>Category</th>
                 <th>Members</th>
                 <th>Active</th>
+                <th />
               </tr>
             </thead>
             <tbody>
@@ -76,6 +79,13 @@ export default async function AdminGroupsPage() {
                   <td>{g.category}</td>
                   <td>{g.group_members?.length ?? 0}</td>
                   <td>{g.is_active ? "Yes" : "No"}</td>
+                  <td>
+                    <DeleteButton
+                      action={deleteGroup}
+                      id={g.id}
+                      confirmText={`Delete "${g.name}" permanently? This also removes its membership list.`}
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>

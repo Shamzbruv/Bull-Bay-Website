@@ -49,7 +49,14 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           {products.length === 0 && <p className="panel-empty">No items available right now.</p>}
           {products.map((product) => (
             <article className="product-card" key={product.id}>
-              <div className="product-thumb">{product.kind === "digital" ? "✦ Digital" : product.name.split(" ")[0]}</div>
+              {product.image_urls?.[0] ? (
+                <div className="product-thumb" style={{ padding: 0, overflow: "hidden" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element -- Supabase Storage public URL */}
+                  <img src={product.image_urls[0]} alt="" style={{ width: "100%", height: "100%", minHeight: 150, objectFit: "cover" }} />
+                </div>
+              ) : (
+                <div className="product-thumb">{product.kind === "digital" ? "✦ Digital" : product.name.split(" ")[0]}</div>
+              )}
               <h3>{product.name}</h3>
               {product.description && <p>{product.description}</p>}
               <footer>
