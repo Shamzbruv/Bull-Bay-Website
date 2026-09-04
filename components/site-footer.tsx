@@ -81,6 +81,7 @@ export async function SiteFooter() {
               <Link href="/visit">Plan Your Visit</Link>
               <Link href="/prayer">Prayer Request</Link>
               <Link href="/contact">Contact &amp; Next Steps</Link>
+              <Link href="/join">Request to Join</Link>
               <Link href="/serve">Serve</Link>
               <Link href="/member">Member Portal</Link>
             </div>

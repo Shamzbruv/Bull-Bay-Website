@@ -85,6 +85,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       label: "Overview",
       items: [
         { href: "/admin", label: "Dashboard", icon: "home" },
+        { href: "/member/profile", label: "My profile", icon: "person" },
         ...(allowed("sites.manage", "roles.manage")
           ? [{ href: "/admin/setup", label: "Setup center", icon: "sparkles" as const }]
           : []),
@@ -150,12 +151,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     {
       label: "Administration",
       items: [
-        ...(allowed("roles.manage")
-          ? [
-              { href: "/admin/roles", label: "Roles & access", icon: "shield" as const },
-              { href: "/admin/audit", label: "Audit log", icon: "archive" as const },
-            ]
-          : []),
+        // Roles & access is deliberately gated on the super_admin role
+        // itself, not the roles.manage permission — only the top admin
+        // sees or grants roles. See app/(admin)/admin/roles/page.tsx.
+        ...(roleCodes.has("super_admin") ? [{ href: "/admin/roles", label: "Roles & access", icon: "shield" as const }] : []),
+        ...(allowed("roles.manage") ? [{ href: "/admin/audit", label: "Audit log", icon: "archive" as const }] : []),
         ...(allowed("sites.manage") ? [{ href: "/admin/settings", label: "Settings", icon: "settings" as const }] : []),
       ],
     },

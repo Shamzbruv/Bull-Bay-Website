@@ -129,6 +129,63 @@ export async function submitConnectionCard(_prev: ActionState, formData: FormDat
   return { status: "success", message: "Thanks for reaching out! A member of our team will be in touch soon." };
 }
 
+/**
+ * A non-member asking to join the church — distinct from the general
+ * connection card: this one is a decisive "make me a member" ask, so it
+ * shows up on admin/visitors with its own Approve/Decline actions, and
+ * approving it provisions the applicant a real member login (see
+ * lib/members/invite.ts) rather than just changing a status label.
+ */
+export async function submitMembershipRequest(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  if (!organizationId) return { status: "error", message: "Something went wrong. Please try again." };
+
+  const firstName = String(formData.get("firstName") || "").trim();
+  const lastName = String(formData.get("lastName") || "").trim();
+  const email = String(formData.get("email") || "").trim();
+  const phone = String(formData.get("phone") || "").trim();
+  const message = String(formData.get("message") || "").trim();
+
+  if (!firstName || !lastName || !email) {
+    return { status: "error", message: "Please fill in your name and email." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("contact_submissions").insert({
+    organization_id: organizationId,
+    kind: "membership_request",
+    first_name: firstName,
+    last_name: lastName,
+    email,
+    phone: phone || null,
+    interest: "Becoming a member",
+    message: message || null,
+  });
+
+  if (error) return { status: "error", message: "We couldn't send your request. Please try again." };
+
+  await notifyOffice(organizationId, {
+    subject: `${firstName} ${lastName} asked to join the church`,
+    html: renderStaffNotificationEmail({
+      heading: "New request to join the church",
+      intro: "Review and approve from Visitor Follow-up — approving creates their member account and emails them an invitation.",
+      fields: [
+        { label: "Name", value: `${firstName} ${lastName}` },
+        { label: "Email", value: email },
+        { label: "Phone", value: phone || null },
+        { label: "Message", value: message || null },
+      ],
+      actionLabel: "Review request",
+      actionUrl: `${SITE_URL}/admin/visitors`,
+    }),
+  }).catch(() => {});
+
+  return {
+    status: "success",
+    message: "Thank you! Your request has been sent to our pastor and team — we'll be in touch soon to welcome you in.",
+  };
+}
+
 export async function registerForEvent(
   eventId: string,
   _prev: ActionState,

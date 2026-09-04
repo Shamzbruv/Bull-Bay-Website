@@ -23,6 +23,7 @@ const NAV_SECTIONS: DashboardNavSection[] = [
   {
     label: "Care & records",
     items: [
+      { href: "/member/prayer", label: "Prayer request", icon: "heart" },
       { href: "/member/documents", label: "Documents", icon: "file" },
       { href: "/member/counsel", label: "Pastor & calendar", icon: "calendar" },
       { href: "/member/directory", label: "Member directory", icon: "people" },

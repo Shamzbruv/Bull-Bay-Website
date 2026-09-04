@@ -89,6 +89,17 @@ export default async function VisitPage() {
               Let us know you&apos;re coming <span>→</span>
             </Link>
           </div>
+
+          <div className="panel" style={{ marginTop: 20 }}>
+            <h2>Already feel at home?</h2>
+            <p style={{ color: "var(--color-muted-2)" }}>
+              If you&apos;re ready to call Bull Bay your church home, you can request to join — our pastor and team
+              will review it and welcome you into membership.
+            </p>
+            <Link className="secondary-button compact" href="/join">
+              Request to join <span>→</span>
+            </Link>
+          </div>
         </div>
         <aside className="info-card">
           <span className="card-icon">◷</span>

@@ -45,6 +45,28 @@ export async function addPastoralTeamMember(_prev: ActionState, formData: FormDa
   return { status: "success", message: `${name} added to the pastoral team.` };
 }
 
+export async function updatePastoralTeamMember(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { organizationId, allowed } = await requireCalendarManage();
+  if (!organizationId || !allowed) return { status: "error", message: "You don't have permission to do this." };
+
+  const roleTitle = String(formData.get("role_title") || "").trim();
+  const bio = String(formData.get("bio") || "").trim();
+  const isPastor = formData.get("is_pastor") === "on";
+  if (!roleTitle) return { status: "error", message: "Enter a role title." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("pastoral_team_members")
+    .update({ role_title: roleTitle, bio: bio || null, is_pastor: isPastor })
+    .eq("organization_id", organizationId)
+    .eq("id", id);
+  if (error) return { status: "error", message: "Couldn't save those changes." };
+
+  revalidatePath("/admin/pastoral-team");
+  revalidatePath("/member/counsel");
+  return { status: "success", message: "Updated." };
+}
+
 export async function toggleTeamMemberActive(id: string, isActive: boolean): Promise<void> {
   const { allowed } = await requireCalendarManage();
   if (!allowed) return;

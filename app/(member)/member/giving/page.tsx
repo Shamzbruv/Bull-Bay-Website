@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
+import { getActiveFunds } from "@/lib/data/public";
 import { formatJmd } from "@/lib/money";
+import { GivingForm } from "@/app/(public)/give/giving-form";
 
 export const metadata: Metadata = { title: "My Giving" };
 
 export default async function MyGivingPage() {
-  const profile = await getCurrentProfile();
+  const [profile, funds] = await Promise.all([getCurrentProfile(), getActiveFunds()]);
   const supabase = await createClient();
   const { data: donations } = await supabase
     .from("donations")
@@ -21,9 +23,17 @@ export default async function MyGivingPage() {
       <div className="dashboard-header">
         <div>
           <h1>My Giving</h1>
-          <p>Your giving history and receipts.</p>
+          <p>Give directly from here, and see your full giving history and receipts.</p>
         </div>
       </div>
+
+      {funds.length > 0 && (
+        <div className="panel">
+          <h2>Give now</h2>
+          <GivingForm funds={funds.map((f) => ({ id: f.id, name: f.name }))} signedIn />
+        </div>
+      )}
+
       <div className="stat-grid">
         <div className="stat-card">
           <b>{formatJmd(total)}</b>

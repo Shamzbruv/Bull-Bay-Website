@@ -67,6 +67,38 @@ export async function requirePermission(organizationId: string, permission: stri
   return permissions.has(permission);
 }
 
+/** The role codes (e.g. "super_admin", "secretary") the current user holds
+ * in this organization — distinct from permission codes, for the rare
+ * screen that needs to gate on the actual role rather than what it grants
+ * (roles.manage is deliberately only ever seeded onto super_admin today,
+ * but a page that must never widen even if that changes should check the
+ * role directly). */
+export async function getUserRoleCodes(organizationId: string): Promise<Set<string>> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return new Set();
+
+  const { data } = await supabase
+    .from("user_roles")
+    .select("roles!inner(code)")
+    .eq("organization_id", organizationId)
+    .eq("user_id", user.id);
+
+  const codes = new Set<string>();
+  for (const row of data ?? []) {
+    const role = row.roles as unknown as { code: string } | null;
+    if (role?.code) codes.add(role.code);
+  }
+  return codes;
+}
+
+export async function isSuperAdmin(organizationId: string): Promise<boolean> {
+  const roleCodes = await getUserRoleCodes(organizationId);
+  return roleCodes.has("super_admin");
+}
+
 /** Whether the current session has satisfied its MFA challenge (aal2). Staff/pastor/admin
  * route groups require this once the user has enrolled a factor. */
 export async function getAuthenticatorAssuranceLevel() {

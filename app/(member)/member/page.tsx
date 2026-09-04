@@ -294,10 +294,10 @@ export default async function MemberDashboardPage() {
           tone="warm"
         >
           <QuickActionGrid>
-            <QuickActionLink href="/prayer" icon="♡" tone="rose" title="Request prayer" description="Share publicly or confidentially" />
+            <QuickActionLink href="/member/prayer" icon="♡" tone="rose" title="Request prayer" description="Share confidentially with the pastor" />
             <QuickActionLink href="/member/documents" icon="▤" tone="gold" title="Request a document" description="Letters, certificates, or JP help" />
             <QuickActionLink href="/member/counsel" icon="◌" tone="plum" title="Talk with someone" description="Ask for pastoral care or counsel" />
-            <QuickActionLink href="/give" icon="$" tone="green" title="Give" description="Offer securely or view giving options" />
+            <QuickActionLink href="/member/giving" icon="$" tone="green" title="Give" description="Give directly, or view your history" />
           </QuickActionGrid>
         </DashboardPanel>
       </DashboardColumns>

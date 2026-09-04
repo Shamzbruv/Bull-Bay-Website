@@ -4,27 +4,17 @@ import { revalidatePath } from "next/cache";
 import { randomInt } from "node:crypto";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
-import { SITE_URL } from "@/lib/org";
 import { sendMail } from "@/lib/email/resend";
-import { renderInviteEmail, renderTempPasswordEmail } from "@/lib/email/templates";
-import { generateAuthLink } from "@/lib/supabase/generate-link";
+import { renderTempPasswordEmail } from "@/lib/email/templates";
+import { createInvitedMember } from "@/lib/members/invite";
 import type { ActionState } from "@/app/(public)/actions";
 
 /**
- * The only way an account gets created — never public self-service. Uses
- * the Supabase Admin API (service role, server-only) to create the
- * auth.users row directly, then fills in the membership/job/personal
- * details the admin collected for the new profile.
- *
- * The invite email is entirely ours: generateAuthLink() mints a real,
- * working one-time invite link but sends nothing itself, so the only
- * email that goes out is the one sendMail() sends here, through Resend
- * directly. Supabase's own mailer (and its per-address rate limit) is
- * never involved. Uses a raw REST call rather than
- * admin.auth.admin.generateLink() — the installed supabase-js sends the
- * redirect target in a field GoTrue's REST API silently ignores, so every
- * link it minted redirected to the bare site root with no path. See
- * lib/supabase/generate-link.ts.
+ * The only way an account gets created — never public self-service (the
+ * one exception, "request to join" being approved from admin/visitors,
+ * goes through this same createInvitedMember() helper). Collects the
+ * extra membership/job/personal details the admin has on hand and saves
+ * them onto the profile the invite already provisioned.
  */
 export async function inviteMember(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
@@ -36,37 +26,29 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
   const email = String(formData.get("email") || "").trim().toLowerCase();
   const firstName = String(formData.get("first_name") || "").trim();
   const lastName = String(formData.get("last_name") || "").trim();
-  if (!email || !firstName || !lastName) {
-    return { status: "error", message: "Please provide at least an email, first name and last name." };
-  }
-
-  const admin = createServiceRoleClient();
-  const redirectTo = `${SITE_URL}/auth/callback?next=${encodeURIComponent("/auth/update-password")}`;
-
-  const { actionLink, userId, error: inviteError } = await generateAuthLink({ type: "invite", email, redirectTo });
-  if (inviteError || !userId || !actionLink) {
-    return {
-      status: "error",
-      message: inviteError?.toLowerCase().includes("already been registered")
-        ? "This email already has an account."
-        : "We couldn't create the invitation. Please try again.",
-    };
-  }
 
   const supabase = await createClient();
   const {
     data: { user: actor },
   } = await supabase.auth.getUser();
 
-  // The new-auth-user trigger already created a bare profile row for this
-  // email — fill in everything the admin collected.
-  const { error: profileError } = await admin
+  const result = await createInvitedMember({
+    organizationId,
+    actorId: actor?.id ?? null,
+    email,
+    firstName,
+    lastName,
+    phone: String(formData.get("phone") || "").trim(),
+    membershipStatus: String(formData.get("membership_status") || "visitor"),
+  });
+  if (!result.ok) return { status: "error", message: result.message };
+
+  // The invite already saved name/phone/membership status — layer on the
+  // rest of what the admin collected.
+  const admin = createServiceRoleClient();
+  await admin
     .from("profiles")
     .update({
-      first_name: firstName,
-      last_name: lastName,
-      phone: String(formData.get("phone") || "").trim() || null,
-      membership_status: String(formData.get("membership_status") || "visitor"),
       job_title: String(formData.get("job_title") || "").trim() || null,
       employer: String(formData.get("employer") || "").trim() || null,
       marital_status: String(formData.get("marital_status") || "") || null,
@@ -75,35 +57,12 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
       parish: String(formData.get("parish") || "").trim() || null,
       emergency_contact_name: String(formData.get("emergency_contact_name") || "").trim() || null,
       emergency_contact_phone: String(formData.get("emergency_contact_phone") || "").trim() || null,
-      must_change_password: true,
-      invited_by: actor?.id ?? null,
-      invited_at: new Date().toISOString(),
     })
-    .eq("auth_user_id", userId);
-
-  if (profileError) {
-    return { status: "error", message: "The account was created, but we couldn't save their details — edit their profile below, then send the invite." };
-  }
-
-  await admin.from("audit_logs").insert({
-    organization_id: organizationId,
-    actor_id: actor?.id ?? null,
-    action: "member.invited",
-    entity_type: "profiles",
-    entity_id: userId,
-    metadata: { email },
-  });
-
-  const { sent } = await sendMail({
-    to: email,
-    subject: `You're invited to the Bull Bay church platform`,
-    html: renderInviteEmail({ recipientName: firstName, actionUrl: actionLink }),
-  });
+    .eq("organization_id", organizationId)
+    .ilike("email", result.email);
 
   revalidatePath("/admin/people");
-  return sent
-    ? { status: "success", message: `Invitation sent to ${email}.` }
-    : { status: "error", message: `Account created for ${email}, but the invite email couldn't be sent. Use "Reset password" instead to get them a temporary password.` };
+  return { status: "success", message: `Invitation sent to ${result.email}.` };
 }
 
 function generateTempPassword() {

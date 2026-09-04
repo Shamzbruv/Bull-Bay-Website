@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getOrganizationId, isSuperAdmin } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { InviteForm } from "./invite-form";
 import { RevokeButton } from "./revoke-button";
@@ -9,8 +9,11 @@ export const metadata: Metadata = { title: "Roles & Staff" };
 
 export default async function AdminRolesPage() {
   const organizationId = await getOrganizationId();
-  const permissions = await getUserPermissions(organizationId ?? "");
-  if (!permissions.has("roles.manage")) return <AccessDenied />;
+  // Deliberately checks the actual role, not the roles.manage permission —
+  // only super_admin (you) sees or grants roles, full stop, even if a
+  // future role were ever seeded with that permission by mistake.
+  const allowed = organizationId ? await isSuperAdmin(organizationId) : false;
+  if (!allowed) return <AccessDenied />;
 
   const supabase = await createClient();
   const [{ data: roles }, { data: assignments }] = await Promise.all([
@@ -41,7 +44,7 @@ export default async function AdminRolesPage() {
       <div className="panel">
         <h2>Invite or assign staff</h2>
         <InviteForm roles={roles ?? []} />
-        <p className="form-note">If the email already belongs to a member, the role is added immediately. New people receive a branded invitation and must enable two-factor authentication before opening a staff workspace.</p>
+        <p className="form-note">If the email already belongs to a member, the role is added immediately. New people receive a branded invitation to set their password.</p>
       </div>
 
       <div className="panel">
