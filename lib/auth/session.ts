@@ -1,10 +1,28 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { ORGANIZATION_SLUG } from "@/lib/org";
 
-/** The single seeded organization's id. Cached per-request via React's fetch dedupe is not
- * available for arbitrary Supabase calls, so callers should call this once per request and
- * thread the id through rather than re-querying repeatedly. */
-export async function getOrganizationId(): Promise<string | null> {
+/**
+ * Every layout and most pages call several of the helpers below on every
+ * single request — a protected page's layout alone used to trigger its own
+ * auth.getUser() plus the page's own separate auth.getUser() (inside
+ * loadDashboardContext), each a full network round trip to Supabase. None
+ * of that ever changes mid-request, so it's wrapped in React's cache():
+ * the first call actually queries Supabase, every other call for the same
+ * function+arguments in the same request reuses that result. This is what
+ * was making sign-in (and every navigation after it) feel slow — not a
+ * single slow query, but a stack of redundant ones.
+ */
+export const getAuthUser = cache(async () => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+});
+
+/** The single seeded organization's id. Cached per-request. */
+export const getOrganizationId = cache(async (): Promise<string | null> => {
   const supabase = await createClient();
   const { data } = await supabase
     .from("organizations")
@@ -12,23 +30,17 @@ export async function getOrganizationId(): Promise<string | null> {
     .eq("slug", ORGANIZATION_SLUG)
     .single();
   return data?.id ?? null;
-}
+});
 
 export async function getSessionUser() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+  return getAuthUser();
 }
 
-export async function getCurrentProfile() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export const getCurrentProfile = cache(async () => {
+  const user = await getAuthUser();
   if (!user) return null;
 
+  const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
@@ -36,16 +48,14 @@ export async function getCurrentProfile() {
     .maybeSingle();
 
   return profile;
-}
+});
 
 /** All permission codes the current user holds in the given organization. */
-export async function getUserPermissions(organizationId: string): Promise<Set<string>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export const getUserPermissions = cache(async (organizationId: string): Promise<Set<string>> => {
+  const user = await getAuthUser();
   if (!user) return new Set();
 
+  const supabase = await createClient();
   const { data } = await supabase
     .from("user_roles")
     .select("roles!inner(role_permissions(permission_code))")
@@ -60,7 +70,7 @@ export async function getUserPermissions(organizationId: string): Promise<Set<st
     }
   }
   return codes;
-}
+});
 
 export async function requirePermission(organizationId: string, permission: string) {
   const permissions = await getUserPermissions(organizationId);
@@ -73,13 +83,11 @@ export async function requirePermission(organizationId: string, permission: stri
  * (roles.manage is deliberately only ever seeded onto super_admin today,
  * but a page that must never widen even if that changes should check the
  * role directly). */
-export async function getUserRoleCodes(organizationId: string): Promise<Set<string>> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export const getUserRoleCodes = cache(async (organizationId: string): Promise<Set<string>> => {
+  const user = await getAuthUser();
   if (!user) return new Set();
 
+  const supabase = await createClient();
   const { data } = await supabase
     .from("user_roles")
     .select("roles!inner(code)")
@@ -92,7 +100,7 @@ export async function getUserRoleCodes(organizationId: string): Promise<Set<stri
     if (role?.code) codes.add(role.code);
   }
   return codes;
-}
+});
 
 export async function isSuperAdmin(organizationId: string): Promise<boolean> {
   const roleCodes = await getUserRoleCodes(organizationId);

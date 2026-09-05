@@ -47,13 +47,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!isStaff) redirect("/member");
 
   const supabase = await createClient();
-  const { data: roleRows } = profile?.auth_user_id
-    ? await supabase
-        .from("user_roles")
-        .select("roles(code)")
-        .eq("organization_id", organizationId)
-        .eq("user_id", profile.auth_user_id)
-    : { data: [] };
+  const [{ data: roleRows }, avatarUrl] = await Promise.all([
+    profile?.auth_user_id
+      ? supabase
+          .from("user_roles")
+          .select("roles(code)")
+          .eq("organization_id", organizationId)
+          .eq("user_id", profile.auth_user_id)
+      : Promise.resolve({ data: [] }),
+    getAvatarUrl(profile?.avatar_path),
+  ]);
   const roleCodes = new Set(
     (roleRows ?? []).flatMap((row) => {
       const role = row.roles as unknown as { code: string } | null;
@@ -79,7 +82,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const user = {
     name: name || profile?.email?.split("@")[0] || "Church staff",
     email: profile?.email,
-    avatarUrl: await getAvatarUrl(profile?.avatar_path),
+    avatarUrl,
   };
   const allowed = (...required: string[]) => required.some((permission) => permissions.has(permission));
   const allSections: DashboardNavSection[] = [

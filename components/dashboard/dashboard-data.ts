@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser, getCurrentProfile } from "@/lib/auth/session";
 
 type DashboardRole = {
   code: string;
@@ -10,17 +11,19 @@ type DashboardRole = {
  * Loads the signed-in person's dashboard identity and, when requested, their
  * staff permissions. Unlike the older session helpers, this keeps query
  * failures so a dashboard can distinguish unavailable data from an empty list.
+ *
+ * Routes its user/profile lookups through the cached session helpers
+ * (getAuthUser/getCurrentProfile) instead of querying fresh — every layout
+ * already calls those on the same request, so this reuses that result
+ * rather than paying for another auth.getUser() and another profiles query.
  */
 export async function loadDashboardContext(includeAccess = false) {
   const supabase = await createClient();
   const errors: string[] = [];
-  const authResult = await supabase.auth.getUser();
-
-  if (authResult.error) errors.push(`Session: ${authResult.error.message}`);
-  const user = authResult.data.user;
+  const user = await getAuthUser();
 
   if (!user) {
-    if (!authResult.error) errors.push("Session: No signed-in user could be found. Please sign in again.");
+    errors.push("Session: No signed-in user could be found. Please sign in again.");
     return {
       supabase,
       user: null,
@@ -32,16 +35,8 @@ export async function loadDashboardContext(includeAccess = false) {
     };
   }
 
-  const profileResult = await supabase
-    .from("profiles")
-    .select(
-      "id, organization_id, first_name, last_name, email, phone, city, household_id, emergency_contact_name, communication_email_opt_in, communication_sms_opt_in, signature_path, stamp_path",
-    )
-    .eq("auth_user_id", user.id)
-    .maybeSingle();
-
-  if (profileResult.error) errors.push(`Profile: ${profileResult.error.message}`);
-  if (!profileResult.data && !profileResult.error) {
+  const profile = await getCurrentProfile();
+  if (!profile) {
     errors.push("Profile: This account is not linked to a church profile yet. Ask an administrator to link it.");
   }
 
@@ -49,11 +44,11 @@ export async function loadDashboardContext(includeAccess = false) {
   const roleCodes = new Set<string>();
   const roleNames: string[] = [];
 
-  if (includeAccess && profileResult.data) {
+  if (includeAccess && profile) {
     const accessResult = await supabase
       .from("user_roles")
       .select("roles!inner(code, name, role_permissions(permission_code))")
-      .eq("organization_id", profileResult.data.organization_id)
+      .eq("organization_id", profile.organization_id)
       .eq("user_id", user.id);
 
     if (accessResult.error) errors.push(`Roles and permissions: ${accessResult.error.message}`);
@@ -70,7 +65,7 @@ export async function loadDashboardContext(includeAccess = false) {
   return {
     supabase,
     user,
-    profile: profileResult.data,
+    profile,
     permissions,
     roleCodes,
     roleNames,

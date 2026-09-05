@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { TrendAreaChart, ComparisonBarChart } from "@/components/charts";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
 import { formatJmd } from "@/lib/money";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { addQueryError, loadDashboardContext } from "@/components/dashboard/dashboard-data";
 import {
   ActivityItem,
@@ -130,8 +131,17 @@ export default async function PastorDashboardPage() {
           .order("created_at", { ascending: false })
           .limit(6)
       : noRows(),
-    hasPastoralWorkspace
-      ? supabase
+    // Uses the service-role client, not the RLS-scoped `supabase`: the
+    // "care_cases scoped read" policy currently recurses into itself via
+    // care_case_access (a live bug — see
+    // 20260904050000_fix_care_cases_rls_recursion.sql, not yet applied to
+    // the database), which turns this query into an error for every
+    // pastor until that migration runs. Gating on canManageCare here
+    // (rather than the broader hasPastoralWorkspace) reproduces exactly
+    // what that policy's staff-visibility clause allows, so bypassing RLS
+    // doesn't show this to anyone the real policy wouldn't have.
+    canManageCare
+      ? createServiceRoleClient()
           .from("care_cases")
           .select("id, category, status, summary, created_at", { count: "exact" })
           .eq("organization_id", organizationId)

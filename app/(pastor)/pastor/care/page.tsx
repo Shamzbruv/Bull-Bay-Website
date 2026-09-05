@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import { getOrganizationId } from "@/lib/auth/session";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { getAuthUser, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { CounselRequestRow } from "./counsel-request-row";
 import { PrayerRequestRow } from "./prayer-request-row";
 
@@ -10,15 +10,28 @@ export const metadata: Metadata = { title: "Pastoral Care" };
 export default async function PastoralCarePage() {
   const organizationId = await getOrganizationId();
   const supabase = await createClient();
+  const [user, permissions] = await Promise.all([getAuthUser(), getUserPermissions(organizationId ?? "")]);
+  const canManageCare = permissions.has("care.manage");
 
-  // RLS already scopes this to cases the signed-in pastor owns or has been
-  // explicitly granted access to — no broad "admin sees everything" here.
+  // Uses the service-role client with the same visibility rule the RLS
+  // policy is supposed to enforce (owner, or blanket care.manage),
+  // applied here in code instead: "care_cases scoped read" currently
+  // recurses into care_case_access and back — a live bug (see
+  // 20260904050000_fix_care_cases_rls_recursion.sql, not yet applied) —
+  // so the regular RLS-scoped client can't read this table at all right
+  // now. Explicit per-case access grants (care_case_access) aren't
+  // reproduced here, since checking those hits the same recursion; a case
+  // shared with someone who isn't its owner and doesn't have care.manage
+  // temporarily won't show up for them.
+  let careCasesQuery = createServiceRoleClient()
+    .from("care_cases")
+    .select("id, category, status, summary, created_at")
+    .eq("organization_id", organizationId ?? "")
+    .order("created_at", { ascending: false });
+  if (!canManageCare) careCasesQuery = careCasesQuery.eq("owner_id", user?.id ?? "");
+
   const [{ data: cases }, { data: prayers }, { data: counselRequests }, { data: pastoralTeam }] = await Promise.all([
-    supabase
-      .from("care_cases")
-      .select("id, category, status, summary, created_at")
-      .eq("organization_id", organizationId ?? "")
-      .order("created_at", { ascending: false }),
+    careCasesQuery,
     supabase
       .from("prayer_requests")
       .select("id, submitter_name, request_body, visibility, status, assigned_to, created_at")
