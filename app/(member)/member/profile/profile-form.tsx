@@ -150,10 +150,9 @@ export function ProfileForm({ profile, onboarding = false }: { profile: Profile;
           <label>
             Gender
             <select name="gender" defaultValue={profile.gender ?? ""}>
-              <option value="">Prefer not to say</option>
+              <option value="" />
               <option value="female">Female</option>
               <option value="male">Male</option>
-              <option value="other">Other</option>
             </select>
           </label>
         </div>

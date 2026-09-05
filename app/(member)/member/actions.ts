@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { ActionState } from "@/app/(public)/actions";
 
 const CONTACT_METHODS = new Set(["email", "sms", "whatsapp", "phone"]);
-const GENDERS = new Set(["female", "male", "other"]);
+const GENDERS = new Set(["female", "male"]);
 const MARITAL_STATUSES = new Set(["single", "married", "widowed", "divorced", "separated"]);
 
 type ParsedField = { value: string | null; error: string | null };
