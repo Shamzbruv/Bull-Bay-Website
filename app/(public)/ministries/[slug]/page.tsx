@@ -34,7 +34,7 @@ export default async function MinistryDetailPage({ params }: { params: Promise<{
 
       {leaders.length > 0 && (
         <div className="panel" style={{ maxWidth: 480 }}>
-          <h2>Ministry leaders</h2>
+          <h2>Ministry team</h2>
           <div style={{ display: "grid", gap: 8 }}>
             {leaders.map((l, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>

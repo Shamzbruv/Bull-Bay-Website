@@ -1,5 +1,6 @@
 import { WorkspaceShell } from "@/components/workspace-shell";
 import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
+import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { getAvatarUrl } from "@/lib/members/avatar";
 
@@ -78,6 +79,18 @@ const PASTORAL_PERMISSIONS = [
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
   const [organizationId, profile] = await Promise.all([getOrganizationId(), getCurrentProfile()]);
   const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+
+  const supabase = await createClient();
+  const { data: ledMinistry } = profile
+    ? await supabase.from("ministries").select("id").eq("leader_profile_id", profile.id).limit(1).maybeSingle()
+    : { data: null };
+  const leadsMinistry = Boolean(ledMinistry);
+  const sections: DashboardNavSection[] = NAV_SECTIONS.map((section) =>
+    section.label === "Church life" && leadsMinistry
+      ? { ...section, items: [...section.items, { href: "/member/ministry-team", label: "My Team", icon: "team" as const }] }
+      : section,
+  );
+
   const name = [profile?.first_name, profile?.last_name].filter(Boolean).join(" ").trim();
   const user = {
     name: name || profile?.email?.split("@")[0] || "Church member",
@@ -97,7 +110,7 @@ export default async function MemberLayout({ children }: { children: React.React
       title="My Church"
       subtitle="Member portal"
       tone="member"
-      sections={NAV_SECTIONS}
+      sections={sections}
       user={user}
       workspaces={workspaces}
     >

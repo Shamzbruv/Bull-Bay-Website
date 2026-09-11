@@ -145,6 +145,54 @@ export async function deleteGroup(id: string): Promise<ActionState> {
   return { status: "success", message: "Group deleted." };
 }
 
+// Ministries -------------------------------------------------------------
+export async function saveMinistry(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("content.manage")) {
+    return { status: "error", message: "You don't have permission to manage ministries." };
+  }
+  const supabase = await createClient();
+
+  const id = String(formData.get("id") || "");
+  const name = String(formData.get("name") || "").trim();
+  if (!name) return { status: "error", message: "Please enter a name." };
+  const leaderProfileId = String(formData.get("leader_profile_id") || "").trim();
+
+  const payload = {
+    organization_id: organizationId,
+    slug: slugify(String(formData.get("slug") || name)),
+    name,
+    description: String(formData.get("description") || "").trim() || null,
+    icon: String(formData.get("icon") || "").trim() || null,
+    leader_profile_id: leaderProfileId || null,
+    is_active: formData.get("is_active") === "on",
+  };
+
+  const { error } = id
+    ? await supabase.from("ministries").update(payload).eq("organization_id", organizationId).eq("id", id)
+    : await supabase.from("ministries").insert(payload);
+
+  if (error) return { status: "error", message: "We couldn't save this ministry. Check the slug is unique." };
+  revalidatePath("/admin/ministries");
+  revalidatePath("/ministries");
+  return { status: "success", message: "Ministry saved." };
+}
+
+export async function deleteMinistry(id: string): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("content.manage")) {
+    return { status: "error", message: "You don't have permission to delete ministries." };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.from("ministries").delete().eq("organization_id", organizationId).eq("id", id);
+  if (error) return { status: "error", message: "Couldn't delete this ministry." };
+  revalidatePath("/admin/ministries");
+  revalidatePath("/ministries");
+  return { status: "success", message: "Ministry deleted." };
+}
+
 export async function respondToGroupRequest(memberId: string, approve: boolean): Promise<void> {
   const supabase = await createClient();
   if (approve) {

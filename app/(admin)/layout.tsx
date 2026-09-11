@@ -101,6 +101,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         ...(allowed("people.read") ? [{ href: "/admin/people", label: "People", icon: "people" as const }] : []),
         ...(allowed("people.write") ? [{ href: "/admin/visitors", label: "Visitors", icon: "person" as const }] : []),
+        ...(allowed("content.manage") ? [{ href: "/admin/ministries", label: "Ministries", icon: "church" as const }] : []),
         ...(allowed("events.manage") ? [{ href: "/admin/events", label: "Events", icon: "calendar" as const }] : []),
         ...(allowed("groups.manage") ? [{ href: "/admin/groups", label: "Groups", icon: "users" as const }] : []),
         ...(allowed("volunteers.manage") ? [{ href: "/admin/volunteers", label: "Volunteers", icon: "heart" as const }] : []),

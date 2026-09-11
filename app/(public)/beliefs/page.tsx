@@ -39,8 +39,12 @@ export default async function BeliefsPage() {
         What We Believe
       </h1>
       <p className="large-copy">
-        Our faith is grounded in Scripture and centred on Christ. These fourteen statements are New Testament Church
-        of God, Bull Bay&apos;s Declaration of Faith, approved for the 2026–2027 church year.
+        The Church of God believes the whole Bible to be completely and equally inspired and that it is the written
+        Word of God. The Church of God has adopted the following Declaration of Faith as its standard and official
+        expression of its doctrine.
+      </p>
+      <p className="form-note" style={{ marginTop: -6, marginBottom: 30 }}>
+        We believe:
       </p>
 
       <ol style={{ listStyle: "none", padding: 0, marginTop: 40, display: "grid", gap: 14 }}>
