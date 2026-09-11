@@ -3,6 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { JsonLd } from "@/components/json-ld";
 import { getPrimaryCampus, getPublishedSermons, getStrategicMovements, getUpcomingEvents } from "@/lib/data/public";
+import { getSermonVideoSource } from "@/lib/data/sermon-video";
+import { SermonVideoLightbox } from "@/components/sermon-video-lightbox";
 import { SITE_NAME, SITE_URL } from "@/lib/org";
 
 export const revalidate = 60;
@@ -211,10 +213,16 @@ export default async function HomePage() {
         {latestSermon && (
           <section className="section home-message-section" aria-labelledby="message-heading">
             <article className="home-message-card">
-              <div className="home-message-art" aria-hidden="true">
-                <Image src="/images/brand/logo-watermark-white.png" alt="" width={440} height={440} />
-                <span className="home-message-orbit one" /><span className="home-message-orbit two" />
-                <span className="home-message-play"><Icon name="play" /></span>
+              <div className="home-message-art">
+                <Image src="/images/brand/logo-watermark-white.png" alt="" width={440} height={440} aria-hidden="true" />
+                <span className="home-message-orbit one" aria-hidden="true" /><span className="home-message-orbit two" aria-hidden="true" />
+                <SermonVideoLightbox
+                  video={getSermonVideoSource(latestSermon)}
+                  title={latestSermon.title}
+                  sermonHref={`/sermons/${latestSermon.slug}`}
+                  triggerClassName="home-message-play"
+                  triggerLabel={`Play: ${latestSermon.title}`}
+                />
               </div>
               <div className="home-message-copy">
                 <p className="home-kicker"><span /> Latest message</p>

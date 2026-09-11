@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
 import { getSermonBySlug } from "@/lib/data/public";
-import { createPublicClient } from "@/lib/supabase/public";
+import { getSermonVideoSource } from "@/lib/data/sermon-video";
 
 export const revalidate = 120;
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -21,14 +21,7 @@ export default async function SermonDetailPage({ params }: { params: Promise<{ s
   const sermon = await getSermonBySlug(slug);
   if (!sermon || sermon.status !== "published") notFound();
 
-  const embedUrl =
-    sermon.video_provider === "youtube" && sermon.video_id
-      ? `https://www.youtube-nocookie.com/embed/${sermon.video_id}`
-      : null;
-  const selfHostedUrl =
-    sermon.video_provider === "upload" && sermon.video_path
-      ? createPublicClient().storage.from("sermon-video").getPublicUrl(sermon.video_path).data.publicUrl
-      : null;
+  const video = getSermonVideoSource(sermon);
 
   return (
     <section className="section" style={{ paddingTop: 50, maxWidth: 860 }}>
@@ -53,19 +46,19 @@ export default async function SermonDetailPage({ params }: { params: Promise<{ s
         {sermon.preached_at ? ` • ${new Date(sermon.preached_at).toLocaleDateString("en-JM", { dateStyle: "long" })}` : ""}
       </p>
 
-      {embedUrl ? (
+      {video?.kind === "youtube" ? (
         <div style={{ borderRadius: 24, overflow: "hidden", margin: "24px 0", aspectRatio: "16/9" }}>
           <iframe
-            src={embedUrl}
+            src={video.embedUrl}
             title={sermon.title}
             style={{ width: "100%", height: "100%", border: 0 }}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen
           />
         </div>
-      ) : selfHostedUrl ? (
+      ) : video?.kind === "upload" ? (
         <div style={{ borderRadius: 24, overflow: "hidden", margin: "24px 0", aspectRatio: "16/9", background: "#000" }}>
-          <video src={selfHostedUrl} controls style={{ width: "100%", height: "100%" }} />
+          <video src={video.url} controls style={{ width: "100%", height: "100%" }} />
         </div>
       ) : (
         <div className="sermon-image" style={{ minHeight: 220, margin: "24px 0" }}>
