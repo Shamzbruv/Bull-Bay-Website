@@ -28,19 +28,31 @@ export function LoginForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus("submitting");
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setStatus("error");
-      setError(
-        error.message.toLowerCase().includes("invalid")
-          ? "That email and password don't match an account. If you're new here, check with the church office — accounts are set up by invitation."
-          : error.message,
+    try {
+      const supabase = createClient();
+      // A network hiccup shouldn't leave the button stuck on "Signing
+      // in…" forever with no way out — race the real call against a
+      // timeout so there's always a next step, even if Supabase Auth or
+      // the network stalls rather than actually failing.
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("timeout")), 15000),
       );
-      return;
+      const { error } = await Promise.race([supabase.auth.signInWithPassword({ email, password }), timeout]);
+      if (error) {
+        setStatus("error");
+        setError(
+          error.message.toLowerCase().includes("invalid")
+            ? "That email and password don't match an account. If you're new here, check with the church office — accounts are set up by invitation."
+            : error.message,
+        );
+        return;
+      }
+      router.push(next);
+      router.refresh();
+    } catch {
+      setStatus("error");
+      setError("That took too long and didn't go through. Please check your connection and try again.");
     }
-    router.push(next);
-    router.refresh();
   }
 
   return (

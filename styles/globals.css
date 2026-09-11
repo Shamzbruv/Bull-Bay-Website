@@ -287,7 +287,7 @@ main { display: block; }
   position: relative; overflow: hidden; max-width: 1280px; margin: 56px auto 0; min-height: 320px;
   border-radius: 28px; color: #fff; padding: 56px clamp(24px, 8vw, 110px);
   background:
-    linear-gradient(90deg, rgba(8, 27, 68, 0.18), rgba(8, 27, 68, 0.08)),
+    linear-gradient(100deg, rgba(6, 18, 38, .88) 0%, rgba(6, 18, 38, .74) 42%, rgba(6, 18, 38, .5) 100%),
     url("/images/church/church-exterior-dark.jpg") center / cover no-repeat;
 }
 .callout-section h2 { color: #fff; position: relative; z-index: 1; margin: 0 0 24px; }
@@ -445,6 +445,9 @@ table.data-table tr:last-child td { border-bottom: 0; }
 .search-panel h2 { font-family: var(--font-display); font-size: 1.85rem; color: var(--color-blue-700); margin: 0 0 18px; }
 .search-panel > input { width: 100%; border: 0; border-radius: var(--radius-md); padding: 14px; background: var(--color-surface); box-shadow: var(--shadow-inset); }
 .close-dialog { position: absolute; right: 16px; top: 16px; border: 0; background: var(--color-surface); color: var(--color-blue-700); border-radius: var(--radius-sm); width: 30px; height: 30px; font-size: 1.2rem; box-shadow: var(--shadow-raised-sm); z-index: 2; }
+
+.leader-picker-option { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 10px 14px; font-size: .85rem; color: var(--color-ink); cursor: pointer; }
+.leader-picker-option:hover, .leader-picker-option[aria-selected="true"] { background: var(--color-surface-raised, rgba(0,0,0,.04)); }
 
 .video-dialog { border: 0; padding: 0; background: transparent; max-width: 960px; width: calc(100% - 30px); }
 .video-dialog::backdrop { background: rgba(6, 20, 38, .8); }
@@ -722,6 +725,14 @@ table.data-table tr:last-child td { border-bottom: 0; }
 }
 .public-site .eyebrow span { width: 28px; height: 1px; margin-right: 10px; }
 .public-site .eyebrow.light { color: #9fc6ff; }
+/* church-photo-hero-copy already forces its eyebrow to a light,
+   photo-safe color (see the base rule near .church-photo-hero), but that
+   rule and this one are equal specificity — this one is later in the
+   cascade so it was silently winning and putting the low-contrast
+   default blue back on every photo hero (Visit/About/Ministries/Serve/
+   Groups all use this component). Restated here, later still, so the
+   light color actually wins. */
+.public-site .church-photo-hero-copy .eyebrow { color: #d9e69a; }
 .public-site .section-heading h2,
 .public-site .section h2,
 .public-site .page-hero h1,
@@ -735,6 +746,13 @@ table.data-table tr:last-child td { border-bottom: 0; }
 .public-site h2 em,
 .public-site .page-hero h1 em,
 .public-site .callout-section h2 em { color: var(--color-blue-600); font-weight: 600; }
+/* .callout-section shares the light-background heading rule above (it's
+   grouped with .section h2 / .page-hero h1), but it actually has a dark
+   photo background — that rule was leaving its heading almost black on
+   near-black. Restated after it, so light wins here specifically. */
+.public-site .callout-section h2 { color: #fff; }
+.public-site .callout-section h2 em { color: #a8c9ff; }
+.public-site .callout-section .eyebrow { color: #9fc6ff; }
 .public-site .large-copy { max-width: 720px; color: var(--color-muted-2); font-size: 1.08rem; line-height: 1.75; }
 .public-site .primary-button,
 .public-site .secondary-button,

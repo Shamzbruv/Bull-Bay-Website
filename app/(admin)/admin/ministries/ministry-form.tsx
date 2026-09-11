@@ -5,6 +5,7 @@ import { saveMinistry } from "@/app/(admin)/admin/actions";
 import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
+import { LeaderPicker } from "./leader-picker";
 
 type EditableMinistry = {
   id: string;
@@ -44,14 +45,7 @@ export function MinistryForm({ ministry, leaders }: { ministry?: EditableMinistr
       </label>
       <label>
         Ministry leader
-        <select name="leader_profile_id" defaultValue={ministry?.leader_profile_id ?? ""}>
-          <option value="">No leader assigned</option>
-          {leaders.map((l) => (
-            <option key={l.id} value={l.id}>
-              {l.name}
-            </option>
-          ))}
-        </select>
+        <LeaderPicker leaders={leaders} defaultLeaderId={ministry?.leader_profile_id ?? null} />
         <span className="form-note">The leader gets a &quot;My Team&quot; section to manage their own roster and description.</span>
       </label>
       <label className="check-label">
