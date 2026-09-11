@@ -1,9 +1,12 @@
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { DAY_NAMES } from "@/lib/pastoral/reasons";
+import { SITE_URL } from "@/lib/org";
+import { createCalendarFeedToken } from "@/lib/calendar/feed-token";
 import { CounselRequestRow } from "@/app/(pastor)/pastor/care/counsel-request-row";
 import { PrayerRequestRow } from "@/app/(pastor)/pastor/care/prayer-request-row";
 import { AvailabilityForm, EventForm, RemoveAvailabilityButton, RemoveEventButton } from "./calendar-forms";
+import { SyncCalendarPanel } from "./sync-calendar-panel";
 
 /**
  * Shared body for the pastoral-team calendar — rendered at /member/team-calendar
@@ -70,6 +73,8 @@ export async function TeamCalendarView() {
           </p>
         </div>
       </div>
+
+      <SyncCalendarPanel feedUrl={`${SITE_URL}/api/calendar/pastoral/${createCalendarFeedToken(profile.id)}`} />
 
       {assignedPrayers && assignedPrayers.length > 0 && (
         <div className="panel">

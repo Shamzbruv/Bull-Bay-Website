@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { DAY_NAMES } from "@/lib/pastoral/reasons";
+import { SITE_URL } from "@/lib/org";
+import { AddToCalendarLinks } from "@/components/add-to-calendar-links";
 import { CounselRequestForm } from "./request-form";
 
 export const metadata: Metadata = { title: "Pastor & Calendar" };
@@ -37,13 +39,25 @@ export default async function MemberCounselPage() {
     profile
       ? supabase
           .from("counsel_requests")
-          .select("id, reason, status, is_urgent, preferred_date, created_at, profiles:requested_with_profile_id(first_name, last_name)")
+          .select("id, reason, status, is_urgent, preferred_date, created_at, scheduled_event_id, profiles:requested_with_profile_id(first_name, last_name)")
           .eq("requester_profile_id", profile.id)
           .order("created_at", { ascending: false })
           .limit(15)
       : Promise.resolve({ data: null }),
     profile ? supabase.from("pastoral_team_members").select("id").eq("profile_id", profile.id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
+
+  // The confirmed meeting time lives on pastoral_calendar_events, owned by
+  // the pastor/team member and marked private — the requester's own
+  // RLS-scoped client can't read someone else's private event, so the
+  // service-role client fetches just the specific events this member's
+  // own (already-authorized) requests point to.
+  const scheduledEventIds = (myRequests ?? []).map((r) => r.scheduled_event_id).filter((id): id is string => Boolean(id));
+  const { data: scheduledEvents } =
+    scheduledEventIds.length > 0
+      ? await createServiceRoleClient().from("pastoral_calendar_events").select("id, title, starts_at, ends_at").in("id", scheduledEventIds)
+      : { data: [] };
+  const scheduledEventById = new Map((scheduledEvents ?? []).map((e) => [e.id, e]));
 
   const teamOptions = (team ?? []).map((t) => {
     const p = t.profiles as unknown as { first_name: string | null; last_name: string | null } | null;
@@ -150,16 +164,32 @@ export default async function MemberCounselPage() {
         {(!myRequests || myRequests.length === 0) && <p className="panel-empty">You haven&apos;t sent any requests yet.</p>}
         {myRequests?.map((r) => {
           const withWhom = r.profiles as unknown as { first_name: string | null; last_name: string | null } | null;
+          const scheduledEvent = r.scheduled_event_id ? scheduledEventById.get(r.scheduled_event_id) : null;
           return (
-            <div key={r.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border)", fontSize: ".88rem" }}>
-              <span>
-                {r.reason} — with {withWhom?.first_name} {withWhom?.last_name}
-                {r.preferred_date && ` · ${new Date(r.preferred_date).toLocaleDateString("en-JM", { dateStyle: "medium" })}`}
-              </span>
-              <span>
-                {r.is_urgent && <span className="badge gray" style={{ marginRight: 6 }}>urgent</span>}
-                <span className="badge blue">{r.status}</span>
-              </span>
+            <div key={r.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--color-border)", fontSize: ".88rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                <span>
+                  {r.reason} — with {withWhom?.first_name} {withWhom?.last_name}
+                  {scheduledEvent
+                    ? ` · ${new Date(scheduledEvent.starts_at).toLocaleString("en-JM", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Jamaica" })}`
+                    : r.preferred_date && ` · ${new Date(r.preferred_date).toLocaleDateString("en-JM", { dateStyle: "medium" })}`}
+                </span>
+                <span>
+                  {r.is_urgent && <span className="badge gray" style={{ marginRight: 6 }}>urgent</span>}
+                  <span className="badge blue">{r.status}</span>
+                </span>
+              </div>
+              {scheduledEvent && (
+                <div style={{ marginTop: 8 }}>
+                  <AddToCalendarLinks
+                    title={scheduledEvent.title}
+                    startsAt={scheduledEvent.starts_at}
+                    endsAt={scheduledEvent.ends_at}
+                    description={`Meeting request: ${r.reason}`}
+                    icsHref={`${SITE_URL}/api/calendar/counsel-request/${r.id}`}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
