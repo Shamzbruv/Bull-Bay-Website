@@ -10,7 +10,7 @@ import type { Database } from "@/lib/supabase/types";
 
 type Sermon = Database["public"]["Tables"]["sermons"]["Row"];
 
-export function SermonForm({ sermon }: { sermon?: Sermon }) {
+export function SermonForm({ sermon, returnTo }: { sermon?: Sermon; returnTo?: string }) {
   const [state, formAction] = useActionState(saveSermon, initialActionState);
   const [videoSource, setVideoSource] = useState(() =>
     sermon?.video_provider === "upload" ? "upload" : sermon?.video_provider === "youtube" ? "youtube" : "none",
@@ -18,6 +18,7 @@ export function SermonForm({ sermon }: { sermon?: Sermon }) {
 
   return (
     <form className="clay-form" action={formAction}>
+      {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
       {sermon && <input type="hidden" name="id" value={sermon.id} />}
       {sermon?.video_path && <input type="hidden" name="existing_video_path" value={sermon.video_path} />}
       <div className="form-row">

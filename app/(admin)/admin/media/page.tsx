@@ -1,11 +1,22 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
+import { DeleteButton } from "@/components/delete-button";
+import { deleteSermon } from "@/app/(pastor)/pastor/actions";
+import { SermonForm } from "@/app/(pastor)/pastor/sermons/sermon-form";
 
 export const metadata: Metadata = { title: "Media" };
 
+/**
+ * Full sermon media management, not just a read-only mirror of the
+ * pastor workspace's sermon planner — anyone with sermons.manage (the
+ * media team coordinator, content editors, church_admin, and
+ * super_admin, all already granted it) manages it from here directly,
+ * and the same content shows up at /pastor/sermons for the pastor. Admin
+ * always has this too, as the fallback if the person who'd normally
+ * handle it isn't available.
+ */
 export default async function AdminMediaPage() {
   const organizationId = await getOrganizationId();
   const permissions = await getUserPermissions(organizationId ?? "");
@@ -16,29 +27,57 @@ export default async function AdminMediaPage() {
     .from("sermons")
     .select("id, title, status, preached_at")
     .eq("organization_id", organizationId ?? "")
-    .order("preached_at", { ascending: false })
-    .limit(20);
+    .order("preached_at", { ascending: false });
 
   return (
     <>
       <div className="dashboard-header">
         <div>
           <h1>Media</h1>
-          <p>Sermons are created and edited from the pastor workspace&apos;s sermon planner.</p>
+          <p>Publish and manage sermon records — powers the public sermon library and the homepage&apos;s latest message.</p>
         </div>
       </div>
+
       <div className="panel">
-        <h2>Recent sermons</h2>
-        {sermons?.map((s) => (
-          <div key={s.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
-            <span>{s.title}</span>
-            <span className="badge">{s.status}</span>
-          </div>
-        ))}
+        <h2>New sermon</h2>
+        <SermonForm returnTo="/admin/media" />
+      </div>
+
+      <div className="panel">
+        <h2>All sermons</h2>
         {(!sermons || sermons.length === 0) && <p className="panel-empty">No sermons yet.</p>}
-        <Link className="link-button" href="/pastor/sermons" style={{ marginTop: 16 }}>
-          Open sermon planner <span>→</span>
-        </Link>
+        <div className="data-table-wrap">
+          {sermons && sermons.length > 0 && (
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Preached</th>
+                  <th>Status</th>
+                  <th />
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {sermons.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.title}</td>
+                    <td>{s.preached_at}</td>
+                    <td>
+                      <span className={`badge ${s.status === "published" ? "" : "gray"}`}>{s.status}</span>
+                    </td>
+                    <td>
+                      <a href={`/pastor/sermons/${s.id}?from=admin`}>Edit</a>
+                    </td>
+                    <td>
+                      <DeleteButton action={deleteSermon} id={s.id} confirmText={`Delete "${s.title}" permanently?`} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </>
   );

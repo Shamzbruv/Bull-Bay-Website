@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { AssignmentRow } from "./assignment-row";
+import { CreateAssignmentForm } from "./create-assignment-form";
 
 export const metadata: Metadata = { title: "Ministry Assignments" };
 
@@ -28,8 +29,18 @@ export default async function AdminMinistryAssignmentsPage({
     if (m) query = query.eq("ministry_id", m.id);
   }
   const { data: assignments } = await query;
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, first_name, last_name, email")
+    .eq("organization_id", organizationId ?? "")
+    .order("first_name");
 
   const ministryNameById = new Map((ministries ?? []).map((m) => [m.id, m.name]));
+  const members = (profiles ?? []).map((p) => ({
+    id: p.id,
+    name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email || "Unnamed",
+    email: p.email,
+  }));
 
   return (
     <>
@@ -42,6 +53,11 @@ export default async function AdminMinistryAssignmentsPage({
             only after verifying the person.
           </p>
         </div>
+      </div>
+
+      <div className="panel">
+        <h2>Add someone to a ministry</h2>
+        <CreateAssignmentForm ministries={(ministries ?? []).map((m) => ({ id: m.id, name: m.name }))} members={members} />
       </div>
 
       <div className="filter-pills" style={{ marginBottom: 20 }}>

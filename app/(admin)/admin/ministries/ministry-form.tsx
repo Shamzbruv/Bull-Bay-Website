@@ -5,7 +5,7 @@ import { saveMinistry } from "@/app/(admin)/admin/actions";
 import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
-import { LeaderPicker } from "./leader-picker";
+import { MemberPicker, type MemberOption } from "@/components/member-picker";
 
 type EditableMinistry = {
   id: string;
@@ -17,9 +17,7 @@ type EditableMinistry = {
   is_active: boolean;
 };
 
-type LeaderOption = { id: string; name: string };
-
-export function MinistryForm({ ministry, leaders }: { ministry?: EditableMinistry; leaders: LeaderOption[] }) {
+export function MinistryForm({ ministry, leaders }: { ministry?: EditableMinistry; leaders: MemberOption[] }) {
   const [state, formAction] = useActionState(saveMinistry, initialActionState);
 
   return (
@@ -45,7 +43,12 @@ export function MinistryForm({ ministry, leaders }: { ministry?: EditableMinistr
       </label>
       <label>
         Ministry leader
-        <LeaderPicker leaders={leaders} defaultLeaderId={ministry?.leader_profile_id ?? null} />
+        <MemberPicker
+          members={leaders}
+          fieldName="leader_profile_id"
+          defaultMemberId={ministry?.leader_profile_id ?? null}
+          noneOption="No leader assigned"
+        />
         <span className="form-note">The leader gets a &quot;My Team&quot; section to manage their own roster and description.</span>
       </label>
       <label className="check-label">

@@ -621,6 +621,43 @@ export async function unlinkAssignmentFromProfile(assignmentId: string): Promise
   revalidatePath("/admin/ministry-assignments");
 }
 
+/** Staff add someone to a ministry's roster directly here — either
+ * linked to a searched-and-picked member (verified identity, safe to
+ * mark public immediately) or by a plain name for someone not yet in
+ * the system (stays unlinked until a real account exists to link). */
+export async function createMinistryAssignment(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("ministry_assignments.manage")) {
+    return { status: "error", message: "You don't have permission to manage ministry assignments." };
+  }
+
+  const ministryId = String(formData.get("ministry_id") || "");
+  const positionTitle = String(formData.get("position_title") || "").trim();
+  const profileId = String(formData.get("profile_id") || "").trim() || null;
+  const displayName = String(formData.get("display_name") || "").trim() || null;
+  if (!ministryId) return { status: "error", message: "Choose a ministry." };
+  if (!positionTitle) return { status: "error", message: "Enter their role or position." };
+  if (!profileId && !displayName) {
+    return { status: "error", message: "Search for a member, or type a name for someone not yet in the system." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("ministry_assignments").insert({
+    organization_id: organizationId,
+    ministry_id: ministryId,
+    profile_id: profileId,
+    display_name: profileId ? null : displayName,
+    position_title: positionTitle,
+    is_active: true,
+    public_visible: formData.get("public_visible") === "on",
+  });
+  if (error) return { status: "error", message: "Couldn't add this assignment." };
+  revalidatePath("/admin/ministry-assignments");
+  revalidatePath("/ministries");
+  return { status: "success", message: "Added to the roster." };
+}
+
 // Annual plan --------------------------------------------------------------
 export async function saveAnnualPlanItem(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();

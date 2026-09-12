@@ -103,8 +103,13 @@ export async function saveSermon(_prev: ActionState, formData: FormData): Promis
 
   if (error) return { status: "error", message: "We couldn't save this sermon. Check the slug is unique." };
   revalidatePath("/pastor/sermons");
+  revalidatePath("/admin/media");
   revalidatePath("/sermons");
-  redirect("/pastor/sermons");
+  revalidatePath("/");
+  // Managed from both /pastor/sermons and /admin/media — return to
+  // wherever this form was actually submitted from (defaults to the
+  // pastor workspace's list, matching the original behavior here).
+  redirect(String(formData.get("return_to") || "/pastor/sermons"));
 }
 
 export async function deleteSermon(id: string): Promise<ActionState> {
@@ -121,7 +126,9 @@ export async function deleteSermon(id: string): Promise<ActionState> {
     await supabase.storage.from("sermon-video").remove([sermon.video_path]);
   }
   revalidatePath("/pastor/sermons");
+  revalidatePath("/admin/media");
   revalidatePath("/sermons");
+  revalidatePath("/");
   return { status: "success", message: "Sermon deleted." };
 }
 

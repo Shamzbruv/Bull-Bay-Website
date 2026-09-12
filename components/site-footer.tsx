@@ -70,6 +70,7 @@ export async function SiteFooter() {
               <h3>Explore</h3>
               <Link href="/about">Our Story</Link>
               <Link href="/beliefs">Beliefs</Link>
+              <Link href="/beliefs/doctrinal-commitments">Doctrinal Commitments</Link>
               <Link href="/sermons">Sermons</Link>
               <Link href="/events">Events</Link>
               <Link href="/ministries">Ministries</Link>

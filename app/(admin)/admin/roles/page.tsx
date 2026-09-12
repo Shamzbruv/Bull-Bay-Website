@@ -16,13 +16,19 @@ export default async function AdminRolesPage() {
   if (!allowed) return <AccessDenied />;
 
   const supabase = await createClient();
-  const [{ data: roles }, { data: assignments }] = await Promise.all([
+  const [{ data: roles }, { data: assignments }, { data: profiles }] = await Promise.all([
     supabase.from("roles").select("id, name, code").eq("organization_id", organizationId ?? "").order("name"),
     supabase
       .from("user_roles")
       .select("id, user_id, granted_at, roles(name)")
       .eq("organization_id", organizationId ?? ""),
+    supabase.from("profiles").select("id, first_name, last_name, email").eq("organization_id", organizationId ?? "").order("first_name"),
   ]);
+  const members = (profiles ?? []).map((p) => ({
+    id: p.id,
+    name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email || "Unnamed",
+    email: p.email,
+  }));
 
   // user_roles.user_id points at auth.users, not profiles — no direct FK for
   // PostgREST to embed, so resolve names with a second lookup by auth_user_id.
@@ -43,7 +49,7 @@ export default async function AdminRolesPage() {
 
       <div className="panel">
         <h2>Invite or assign staff</h2>
-        <InviteForm roles={roles ?? []} />
+        <InviteForm roles={roles ?? []} members={members} />
         <p className="form-note">If the email already belongs to a member, the role is added immediately. New people receive a branded invitation to set their password.</p>
       </div>
 

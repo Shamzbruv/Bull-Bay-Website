@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { JsonLd } from "@/components/json-ld";
 import { getPublishedDoctrineStatements } from "@/lib/data/public";
 import { SITE_NAME } from "@/lib/org";
@@ -67,6 +68,16 @@ export default async function BeliefsPage() {
       </ol>
 
       {statements.length === 0 && <p className="panel-empty">Our Declaration of Faith will appear here shortly.</p>}
+
+      <div className="panel" style={{ marginTop: 30, textAlign: "center" }}>
+        <h2 style={{ marginTop: 0 }}>Doctrinal Commitments</h2>
+        <p style={{ maxWidth: 560, margin: "0 auto 16px", color: "var(--color-muted-2)" }}>
+          Read the fuller Doctrinal Commitments of the denomination, with the Scripture references behind each one.
+        </p>
+        <Link className="primary-button" href="/beliefs/doctrinal-commitments">
+          Doctrinal Commitments <span>→</span>
+        </Link>
+      </div>
     </section>
   );
 }

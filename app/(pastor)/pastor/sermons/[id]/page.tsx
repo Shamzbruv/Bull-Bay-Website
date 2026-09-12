@@ -5,8 +5,15 @@ import { SermonForm } from "../sermon-form";
 
 export const metadata: Metadata = { title: "Edit Sermon" };
 
-export default async function EditSermonPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditSermonPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ from?: string }>;
+}) {
   const { id } = await params;
+  const { from } = await searchParams;
   const supabase = await createClient();
   const { data: sermon } = await supabase.from("sermons").select("*").eq("id", id).single();
   if (!sermon) notFound();
@@ -19,7 +26,7 @@ export default async function EditSermonPage({ params }: { params: Promise<{ id:
         </div>
       </div>
       <div className="panel">
-        <SermonForm sermon={sermon} />
+        <SermonForm sermon={sermon} returnTo={from === "admin" ? "/admin/media" : undefined} />
       </div>
     </>
   );
