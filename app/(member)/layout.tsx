@@ -3,6 +3,7 @@ import type { DashboardNavSection, WorkspaceDestination } from "@/components/das
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { getAvatarUrl } from "@/lib/members/avatar";
+import { getMyNotifications } from "@/lib/notifications";
 
 const NAV_SECTIONS: DashboardNavSection[] = [
   {
@@ -104,6 +105,7 @@ export default async function MemberLayout({ children }: { children: React.React
     ...(canUseAdmin ? [{ href: "/admin", label: "Admin", icon: "briefcase" as const }] : []),
     ...(canUsePastor ? [{ href: "/pastor", label: "Pastor", icon: "heart" as const }] : []),
   ];
+  const { notifications, unreadCount } = await getMyNotifications();
 
   return (
     <WorkspaceShell
@@ -113,6 +115,8 @@ export default async function MemberLayout({ children }: { children: React.React
       sections={sections}
       user={user}
       workspaces={workspaces}
+      notifications={notifications}
+      unreadCount={unreadCount}
     >
       {children}
     </WorkspaceShell>

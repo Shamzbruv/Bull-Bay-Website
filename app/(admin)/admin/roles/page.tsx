@@ -1,12 +1,19 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, isSuperAdmin } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { InviteForm } from "./invite-form";
-import { RevokeButton } from "./revoke-button";
 
 export const metadata: Metadata = { title: "Roles & Staff" };
 
+/**
+ * Invitation-only, on purpose — this page hands someone their first staff
+ * role. Changing or removing a role someone already has happens on
+ * People instead (right next to everything else known about them), so
+ * there's exactly one place to look for "what can this person do right
+ * now" rather than two screens that can disagree.
+ */
 export default async function AdminRolesPage() {
   const organizationId = await getOrganizationId();
   // Deliberately checks the actual role, not the roles.manage permission —
@@ -16,12 +23,8 @@ export default async function AdminRolesPage() {
   if (!allowed) return <AccessDenied />;
 
   const supabase = await createClient();
-  const [{ data: roles }, { data: assignments }, { data: profiles }] = await Promise.all([
+  const [{ data: roles }, { data: profiles }] = await Promise.all([
     supabase.from("roles").select("id, name, code").eq("organization_id", organizationId ?? "").order("name"),
-    supabase
-      .from("user_roles")
-      .select("id, user_id, granted_at, roles(name)")
-      .eq("organization_id", organizationId ?? ""),
     supabase.from("profiles").select("id, first_name, last_name, email").eq("organization_id", organizationId ?? "").order("first_name"),
   ]);
   const members = (profiles ?? []).map((p) => ({
@@ -29,14 +32,6 @@ export default async function AdminRolesPage() {
     name: `${p.first_name ?? ""} ${p.last_name ?? ""}`.trim() || p.email || "Unnamed",
     email: p.email,
   }));
-
-  // user_roles.user_id points at auth.users, not profiles — no direct FK for
-  // PostgREST to embed, so resolve names with a second lookup by auth_user_id.
-  const userIds = [...new Set((assignments ?? []).map((a) => a.user_id))];
-  const { data: staffProfiles } = userIds.length
-    ? await supabase.from("profiles").select("auth_user_id, first_name, last_name, email").in("auth_user_id", userIds)
-    : { data: [] as { auth_user_id: string | null; first_name: string | null; last_name: string | null; email: string | null }[] };
-  const profileByUserId = new Map((staffProfiles ?? []).map((p) => [p.auth_user_id, p]));
 
   return (
     <>
@@ -50,40 +45,15 @@ export default async function AdminRolesPage() {
       <div className="panel">
         <h2>Invite or assign staff</h2>
         <InviteForm roles={roles ?? []} members={members} />
-        <p className="form-note">If the email already belongs to a member, the role is added immediately. New people receive a branded invitation to set their password.</p>
+        <p className="form-note">If the email already belongs to a member, the role is added immediately and they&apos;re emailed about it. New people receive a branded invitation to set their password.</p>
       </div>
 
       <div className="panel">
-        <h2>Current staff roles</h2>
-        <div className="data-table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Person</th>
-                <th>Role</th>
-                <th>Granted</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {assignments?.map((a) => {
-                const role = a.roles as unknown as { name: string } | null;
-                const person = profileByUserId.get(a.user_id);
-                return (
-                  <tr key={a.id}>
-                    <td>{person ? `${person.first_name ?? ""} ${person.last_name ?? ""}`.trim() || person.email : "Staff user"}</td>
-                    <td>{role?.name}</td>
-                    <td>{new Date(a.granted_at).toLocaleDateString("en-JM", { dateStyle: "medium" })}</td>
-                    <td>
-                      <RevokeButton userRoleId={a.id} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {(!assignments || assignments.length === 0) && <p className="panel-empty">No staff roles assigned yet.</p>}
+        <h2>Changing an existing role</h2>
+        <p>
+          To change or remove a staff role someone already has, go to <Link href="/admin/people">People</Link> — every
+          person&apos;s role now lives right there next to their profile, alongside membership status and account access.
+        </p>
       </div>
     </>
   );

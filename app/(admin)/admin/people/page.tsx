@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getOrganizationId, getUserPermissions, isSuperAdmin } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { StatusSelect } from "./status-select";
+import { RoleSelect } from "./role-select";
 import { InviteMemberForm } from "./invite-form";
 import { ResetPasswordButton } from "./reset-password-button";
 
@@ -13,6 +14,7 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
   const organizationId = await getOrganizationId();
   const permissions = await getUserPermissions(organizationId ?? "");
   if (!permissions.has("people.read")) return <AccessDenied />;
+  const canManageRoles = organizationId ? await isSuperAdmin(organizationId) : false;
 
   const supabase = await createClient();
   let request = supabase
@@ -24,12 +26,34 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
   if (q) request = request.ilike("last_name", `%${q}%`);
   const { data: people } = await request;
 
+  // Staff role, shown and changed right here — Roles & Access is now
+  // invitation-only (see app/(admin)/admin/roles/page.tsx).
+  const { data: roles } = await supabase
+    .from("roles")
+    .select("id, name")
+    .eq("organization_id", organizationId ?? "")
+    .order("name");
+  const authUserIds = (people ?? []).flatMap((p) => (p.auth_user_id ? [p.auth_user_id] : []));
+  const { data: grants } = authUserIds.length
+    ? await supabase
+        .from("user_roles")
+        .select("user_id, role_id, roles(name)")
+        .eq("organization_id", organizationId ?? "")
+        .in("user_id", authUserIds)
+    : { data: [] as { user_id: string; role_id: string; roles: { name: string } | null }[] };
+  const roleByUser = new Map(
+    (grants ?? []).map((g) => [g.user_id, { id: g.role_id, name: (g.roles as unknown as { name: string } | null)?.name ?? "Staff" }]),
+  );
+
   return (
     <>
       <div className="dashboard-header">
         <div>
           <h1>People</h1>
-          <p>Church directory — {people?.length ?? 0} shown. Accounts are invitation-only.</p>
+          <p>
+            Church directory — {people?.length ?? 0} shown. Accounts are invitation-only.
+            {canManageRoles && " Change someone's staff role right here in the Staff role column."}
+          </p>
         </div>
       </div>
 
@@ -50,43 +74,58 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
               <th>Email</th>
               <th>Phone</th>
               <th>Status</th>
+              <th>Staff role</th>
               <th>Account</th>
               {permissions.has("people.write") && <th>Password</th>}
             </tr>
           </thead>
           <tbody>
-            {people?.map((p) => (
-              <tr key={p.id}>
-                <td>
-                  {p.first_name} {p.last_name}
-                </td>
-                <td>{p.email}</td>
-                <td>{p.phone}</td>
-                <td>
-                  {permissions.has("people.write") ? (
-                    <StatusSelect profileId={p.id} status={p.membership_status} />
-                  ) : (
-                    <span className="badge">{p.membership_status}</span>
-                  )}
-                </td>
-                <td>
-                  {p.auth_user_id ? (
-                    p.must_change_password ? (
-                      <span className="badge gold">password pending</span>
-                    ) : (
-                      <span className="badge blue">active</span>
-                    )
-                  ) : (
-                    <span className="badge gray">not invited</span>
-                  )}
-                </td>
-                {permissions.has("people.write") && (
+            {people?.map((p) => {
+              const grant = p.auth_user_id ? roleByUser.get(p.auth_user_id) : undefined;
+              return (
+                <tr key={p.id}>
                   <td>
-                    <ResetPasswordButton profileId={p.id} hasAccount={Boolean(p.auth_user_id)} />
+                    {p.first_name} {p.last_name}
                   </td>
-                )}
-              </tr>
-            ))}
+                  <td>{p.email}</td>
+                  <td>{p.phone}</td>
+                  <td>
+                    {permissions.has("people.write") ? (
+                      <StatusSelect profileId={p.id} status={p.membership_status} />
+                    ) : (
+                      <span className="badge">{p.membership_status}</span>
+                    )}
+                  </td>
+                  <td>
+                    {canManageRoles ? (
+                      p.auth_user_id ? (
+                        <RoleSelect profileId={p.id} roleId={grant?.id ?? ""} roles={roles ?? []} />
+                      ) : (
+                        <span className="badge gray" title="Invite them first">invite first</span>
+                      )
+                    ) : (
+                      <span className="badge">{grant?.name ?? "Member"}</span>
+                    )}
+                  </td>
+                  <td>
+                    {p.auth_user_id ? (
+                      p.must_change_password ? (
+                        <span className="badge gold">password pending</span>
+                      ) : (
+                        <span className="badge blue">active</span>
+                      )
+                    ) : (
+                      <span className="badge gray">not invited</span>
+                    )}
+                  </td>
+                  {permissions.has("people.write") && (
+                    <td>
+                      <ResetPasswordButton profileId={p.id} hasAccount={Boolean(p.auth_user_id)} />
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

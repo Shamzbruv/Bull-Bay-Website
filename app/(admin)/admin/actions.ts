@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getCurrentProfile, getOrganizationId, getUserPermissions, isSuperAdmin } from "@/lib/auth/session";
 import { SITE_URL } from "@/lib/org";
 import { parseJmdToMinorUnits } from "@/lib/money";
 import { sendMail } from "@/lib/email/resend";
-import { renderInviteEmail } from "@/lib/email/templates";
+import { renderInviteEmail, renderRoleChangedEmail } from "@/lib/email/templates";
 import { generateAuthLink } from "@/lib/supabase/generate-link";
+import { notifyUser } from "@/lib/notifications";
 import type { ActionState } from "@/app/(public)/actions";
 
 function slugify(input: string) {
@@ -430,7 +431,7 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
   const supabase = await createClient();
   const { data: selectedRole } = await supabase
     .from("roles")
-    .select("id")
+    .select("id, name")
     .eq("id", roleId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -490,9 +491,28 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
       revalidatePath("/admin/roles");
       return { status: "error", message: "The role was assigned, but the invitation email could not be sent. Use People → Reset password to issue access." };
     }
+  } else {
+    // Existing member, role added straight away — let them know, the same
+    // way any other role change does (see setPersonRole in this file).
+    const actorProfile = await getCurrentProfile();
+    const actorName = [actorProfile?.first_name, actorProfile?.last_name].filter(Boolean).join(" ").trim() || null;
+    await sendMail({
+      to: email,
+      subject: "Your role on the Bull Bay church platform has changed",
+      html: renderRoleChangedEmail({ recipientName: existingProfile?.first_name ?? "there", roleName: selectedRole.name, changedByName: actorName }),
+    }).catch(() => {});
+    await notifyUser({
+      organizationId,
+      userId,
+      title: `Your role is now ${selectedRole.name}`,
+      body: actorName ? `Changed by ${actorName}.` : undefined,
+      url: "/member/profile",
+      type: "role_change",
+    }).catch(() => {});
   }
 
   revalidatePath("/admin/roles");
+  revalidatePath("/admin/people");
   return {
     status: "success",
     message: actionLink ? `Invitation sent to ${email}.` : `Role assigned to ${email}.`,
@@ -534,6 +554,119 @@ export async function revokeRole(userRoleId: string): Promise<ActionState> {
   if (error) return { status: "error", message: "The role could not be revoked." };
   revalidatePath("/admin/roles");
   return { status: "success", message: "Role revoked." };
+}
+
+/**
+ * Where staff role changes actually happen day-to-day — right on the
+ * People directory, next to everything else known about that person.
+ * Roles & Access stays purely for inviting someone new with a starting
+ * role; once they're in the system, this is what changes what they can
+ * do. `roleId` empty removes any staff role, leaving them a plain member.
+ * Deliberately gated the same way as the Roles & Access page itself
+ * (super_admin only) rather than just the roles.manage permission — see
+ * the comment on that page for why.
+ */
+export async function setPersonRole(profileId: string, roleId: string): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  if (!organizationId || !(await isSuperAdmin(organizationId))) {
+    return { status: "error", message: "You don't have permission to change staff roles." };
+  }
+
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, auth_user_id, first_name, email")
+    .eq("organization_id", organizationId)
+    .eq("id", profileId)
+    .maybeSingle();
+  if (!profile) return { status: "error", message: "That person could not be found." };
+  if (!profile.auth_user_id) {
+    return { status: "error", message: "Invite this person first (use the button above) before assigning a role." };
+  }
+
+  let newRole: { id: string; code: string; name: string } | null = null;
+  if (roleId) {
+    const { data: role } = await supabase
+      .from("roles")
+      .select("id, code, name")
+      .eq("id", roleId)
+      .eq("organization_id", organizationId)
+      .maybeSingle();
+    if (!role) return { status: "error", message: "Choose a valid role for this church." };
+    newRole = role;
+  }
+
+  const { data: currentGrants } = await supabase
+    .from("user_roles")
+    .select("id, roles(code)")
+    .eq("organization_id", organizationId)
+    .eq("user_id", profile.auth_user_id);
+  const currentCodes = new Set((currentGrants ?? []).flatMap((g) => {
+    const role = g.roles as unknown as { code: string } | null;
+    return role?.code ? [role.code] : [];
+  }));
+
+  if (currentCodes.has("super_admin") && newRole?.code !== "super_admin") {
+    const { count } = await supabase
+      .from("user_roles")
+      .select("id, roles!inner(code)", { count: "exact", head: true })
+      .eq("organization_id", organizationId)
+      .eq("roles.code", "super_admin");
+    if ((count ?? 0) <= 1) {
+      return { status: "error", message: "Assign another super administrator before changing this person's role." };
+    }
+  }
+
+  if (currentCodes.size === 0 && !newRole) {
+    return { status: "success", message: "Already a member with no staff role." };
+  }
+  if (currentCodes.size === 1 && currentCodes.has(newRole?.code ?? "")) {
+    return { status: "success", message: "That role is already set." };
+  }
+
+  if (currentGrants && currentGrants.length > 0) {
+    const { error: deleteError } = await supabase
+      .from("user_roles")
+      .delete()
+      .eq("organization_id", organizationId)
+      .eq("user_id", profile.auth_user_id);
+    if (deleteError) return { status: "error", message: "The role could not be changed." };
+  }
+
+  if (newRole) {
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser();
+    const { error: insertError } = await supabase.from("user_roles").insert({
+      organization_id: organizationId,
+      user_id: profile.auth_user_id,
+      role_id: newRole.id,
+      granted_by: currentUser?.id,
+    });
+    if (insertError) return { status: "error", message: "The role could not be changed." };
+  }
+
+  const actorProfile = await getCurrentProfile();
+  const actorName = [actorProfile?.first_name, actorProfile?.last_name].filter(Boolean).join(" ").trim() || null;
+  if (profile.email) {
+    await sendMail({
+      to: profile.email,
+      subject: "Your role on the Bull Bay church platform has changed",
+      html: renderRoleChangedEmail({ recipientName: profile.first_name ?? "there", roleName: newRole?.name ?? null, changedByName: actorName }),
+    }).catch(() => {});
+  }
+  await notifyUser({
+    organizationId,
+    userId: profile.auth_user_id,
+    title: newRole ? `Your role is now ${newRole.name}` : "Your staff role was removed",
+    body: actorName ? `Changed by ${actorName}.` : undefined,
+    url: "/member/profile",
+    type: "role_change",
+  }).catch(() => {});
+
+  revalidatePath("/admin/people");
+  revalidatePath("/admin/roles");
+  return { status: "success", message: newRole ? `Role changed to ${newRole.name}.` : "Staff role removed." };
 }
 
 // Settings -------------------------------------------------------------

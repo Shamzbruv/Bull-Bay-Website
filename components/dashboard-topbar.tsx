@@ -3,6 +3,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { DashboardIcon } from "@/components/dashboard-icons";
+import { NotificationBell } from "@/components/notification-bell";
+import type { NotificationRow } from "@/lib/notifications";
 import type { DashboardUser, WorkspaceDestination } from "@/components/dashboard-nav";
 
 export function DashboardTopbar({
@@ -12,6 +14,8 @@ export function DashboardTopbar({
   navigationOpen,
   onOpenNavigation,
   profileHref,
+  notifications,
+  unreadCount,
 }: {
   label: string;
   user: DashboardUser;
@@ -19,6 +23,8 @@ export function DashboardTopbar({
   navigationOpen: boolean;
   onOpenNavigation: () => void;
   profileHref: string;
+  notifications: NotificationRow[];
+  unreadCount: number;
 }) {
   const initials =
     user.name
@@ -67,6 +73,7 @@ export function DashboardTopbar({
           <DashboardIcon name="church" />
           <span>View website</span>
         </Link>
+        <NotificationBell notifications={notifications} unreadCount={unreadCount} />
         <Link className="dashboard-topbar-user" href={profileHref} aria-label={`Open profile for ${user.name}`}>
           {user.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- signed Storage URL, not an optimizable local/remote asset

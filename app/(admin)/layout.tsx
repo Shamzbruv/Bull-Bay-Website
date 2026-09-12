@@ -4,6 +4,7 @@ import type { DashboardNavSection, WorkspaceDestination } from "@/components/das
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { getAvatarUrl } from "@/lib/members/avatar";
+import { getMyNotifications } from "@/lib/notifications";
 
 const ADMIN_PERMISSIONS = [
   "people.read",
@@ -173,6 +174,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: "/admin", label: "Admin", icon: "briefcase", active: true },
     ...(canUsePastor ? [{ href: "/pastor", label: "Pastor", icon: "heart" as const }] : []),
   ];
+  const { notifications, unreadCount } = await getMyNotifications();
 
   return (
     <WorkspaceShell
@@ -182,6 +184,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       sections={sections}
       user={user}
       workspaces={workspaces}
+      notifications={notifications}
+      unreadCount={unreadCount}
     >
       {children}
     </WorkspaceShell>

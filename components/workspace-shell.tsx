@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DashboardNav, type DashboardNavSection, type DashboardUser, type WorkspaceDestination } from "@/components/dashboard-nav";
 import { DashboardTopbar } from "@/components/dashboard-topbar";
+import type { NotificationRow } from "@/lib/notifications";
 
 export function WorkspaceShell({
   title,
@@ -11,6 +12,8 @@ export function WorkspaceShell({
   sections,
   user,
   workspaces,
+  notifications = [],
+  unreadCount = 0,
   children,
 }: {
   title: string;
@@ -19,6 +22,8 @@ export function WorkspaceShell({
   sections: DashboardNavSection[];
   user: DashboardUser;
   workspaces: WorkspaceDestination[];
+  notifications?: NotificationRow[];
+  unreadCount?: number;
   children: React.ReactNode;
 }) {
   const [navigationOpen, setNavigationOpen] = useState(false);
@@ -112,6 +117,8 @@ export function WorkspaceShell({
         navigationOpen={navigationOpen}
         onOpenNavigation={openNavigation}
         profileHref={profileHref}
+        notifications={notifications}
+        unreadCount={unreadCount}
       />
       <div className="workspace-frame">
         <DashboardNav

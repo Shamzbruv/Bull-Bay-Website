@@ -427,6 +427,30 @@ table.data-table tr:last-child td { border-bottom: 0; }
 .badge.red { color: #9c3c26; }
 .badge.gold { color: #8a6a1c; }
 
+.notification-full-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.notification-full-list li {
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-inset-sm);
+}
+.notification-full-list li.notification-full-item-unread { box-shadow: var(--shadow-inset-sm), inset 3px 0 0 0 var(--color-blue-600); }
+.notification-full-list a,
+.notification-full-list button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  padding: 14px 16px;
+  font: inherit;
+}
+.notification-full-item-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.notification-full-list p { margin: 5px 0 0; color: var(--color-muted-2); font-size: .84rem; line-height: 1.5; }
+.notification-full-list small { display: block; margin-top: 8px; color: var(--color-muted); font-size: .68rem; }
+
 .alert { border-radius: var(--radius-md); padding: 15px 19px; font-size: .85rem; margin-bottom: 18px; background: var(--color-surface); box-shadow: var(--shadow-inset); }
 .alert.info { color: var(--color-blue-700); }
 .alert.warn { color: #8a4212; }
@@ -1780,6 +1804,104 @@ table.data-table tr:last-child td { border-bottom: 0; }
 }
 .workspace-root .dashboard-site-link svg { width: 16px; height: 16px; }
 .workspace-root .dashboard-site-link:hover { border-color: #c7d8d1; background: #f5faf7; }
+
+.notification-bell { position: relative; }
+.notification-bell-trigger {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--workspace-evergreen);
+  cursor: pointer;
+}
+.notification-bell-trigger:hover { border-color: #c7d8d1; background: #f5faf7; }
+.notification-bell-trigger svg { width: 18px; height: 18px; }
+.notification-bell-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--color-blue-600);
+  color: #fff;
+  font-size: .58rem;
+  font-weight: 800;
+  line-height: 17px;
+  text-align: center;
+}
+.notification-bell-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 30;
+  width: min(340px, 88vw);
+  max-height: 420px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised-lg);
+  overflow: hidden;
+}
+.notification-bell-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+.notification-bell-header strong { color: var(--workspace-navy); font-size: .82rem; }
+.notification-bell-mark-all {
+  border: 0;
+  background: transparent;
+  color: var(--color-blue-600);
+  font-size: .68rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+.notification-bell-mark-all:hover { text-decoration: underline; }
+.notification-bell-list { overflow-y: auto; }
+.notification-bell-empty { padding: 20px 16px; margin: 0; color: var(--color-muted); font-size: .78rem; }
+.notification-bell-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
+  padding: 12px 16px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.notification-bell-item:last-child { border-bottom: 0; }
+.notification-bell-item:hover { background: var(--color-surface-raised); }
+.notification-bell-item-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.notification-bell-title { color: var(--workspace-navy); font-size: .78rem; font-weight: 700; }
+.notification-bell-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--color-blue-600); flex: none; }
+.notification-bell-item p { margin: 4px 0 0; color: var(--color-muted-2); font-size: .74rem; line-height: 1.4; }
+.notification-bell-item small { display: block; margin-top: 5px; color: var(--color-muted); font-size: .64rem; }
+.notification-bell-viewall {
+  display: block;
+  padding: 11px 16px;
+  border-top: 1px solid var(--color-border);
+  background: #fff;
+  color: var(--color-blue-600);
+  font-size: .72rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+.notification-bell-viewall:hover { text-decoration: underline; }
 
 .workspace-root .dashboard-topbar-user {
   min-width: 0;

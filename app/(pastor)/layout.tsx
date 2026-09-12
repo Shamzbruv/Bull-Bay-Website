@@ -3,6 +3,7 @@ import { WorkspaceShell } from "@/components/workspace-shell";
 import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { getAvatarUrl } from "@/lib/members/avatar";
+import { getMyNotifications } from "@/lib/notifications";
 
 const ADMIN_PERMISSIONS = [
   "people.read",
@@ -79,6 +80,7 @@ export default async function PastorLayout({ children }: { children: React.React
     ...(canUseAdmin ? [{ href: "/admin", label: "Admin", icon: "briefcase" as const }] : []),
     { href: "/pastor", label: "Pastor", icon: "heart", active: true },
   ];
+  const { notifications, unreadCount } = await getMyNotifications();
 
   return (
     <WorkspaceShell
@@ -88,6 +90,8 @@ export default async function PastorLayout({ children }: { children: React.React
       sections={sections}
       user={user}
       workspaces={workspaces}
+      notifications={notifications}
+      unreadCount={unreadCount}
     >
       {children}
     </WorkspaceShell>

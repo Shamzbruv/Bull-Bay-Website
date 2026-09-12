@@ -150,6 +150,29 @@ export function renderTempPasswordEmail(opts: { recipientName: string; tempPassw
   });
 }
 
+/**
+ * Sent whenever an admin changes what staff role someone holds — from
+ * People (see setPersonRole) or from a Roles & Access invitation that
+ * assigns a role to someone who already has an account.
+ */
+export function renderRoleChangedEmail(opts: { recipientName: string; roleName: string | null; changedByName?: string | null }) {
+  const by = opts.changedByName ? ` by ${opts.changedByName}` : "";
+  return shell({
+    preheader: opts.roleName ? `Your role is now ${opts.roleName}.` : "Your staff role was removed.",
+    bodyHtml: `
+      <p style="margin:0 0 4px;color:${BRAND_OLIVE};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Account update</p>
+      <h1 style="margin:0 0 16px;color:${BRAND_BLUE};font-family:Georgia,'Times New Roman',serif;font-size:24px;">Hi ${escapeHtml(opts.recipientName)},</h1>
+      ${
+        opts.roleName
+          ? `<p style="margin:0 0 8px;">Your role on the Bull Bay church platform has been changed to <b>${escapeHtml(opts.roleName)}</b>${by}. This may change what you can see and do when you sign in.</p>`
+          : `<p style="margin:0 0 8px;">Your staff role on the Bull Bay church platform has been removed${by}. You'll still be able to sign in as a member.</p>`
+      }
+      ${button("Sign in", `${SITE_URL}/login`)}
+      <p style="margin:0;color:${MUTED};font-size:13px;">If this doesn't seem right, please contact the church office.</p>
+    `,
+  });
+}
+
 /** Used by Admin → Communications for one-off or bulk messages the
  * secretary/media team compose themselves. */
 export function renderComposedEmail(opts: { heading: string; bodyText: string; senderName?: string }) {
