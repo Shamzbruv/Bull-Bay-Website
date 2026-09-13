@@ -1,6 +1,7 @@
 "use client";
 
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { formatJmd } from "@/lib/money";
 
 const BLUE = "#173f89";
 const OLIVE = "#6a7e30";
@@ -22,7 +23,28 @@ function ChartTooltip({ active, payload, label, formatter }: { active?: boolean;
   );
 }
 
-export function TrendAreaChart({ data, dataKey, label, formatter, height = 220 }: { data: Record<string, string | number>[]; dataKey: string; label: string; formatter?: (v: number) => string; height?: number }) {
+/**
+ * `format` is a serializable tag rather than accepting a raw formatter
+ * function — this component's callers are almost always Server
+ * Components, and React Server Components cannot pass a function prop to
+ * a Client Component (it throws "Functions cannot be passed directly to
+ * Client Components" at render time, every time, regardless of data).
+ * Add another tag here rather than ever reintroducing a function prop.
+ */
+export function TrendAreaChart({
+  data,
+  dataKey,
+  label,
+  format,
+  height = 220,
+}: {
+  data: Record<string, string | number>[];
+  dataKey: string;
+  label: string;
+  format?: "currency";
+  height?: number;
+}) {
+  const formatter = format === "currency" ? (v: number) => formatJmd(v * 100) : undefined;
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>

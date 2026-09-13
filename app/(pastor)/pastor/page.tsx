@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { TrendAreaChart, ComparisonBarChart } from "@/components/charts";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
-import { formatJmd } from "@/lib/money";
 import { addQueryError, loadDashboardContext } from "@/components/dashboard/dashboard-data";
 import {
   ActivityItem,
@@ -490,7 +489,7 @@ export default async function PastorDashboardPage() {
             <EmptyState title="Giving could not be loaded" description="Open Finance or refresh to retry the protected query." action={{ href: "/admin/giving", label: "Open Finance" }} />
           ) : givingTrend.some((month) => month.giving > 0) ? (
             <ChartFrame>
-              <TrendAreaChart data={givingTrend} dataKey="giving" label="Giving (JMD)" formatter={(value) => formatJmd(value * 100)} />
+              <TrendAreaChart data={givingTrend} dataKey="giving" label="Giving (JMD)" format="currency" />
             </ChartFrame>
           ) : (
             <EmptyState title="No completed gifts in this period" description="The chart will appear after Finance confirms giving." action={{ href: "/admin/giving", label: "Review Finance" }} />

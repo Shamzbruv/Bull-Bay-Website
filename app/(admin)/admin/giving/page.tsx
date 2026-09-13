@@ -114,7 +114,7 @@ export default async function AdminGivingPage() {
 
       <div className="panel">
         <h2>Income vs. expenses, last 6 months</h2>
-        <TrendAreaChart data={netTrend} dataKey="net" label="Net (JMD)" formatter={(v) => formatJmd(v * 100)} />
+        <TrendAreaChart data={netTrend} dataKey="net" label="Net (JMD)" format="currency" />
       </div>
 
       {fundBreakdown.length > 0 && (
