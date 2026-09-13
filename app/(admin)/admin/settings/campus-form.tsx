@@ -28,6 +28,11 @@ export function CampusForm({ campus }: { campus: Campus }) {
         Livestream URL
         <input name="livestream_url" defaultValue={campus.livestream_url ?? ""} placeholder="https://youtube.com/..." />
       </label>
+      <p className="form-note" style={{ marginTop: -6 }}>
+        Paste a YouTube channel link (youtube.com/channel/UC…) so the Live page always shows whatever you&apos;re
+        currently streaming, with nothing to update week to week — a one-off video/watch link or a Facebook video
+        link also works, but has to be replaced each time. Saves and shows up on the Live page right away.
+      </p>
       <label>
         Address
         <input name="address_line1" defaultValue={campus.address_line1 ?? ""} />

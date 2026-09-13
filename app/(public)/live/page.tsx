@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getPrimaryCampus, getPublishedSermons, getStrategicMovementBySlug } from "@/lib/data/public";
+import { resolveEmbeddableVideo } from "@/lib/video-embed";
 
 export const revalidate = 120;
 export const metadata: Metadata = {
@@ -8,6 +9,8 @@ export const metadata: Metadata = {
   description: "Worship with Bull Bay live, wherever you are.",
   alternates: { canonical: "/live" },
 };
+
+const PLATFORM_LABEL = { youtube: "YouTube", "youtube-channel": "YouTube", facebook: "Facebook" } as const;
 
 export default async function LivePage() {
   const [campus, worship, worshipSermons] = await Promise.all([
@@ -18,6 +21,7 @@ export default async function LivePage() {
   const schedule = Array.isArray(campus?.service_schedule)
     ? (campus?.service_schedule as { day: string; time: string; label: string }[])
     : [];
+  const stream = resolveEmbeddableVideo(campus?.livestream_url);
 
   return (
     <section aria-labelledby="live-title">
@@ -33,7 +37,7 @@ export default async function LivePage() {
         <p>Worship with Bull Bay live, wherever you are.</p>
         {campus?.livestream_url ? (
           <a className="light-button live-link" href={campus.livestream_url} target="_blank" rel="noreferrer">
-            Open Livestream <span>▶</span>
+            {stream ? `Watch on ${PLATFORM_LABEL[stream.kind]}` : "Open Livestream"} <span>▶</span>
           </a>
         ) : (
           <p style={{ color: "#d9e2f1", fontSize: ".82rem", marginTop: 16 }}>
@@ -45,7 +49,27 @@ export default async function LivePage() {
         <article className="stream-card">
           <span className="tag">SUNDAY • {schedule.find((s) => s.day === "Sunday")?.time ?? "9:50 AM"}</span>
           <h2>Join our next live worship experience.</h2>
-          <p>Live chat, prayer, Bible reading, and giving will be connected here when the streaming channel is added.</p>
+          {stream ? (
+            <div className="stream-embed">
+              <div className="video-frame">
+                <iframe
+                  src={`${stream.embedUrl}${stream.embedUrl.includes("?") ? "&" : "?"}autoplay=1&mute=1`}
+                  title="Bull Bay livestream"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+              <p className="stream-embed-note">
+                Nothing playing? The stream may not have started yet — check back at service time, or{" "}
+                <a href={campus?.livestream_url ?? "#"} target="_blank" rel="noreferrer">
+                  open it directly
+                </a>
+                .
+              </p>
+            </div>
+          ) : (
+            <p>Live chat, prayer, Bible reading, and giving will be connected here when the streaming channel is added.</p>
+          )}
           <Link className="primary-button compact" href="/prayer">
             Request Prayer <span>→</span>
           </Link>

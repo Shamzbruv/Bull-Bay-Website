@@ -320,6 +320,10 @@ main { display: block; }
 .schedule-card div b { color: var(--color-olive-600); }
 .schedule-card div em { font-style: normal; color: var(--color-blue-700); font-weight: 700; }
 
+.stream-embed { margin: 18px 0; }
+.stream-embed .video-frame { border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-inset-sm); }
+.stream-embed-note { margin: 10px 0 0; color: var(--color-muted); font-size: .74rem; }
+
 .filter-row, .shop-tools, .calendar-toolbar { display: flex; justify-content: space-between; gap: 20px; align-items: center; margin-bottom: 28px; flex-wrap: wrap; }
 .filter-row label { font-weight: 700; font-size: .83rem; color: var(--color-blue-700); }
 .filter-input { display: block; margin-top: 8px; width: 290px; max-width: 100%; border: 0; border-radius: var(--radius-md); background: var(--color-surface); color: var(--color-blue-700); padding: 12px 15px; box-shadow: var(--shadow-inset); }

@@ -620,6 +620,43 @@ export async function saveCampusSettings(_prev: ActionState, formData: FormData)
   return { status: "success", message: "Settings saved." };
 }
 
+/**
+ * A narrower sibling of saveCampusSettings, just for the Live page's
+ * link — reachable from Admin -> Media too, not only Settings, since RLS
+ * ("campuses staff manage", 0026) already lets media.manage save this
+ * without needing full sites.manage. Deliberately only ever touches
+ * livestream_url: reusing saveCampusSettings's full-row update here would
+ * silently null out phone/email/address, which this smaller form never
+ * collects.
+ */
+export async function updateLivestreamUrl(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !(permissions.has("media.manage") || permissions.has("sites.manage"))) {
+    return { status: "error", message: "You don't have permission to change the livestream link." };
+  }
+
+  const supabase = await createClient();
+  const { data: campus } = await supabase
+    .from("campuses")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("is_primary", true)
+    .maybeSingle();
+  if (!campus) return { status: "error", message: "Campus record not found." };
+
+  const url = String(formData.get("livestream_url") || "").trim() || null;
+  const { error } = await supabase.from("campuses").update({ livestream_url: url }).eq("id", campus.id);
+  if (error) return { status: "error", message: "We couldn't save the livestream link." };
+
+  revalidatePath("/admin/media");
+  revalidatePath("/admin/settings");
+  revalidatePath("/");
+  revalidatePath("/live");
+  revalidatePath("/visit");
+  return { status: "success", message: url ? "Livestream link saved." : "Livestream link removed." };
+}
+
 // Church direction (movements, goals, priorities) --------------------------
 export async function toggleGoalVisibility(goalId: string, publicVisible: boolean): Promise<void> {
   const supabase = await createClient();

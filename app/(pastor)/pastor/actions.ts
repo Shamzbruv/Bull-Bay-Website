@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { parseYouTubeId } from "@/lib/video-embed";
 import type { ActionState } from "@/app/(public)/actions";
 
 function slugify(input: string) {
@@ -11,28 +12,6 @@ function slugify(input: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
-}
-
-/** Accepts a pasted YouTube URL in any common shape (watch, youtu.be,
- * embed, shorts) or a bare 11-character video ID, and returns just the
- * ID — so pasting the address bar URL "just works" instead of requiring
- * whoever's adding the sermon to know how to extract the ID by hand. */
-function parseYouTubeId(input: string): string | null {
-  const trimmed = input.trim();
-  if (!trimmed) return null;
-  if (/^[\w-]{11}$/.test(trimmed)) return trimmed;
-  try {
-    const url = new URL(trimmed);
-    if (url.hostname.includes("youtu.be")) return url.pathname.slice(1).split("/")[0] || null;
-    if (url.hostname.includes("youtube.com")) {
-      if (url.searchParams.get("v")) return url.searchParams.get("v");
-      const match = url.pathname.match(/\/(embed|shorts)\/([\w-]{11})/);
-      if (match) return match[2] ?? null;
-    }
-  } catch {
-    // Not a URL — fall through to null below.
-  }
-  return null;
 }
 
 export async function saveSermon(_prev: ActionState, formData: FormData): Promise<ActionState> {
