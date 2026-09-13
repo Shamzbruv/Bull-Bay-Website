@@ -18,17 +18,17 @@ export function ResetPasswordButton({ profileId, hasAccount }: { profileId: stri
         className="secondary-button compact"
         disabled={pending}
         onClick={() => {
-          if (!confirm("Reset this member's password? They'll need the temporary password shown to sign in.")) return;
+          if (!confirm("Send a password reset link to this account's registered email?")) return;
           startTransition(async () => {
             const result = await resetMemberPassword(profileId);
             setMessage(result.message);
           });
         }}
       >
-        {pending ? "Resetting…" : "Reset password"}
+        {pending ? "Sending…" : "Reset password"}
       </button>
       {message && (
-        <p style={{ fontSize: ".72rem", marginTop: 6, maxWidth: 260, color: message.includes("Temporary") ? "var(--color-olive-700)" : "#a8341f" }}>
+        <p style={{ fontSize: ".72rem", marginTop: 6, maxWidth: 260, color: message.includes("was sent") ? "var(--color-olive-700)" : "#a8341f" }}>
           {message}
         </p>
       )}

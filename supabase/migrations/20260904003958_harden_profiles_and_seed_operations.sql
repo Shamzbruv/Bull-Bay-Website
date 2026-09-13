@@ -260,12 +260,12 @@ cross join (values
     'Membership Confirmation Letter',
     'Confirms active membership or attendance at NTCOG Bull Bay.',
     'Membership',
-    E'To whom it may concern,\n\nThis letter confirms that {{member_name}} is a member of {{church_name}}. {{member_name}} has been connected with our congregation since {{membership_since}}.\n\nThis letter is issued at the member\'s request for the following purpose: {{purpose}}.\n\nYours in Christian service,'
+    E'To whom it may concern,\n\nThis letter confirms that {{member_name}} is a member of {{church_name}}. {{member_name}} has been connected with our congregation since {{membership_since}}.\n\nThis letter is issued at the member''s request for the following purpose: {{purpose}}.\n\nYours in Christian service,'
   ),
   (
     'character-reference',
     'Pastoral Character Reference',
-    'A formal character reference prepared by the pastor\'s office.',
+    'A formal character reference prepared by the pastor''s office.',
     'Reference',
     E'To whom it may concern,\n\nI am pleased to provide this pastoral reference for {{member_name}}, who is known to the congregation of {{church_name}}.\n\nPurpose of this reference: {{purpose}}.\n\nPlease contact the church office using the details on this letter if further confirmation is required.\n\nYours in Christian service,'
   ),
@@ -278,10 +278,10 @@ cross join (values
   ),
   (
     'general-office-letter',
-    'General Pastor\'s Office Letter',
+    'General Pastor''s Office Letter',
     'A flexible official letter for requests not covered by another template.',
     'General',
-    E'To whom it may concern,\n\nThis letter is issued by {{church_name}} on behalf of {{member_name}} for the following purpose: {{purpose}}.\n\nAdditional approved details will be included by the pastor\'s office before certification.\n\nYours in Christian service,'
+    E'To whom it may concern,\n\nThis letter is issued by {{church_name}} on behalf of {{member_name}} for the following purpose: {{purpose}}.\n\nAdditional approved details will be included by the pastor''s office before certification.\n\nYours in Christian service,'
   )
 ) as seed(slug, name, description, category, body)
 where o.slug = 'bull-bay'

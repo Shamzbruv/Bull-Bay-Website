@@ -1,11 +1,6 @@
+import { getWorkspaceAccess } from "@/lib/auth/workspace";
 import { createClient } from "@/lib/supabase/server";
 import { getAuthUser, getCurrentProfile } from "@/lib/auth/session";
-
-type DashboardRole = {
-  code: string;
-  name: string;
-  role_permissions: { permission_code: string }[];
-};
 
 /**
  * Loads the signed-in person's dashboard identity and, when requested, their
@@ -45,21 +40,10 @@ export async function loadDashboardContext(includeAccess = false) {
   const roleNames: string[] = [];
 
   if (includeAccess && profile) {
-    const accessResult = await supabase
-      .from("user_roles")
-      .select("roles!inner(code, name, role_permissions(permission_code))")
-      .eq("organization_id", profile.organization_id)
-      .eq("user_id", user.id);
-
-    if (accessResult.error) errors.push(`Roles and permissions: ${accessResult.error.message}`);
-
-    for (const row of accessResult.data ?? []) {
-      const role = row.roles as unknown as DashboardRole | null;
-      if (!role) continue;
-      roleCodes.add(role.code);
-      if (!roleNames.includes(role.name)) roleNames.push(role.name);
-      for (const permission of role.role_permissions ?? []) permissions.add(permission.permission_code);
-    }
+    const access = await getWorkspaceAccess(profile.organization_id);
+    for (const code of access.roleCodes) roleCodes.add(code);
+    for (const permission of access.permissions) permissions.add(permission);
+    roleNames.push(access.roleName);
   }
 
   return {

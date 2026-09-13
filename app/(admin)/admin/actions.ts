@@ -419,19 +419,18 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
 // Roles & staff ------------------------------------------------------------
 export async function inviteStaffMember(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
-  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
-  if (!organizationId || !permissions.has("roles.manage")) {
+  if (!organizationId || !(await isSuperAdmin(organizationId))) {
     return { status: "error", message: "You don't have permission to invite staff." };
   }
 
-  const email = String(formData.get("email") || "").trim();
+  const email = String(formData.get("email") || "").trim().toLowerCase();
   const roleId = String(formData.get("roleId") || "");
   if (!email || !roleId) return { status: "error", message: "Please provide an email and choose a role." };
 
   const supabase = await createClient();
   const { data: selectedRole } = await supabase
     .from("roles")
-    .select("id, name")
+    .select("id, code, name")
     .eq("id", roleId)
     .eq("organization_id", organizationId)
     .maybeSingle();
@@ -442,9 +441,13 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
     .from("profiles")
     .select("auth_user_id, first_name")
     .eq("organization_id", organizationId)
-    .ilike("email", email)
+    .eq("email", email)
     .maybeSingle();
 
+  if (existingProfile?.auth_user_id) {
+    const { data: account, error } = await admin.auth.admin.getUserById(existingProfile.auth_user_id);
+    if (error || account.user?.email?.toLowerCase() !== email) return { status: "error", message: "The profile email does not match the account's registered email. Correct the profile before assigning a role." };
+  }
   let userId = existingProfile?.auth_user_id ?? null;
   let actionLink: string | null = null;
   if (!userId) {
@@ -457,35 +460,19 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
     actionLink = generated.actionLink;
   }
 
-  const {
-    data: { user: currentUser },
-  } = await supabase.auth.getUser();
-
-  const { data: existingGrant } = await admin
-    .from("user_roles")
-    .select("id")
-    .eq("organization_id", organizationId)
-    .eq("user_id", userId)
-    .eq("role_id", roleId)
-    .maybeSingle();
-  if (existingGrant) return { status: "success", message: "That staff role is already assigned." };
-
-  const { error: roleError } = await admin.from("user_roles").insert({
-    organization_id: organizationId,
-    user_id: userId,
-    role_id: roleId,
-    granted_by: currentUser?.id,
+  const { error: roleError } = await supabase.rpc("assign_person_role", {
+    org: organizationId, target_user: userId, selected_role: roleId,
   });
 
   if (roleError) {
-    return { status: "error", message: "The account is ready, but the role couldn't be assigned. Try again." };
+    return { status: "error", message: roleError.message };
   }
 
   if (actionLink) {
     const result = await sendMail({
       to: email,
-      subject: "You're invited to the Bull Bay church platform",
-      html: renderInviteEmail({ recipientName: existingProfile?.first_name ?? "there", actionUrl: actionLink }),
+      subject: `You're invited as ${selectedRole.name} — Bull Bay church`,
+      html: renderInviteEmail({ recipientName: existingProfile?.first_name ?? "there", actionUrl: actionLink, roleName: selectedRole.name }),
     });
     if (!result.sent) {
       revalidatePath("/admin/roles");
@@ -506,7 +493,7 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
       userId,
       title: `Your role is now ${selectedRole.name}`,
       body: actorName ? `Changed by ${actorName}.` : undefined,
-      url: "/member/profile",
+      url: "/workspace",
       type: "role_change",
     }).catch(() => {});
   }
@@ -521,8 +508,7 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
 
 export async function revokeRole(userRoleId: string): Promise<ActionState> {
   const organizationId = await getOrganizationId();
-  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
-  if (!organizationId || !permissions.has("roles.manage")) {
+  if (!organizationId || !(await isSuperAdmin(organizationId))) {
     return { status: "error", message: "You don't have permission to revoke staff roles." };
   }
   const supabase = await createClient();
@@ -534,24 +520,8 @@ export async function revokeRole(userRoleId: string): Promise<ActionState> {
     .maybeSingle();
   if (!grant) return { status: "error", message: "That role assignment no longer exists." };
 
-  const role = grant.roles as unknown as { code: string } | null;
-  if (role?.code === "super_admin") {
-    const { count } = await supabase
-      .from("user_roles")
-      .select("id, roles!inner(code)", { count: "exact", head: true })
-      .eq("organization_id", organizationId)
-      .eq("roles.code", "super_admin");
-    if ((count ?? 0) <= 1) {
-      return { status: "error", message: "Assign another super administrator before removing the last one." };
-    }
-  }
-
-  const { error } = await supabase
-    .from("user_roles")
-    .delete()
-    .eq("organization_id", organizationId)
-    .eq("id", userRoleId);
-  if (error) return { status: "error", message: "The role could not be revoked." };
+  const { error } = await supabase.rpc("assign_person_role", { org: organizationId, target_user: grant.user_id, selected_role: null });
+  if (error) return { status: "error", message: error.message };
   revalidatePath("/admin/roles");
   return { status: "success", message: "Role revoked." };
 }
@@ -596,55 +566,10 @@ export async function setPersonRole(profileId: string, roleId: string): Promise<
     newRole = role;
   }
 
-  const { data: currentGrants } = await supabase
-    .from("user_roles")
-    .select("id, roles(code)")
-    .eq("organization_id", organizationId)
-    .eq("user_id", profile.auth_user_id);
-  const currentCodes = new Set((currentGrants ?? []).flatMap((g) => {
-    const role = g.roles as unknown as { code: string } | null;
-    return role?.code ? [role.code] : [];
-  }));
-
-  if (currentCodes.has("super_admin") && newRole?.code !== "super_admin") {
-    const { count } = await supabase
-      .from("user_roles")
-      .select("id, roles!inner(code)", { count: "exact", head: true })
-      .eq("organization_id", organizationId)
-      .eq("roles.code", "super_admin");
-    if ((count ?? 0) <= 1) {
-      return { status: "error", message: "Assign another super administrator before changing this person's role." };
-    }
-  }
-
-  if (currentCodes.size === 0 && !newRole) {
-    return { status: "success", message: "Already a member with no staff role." };
-  }
-  if (currentCodes.size === 1 && currentCodes.has(newRole?.code ?? "")) {
-    return { status: "success", message: "That role is already set." };
-  }
-
-  if (currentGrants && currentGrants.length > 0) {
-    const { error: deleteError } = await supabase
-      .from("user_roles")
-      .delete()
-      .eq("organization_id", organizationId)
-      .eq("user_id", profile.auth_user_id);
-    if (deleteError) return { status: "error", message: "The role could not be changed." };
-  }
-
-  if (newRole) {
-    const {
-      data: { user: currentUser },
-    } = await supabase.auth.getUser();
-    const { error: insertError } = await supabase.from("user_roles").insert({
-      organization_id: organizationId,
-      user_id: profile.auth_user_id,
-      role_id: newRole.id,
-      granted_by: currentUser?.id,
-    });
-    if (insertError) return { status: "error", message: "The role could not be changed." };
-  }
+  const { error } = await supabase.rpc("assign_person_role", {
+    org: organizationId, target_user: profile.auth_user_id, selected_role: newRole?.id ?? null,
+  });
+  if (error) return { status: "error", message: error.message };
 
   const actorProfile = await getCurrentProfile();
   const actorName = [actorProfile?.first_name, actorProfile?.last_name].filter(Boolean).join(" ").trim() || null;
@@ -660,7 +585,7 @@ export async function setPersonRole(profileId: string, roleId: string): Promise<
     userId: profile.auth_user_id,
     title: newRole ? `Your role is now ${newRole.name}` : "Your staff role was removed",
     body: actorName ? `Changed by ${actorName}.` : undefined,
-    url: "/member/profile",
+    url: "/workspace",
     type: "role_change",
   }).catch(() => {});
 

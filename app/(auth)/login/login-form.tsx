@@ -1,5 +1,6 @@
 "use client";
 
+import { safeNextPath } from "@/lib/auth/roles";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -21,7 +22,7 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") ?? "/member";
+  const next = safeNextPath(searchParams.get("next"));
   const callbackError = searchParams.get("error");
   const callbackErrorMessage = callbackError ? CALLBACK_ERROR_MESSAGES[callbackError] ?? "Something went wrong with that link. Please try again." : null;
 

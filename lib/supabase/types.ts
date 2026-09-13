@@ -3269,6 +3269,10 @@ export type Database = {
       }
     }
     Functions: {
+      assign_person_role: { Args: { org: string; target_user: string; selected_role?: string | null }; Returns: undefined }
+      available_counsel_slots: { Args: { person: string; on_date: string }; Returns: { starts_at: string; ends_at: string }[] }
+      respond_counsel_request: { Args: { request_id: string; decision: string; slot_start?: string | null; slot_end?: string | null; note?: string | null }; Returns: undefined }
+
       current_household_id: { Args: never; Returns: string }
       current_profile_id: { Args: never; Returns: string }
       has_permission: {

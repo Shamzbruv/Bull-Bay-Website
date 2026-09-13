@@ -1,5 +1,6 @@
 "use client";
 
+import { safeNextPath } from "@/lib/auth/roles";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -24,7 +25,7 @@ export function AuthCallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
-  const next = searchParams.get("next") ?? "/member";
+  const next = safeNextPath(searchParams.get("next"));
 
   useEffect(() => {
     let cancelled = false;

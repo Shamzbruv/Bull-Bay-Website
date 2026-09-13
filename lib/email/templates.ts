@@ -100,13 +100,13 @@ function button(label: string, url: string) {
  * whole point: this is the only place that email goes out, straight
  * through Resend, with nothing routed through Supabase's own mailer.
  */
-export function renderInviteEmail(opts: { recipientName: string; actionUrl: string }) {
+export function renderInviteEmail(opts: { recipientName: string; actionUrl: string; roleName?: string }) {
   return shell({
     preheader: "You've been invited to the Bull Bay church platform.",
     bodyHtml: `
       <p style="margin:0 0 4px;color:${BRAND_OLIVE};font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">You're invited</p>
-      <h1 style="margin:0 0 16px;color:${BRAND_BLUE};font-family:Georgia,'Times New Roman',serif;font-size:24px;">Welcome, ${opts.recipientName}.</h1>
-      <p style="margin:0 0 8px;">The church office has set up an account for you on the Bull Bay church platform — your place to view the church calendar, submit prayer and counselling requests, and request documents from the pastor's office.</p>
+      <h1 style="margin:0 0 16px;color:${BRAND_BLUE};font-family:Georgia,'Times New Roman',serif;font-size:24px;">Welcome, ${escapeHtml(opts.recipientName)}.</h1>
+      <p style="margin:0 0 8px;">The church office has invited you to the Bull Bay church platform as <b>${escapeHtml(opts.roleName ?? "Member")}</b>. After you set your password, you will open your assigned dashboard with the tools and access for your role.</p>
       <p style="margin:16px 0 0;">Click below to set your password and get started:</p>
       ${button("Set your password", opts.actionUrl)}
       <p style="margin:0;color:${MUTED};font-size:13px;">If the button doesn't work, copy and paste this link into your browser:<br/><span style="word-break:break-all;">${opts.actionUrl}</span></p>
@@ -156,7 +156,7 @@ export function renderTempPasswordEmail(opts: { recipientName: string; tempPassw
  * assigns a role to someone who already has an account.
  */
 export function renderRoleChangedEmail(opts: { recipientName: string; roleName: string | null; changedByName?: string | null }) {
-  const by = opts.changedByName ? ` by ${opts.changedByName}` : "";
+  const by = opts.changedByName ? ` by ${escapeHtml(opts.changedByName)}` : "";
   return shell({
     preheader: opts.roleName ? `Your role is now ${opts.roleName}.` : "Your staff role was removed.",
     bodyHtml: `

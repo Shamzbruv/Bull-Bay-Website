@@ -31,7 +31,7 @@ export async function addAvailability(_prev: ActionState, formData: FormData): P
   const startTime = String(formData.get("start_time") || "");
   const endTime = String(formData.get("end_time") || "");
   const label = String(formData.get("label") || "").trim();
-  if (Number.isNaN(dayOfWeek) || !startTime || !endTime) return { status: "error", message: "Fill in the day and both times." };
+  if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6 || !startTime || !endTime) return { status: "error", message: "Fill in the day and both times." };
   if (endTime <= startTime) return { status: "error", message: "End time must be after start time." };
 
   const { error } = await supabase.from("pastoral_calendar_availability").insert({
@@ -41,7 +41,7 @@ export async function addAvailability(_prev: ActionState, formData: FormData): P
     end_time: endTime,
     label: label || null,
   });
-  if (error) return { status: "error", message: "Couldn't save those hours." };
+  if (error) return { status: "error", message: error.code === "23P01" ? "Those hours overlap existing availability." : "Couldn't save those hours." };
 
   revalidatePath("/member/team-calendar");
   revalidatePath("/pastor/calendar");
@@ -72,7 +72,7 @@ export async function addCalendarEvent(_prev: ActionState, formData: FormData): 
   const startsAt = String(formData.get("starts_at") || "");
   const endsAt = String(formData.get("ends_at") || "");
   if (!title || !startsAt || !endsAt) return { status: "error", message: "Fill in the title and both dates." };
-  if (!new Set(["day_off", "busy", "appointment"]).has(kind) || !new Set(["public", "private"]).has(visibility)) {
+  if (!new Set(["day_off", "busy"]).has(kind) || !new Set(["public", "private"]).has(visibility)) {
     return { status: "error", message: "Choose a valid calendar type and visibility." };
   }
   const start = new Date(`${startsAt}:00-05:00`);
@@ -98,7 +98,7 @@ export async function addCalendarEvent(_prev: ActionState, formData: FormData): 
     starts_at: start.toISOString(),
     ends_at: end.toISOString(),
   });
-  if (error) return { status: "error", message: "Couldn't save that calendar entry." };
+  if (error) return { status: "error", message: error.code === "23P01" ? "That time was just booked. Choose another time." : "Couldn't save that calendar entry." };
 
   revalidatePath("/member/team-calendar");
   revalidatePath("/pastor/calendar");

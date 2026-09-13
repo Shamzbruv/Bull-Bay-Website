@@ -6,5 +6,7 @@ import { SITE_URL } from "@/lib/org";
 export async function POST() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  return NextResponse.redirect(SITE_URL);
+  const response = NextResponse.redirect(SITE_URL, 303);
+  response.cookies.delete("workspace_preview");
+  return response;
 }

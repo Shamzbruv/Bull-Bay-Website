@@ -23,7 +23,7 @@ export async function addPastoralTeamMember(_prev: ActionState, formData: FormDa
   if (!email || !roleTitle) return { status: "error", message: "Enter the member's email and a role title." };
 
   const supabase = await createClient();
-  const { data: profile } = await supabase.from("profiles").select("id, first_name, last_name").eq("email", email).maybeSingle();
+  const { data: profile } = await supabase.from("profiles").select("id, first_name, last_name").eq("organization_id", organizationId).eq("email", email.toLowerCase()).maybeSingle();
   if (!profile) return { status: "error", message: "No member found with that email. They need an account first." };
 
   const { error } = await supabase.from("pastoral_team_members").upsert(

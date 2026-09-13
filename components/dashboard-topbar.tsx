@@ -60,14 +60,12 @@ export function DashboardTopbar({
 
       <div className="dashboard-topbar-actions">
         {workspaces.length > 1 && (
-          <nav className="dashboard-workspace-switcher" aria-label="Switch workspace">
-            {workspaces.map((workspace) => (
-              <Link key={workspace.href} href={workspace.href} aria-current={workspace.active ? "page" : undefined}>
-                <DashboardIcon name={workspace.icon} />
-                <span>{workspace.label}</span>
-              </Link>
-            ))}
-          </nav>
+          <label className="dashboard-workspace-switcher">
+            <span className="sr-only">Preview role</span>
+            <select aria-label="Preview role" value={workspaces.find(w => w.active)?.href ?? ""} onChange={e => { window.location.href = e.target.value; }}>
+              {workspaces.map(workspace => <option key={workspace.href} value={workspace.href}>{workspace.label}</option>)}
+            </select>
+          </label>
         )}
         <Link className="dashboard-site-link" href="/" title="View church website">
           <DashboardIcon name="church" />

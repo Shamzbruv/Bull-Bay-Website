@@ -1,3 +1,4 @@
+import { CancelRequestButton } from "./cancel-request-button";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
@@ -55,7 +56,7 @@ export default async function MemberCounselPage() {
   const scheduledEventIds = (myRequests ?? []).map((r) => r.scheduled_event_id).filter((id): id is string => Boolean(id));
   const { data: scheduledEvents } =
     scheduledEventIds.length > 0
-      ? await createServiceRoleClient().from("pastoral_calendar_events").select("id, title, starts_at, ends_at").in("id", scheduledEventIds)
+      ? await createServiceRoleClient().from("pastoral_calendar_events").select("id, title, starts_at, ends_at").in("id", scheduledEventIds).in("counsel_request_id", (myRequests ?? []).map(r => r.id))
       : { data: [] };
   const scheduledEventById = new Map((scheduledEvents ?? []).map((e) => [e.id, e]));
 
@@ -121,9 +122,9 @@ export default async function MemberCounselPage() {
                     <span className="badge gray" style={{ marginRight: 8 }}>
                       {e.kind.replace("_", " ")}
                     </span>
-                    {e.title} — {new Date(e.starts_at).toLocaleDateString("en-JM", { dateStyle: "medium" })}
+                    {e.title} — {new Date(e.starts_at).toLocaleDateString("en-JM", { dateStyle: "medium", timeZone: "America/Jamaica" })}
                     {new Date(e.starts_at).toDateString() !== new Date(e.ends_at).toDateString() &&
-                      ` to ${new Date(e.ends_at).toLocaleDateString("en-JM", { dateStyle: "medium" })}`}
+                      ` to ${new Date(e.ends_at).toLocaleDateString("en-JM", { dateStyle: "medium", timeZone: "America/Jamaica" })}`}
                   </div>
                 ))}
               </div>
@@ -131,8 +132,7 @@ export default async function MemberCounselPage() {
           </>
         )}
         <p className="form-note" style={{ marginTop: 14 }}>
-          Need something outside these hours? Send the request anyway — it will be flagged urgent so it isn&apos;t
-          missed.
+          All times are in Jamaica time. For help outside published hours, contact the church office.
         </p>
       </div>
 
@@ -172,11 +172,12 @@ export default async function MemberCounselPage() {
                   {r.reason} — with {withWhom?.first_name} {withWhom?.last_name}
                   {scheduledEvent
                     ? ` · ${new Date(scheduledEvent.starts_at).toLocaleString("en-JM", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Jamaica" })}`
-                    : r.preferred_date && ` · ${new Date(r.preferred_date).toLocaleDateString("en-JM", { dateStyle: "medium" })}`}
+                    : r.preferred_date && ` · ${new Date(r.preferred_date).toLocaleDateString("en-JM", { dateStyle: "medium", timeZone: "America/Jamaica" })}`}
                 </span>
                 <span>
                   {r.is_urgent && <span className="badge gray" style={{ marginRight: 6 }}>urgent</span>}
                   <span className="badge blue">{r.status}</span>
+                  {["requested", "scheduled"].includes(r.status) && <CancelRequestButton id={r.id} />}
                 </span>
               </div>
               {scheduledEvent && (

@@ -216,13 +216,6 @@ export async function assignPrayerRequest(prayerId: string, assigneeUserId: stri
 // Counsel requests -----------------------------------------------------
 export async function scheduleCounselRequest(requestId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const supabase = await createClient();
-  const { data: request } = await supabase
-    .from("counsel_requests")
-    .select("id, reason, requested_with_profile_id")
-    .eq("id", requestId)
-    .maybeSingle();
-  if (!request?.requested_with_profile_id) return { status: "error", message: "This request can't be scheduled." };
-
   const startsAt = String(formData.get("starts_at") || "");
   const endsAt = String(formData.get("ends_at") || "");
   if (!startsAt || !endsAt) return { status: "error", message: "Choose a start and end time." };
@@ -232,41 +225,11 @@ export async function scheduleCounselRequest(requestId: string, _prev: ActionSta
     return { status: "error", message: "Choose a valid end time after the start time." };
   }
 
-  const { data: conflicts } = await supabase
-    .from("pastoral_calendar_events")
-    .select("id")
-    .eq("profile_id", request.requested_with_profile_id)
-    .lt("starts_at", endsAtJamaica.toISOString())
-    .gt("ends_at", startsAtJamaica.toISOString())
-    .limit(1);
-  if (conflicts && conflicts.length > 0) {
-    return { status: "error", message: "That time overlaps another calendar entry. Choose a different slot." };
-  }
-
-  const { data: event, error: eventError } = await supabase
-    .from("pastoral_calendar_events")
-    .insert({
-      profile_id: request.requested_with_profile_id,
-      title: `Counsel: ${request.reason}`,
-      kind: "appointment",
-      visibility: "private",
-      starts_at: startsAtJamaica.toISOString(),
-      ends_at: endsAtJamaica.toISOString(),
-      counsel_request_id: requestId,
-    })
-    .select("id")
-    .single();
-  if (eventError || !event) return { status: "error", message: "Couldn't add this to the calendar." };
-
-  const { error } = await supabase
-    .from("counsel_requests")
-    .update({ status: "scheduled", scheduled_event_id: event.id })
-    .eq("id", requestId);
-  if (error) {
-    await supabase.from("pastoral_calendar_events").delete().eq("id", event.id);
-    return { status: "error", message: "The request could not be scheduled. No calendar entry was kept." };
-  }
-
+  const { error } = await supabase.rpc("respond_counsel_request", {
+    request_id: requestId, decision: "scheduled", slot_start: startsAtJamaica.toISOString(), slot_end: endsAtJamaica.toISOString(),
+  });
+  if (error) return { status: "error", message: error.message };
+  revalidatePath("/pastor/calendar");
   revalidatePath("/pastor/care");
   revalidatePath("/member/team-calendar");
   revalidatePath("/member/counsel");
@@ -276,11 +239,9 @@ export async function scheduleCounselRequest(requestId: string, _prev: ActionSta
 export async function declineCounselRequest(requestId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const supabase = await createClient();
   const note = String(formData.get("staff_notes") || "").trim();
-  const { error } = await supabase
-    .from("counsel_requests")
-    .update({ status: "declined", staff_notes: note || null })
-    .eq("id", requestId);
-  if (error) return { status: "error", message: "Couldn't update this request." };
+  const { error } = await supabase.rpc("respond_counsel_request", { request_id: requestId, decision: "declined", note: note || null });
+  if (error) return { status: "error", message: error.message };
+  revalidatePath("/pastor/calendar");
   revalidatePath("/pastor/care");
   revalidatePath("/member/team-calendar");
   revalidatePath("/member/counsel");
@@ -310,4 +271,12 @@ export async function sendBroadcast(_prev: ActionState, formData: FormData): Pro
   revalidatePath("/pastor");
   revalidatePath("/member");
   return { status: "success", message: "Sent to every member's dashboard." };
+}
+
+export async function finishCounselRequest(requestId: string, decision: "completed" | "cancelled"): Promise<ActionState> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("respond_counsel_request", { request_id: requestId, decision });
+  if (error) return { status: "error", message: error.message };
+  revalidatePath("/", "layout");
+  return { status: "success", message: decision === "completed" ? "Meeting completed." : "Meeting cancelled; the time is available again." };
 }

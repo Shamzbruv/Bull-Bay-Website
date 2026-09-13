@@ -70,7 +70,6 @@ export function EventForm() {
         <select name="kind" defaultValue="day_off">
           <option value="day_off">Day off</option>
           <option value="busy">Busy / unavailable</option>
-          <option value="appointment">Appointment</option>
         </select>
       </label>
       <label>

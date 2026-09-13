@@ -1,3 +1,4 @@
+import { workspaceForRoles } from "@/lib/auth/roles";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -40,10 +41,16 @@ export async function updateSession(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isProtected = PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
 
+  function redirectWithCookies(url: URL) {
+    const result = NextResponse.redirect(url);
+    for (const cookie of response.cookies.getAll()) result.cookies.set(cookie);
+    return result;
+  }
+
   if (isProtected && !user) {
     const redirectUrl = new URL("/login", request.url);
     redirectUrl.searchParams.set("next", path);
-    return NextResponse.redirect(redirectUrl);
+    return redirectWithCookies(redirectUrl);
   }
 
   // Admin-issued temporary passwords must be replaced before the member can
@@ -56,7 +63,25 @@ export async function updateSession(request: NextRequest) {
       .eq("auth_user_id", user.id)
       .maybeSingle();
     if (profile?.must_change_password) {
-      return NextResponse.redirect(new URL("/auth/update-password", request.url));
+      return redirectWithCookies(new URL("/auth/update-password", request.url));
+    }
+  }
+
+  if (user && (isProtected || request.method !== "GET")) {
+    const { data: grants, error } = await supabase.from("user_roles").select("roles(code)").eq("user_id", user.id);
+    if (error) return NextResponse.json({ error: "Access could not be verified. Please retry." }, { status: 503 });
+    const roles = new Set((grants ?? []).flatMap(g => {
+      const role = g.roles as unknown as { code: string } | null;
+      return role ? [role.code] : [];
+    }));
+    const isSuper = roles.has("super_admin");
+    const preview = request.cookies.get("workspace_preview")?.value;
+    if (isSuper && preview && preview !== "super_admin" && path !== "/auth/signout" && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
+      return NextResponse.json({ error: "Role preview is read-only. Return to Super Administrator to make changes." }, { status: 403 });
+    }
+    const home = workspaceForRoles(roles);
+    if (!isSuper && ((path === "/member" && home !== "member") || (path.startsWith("/admin") && home === "member") || (path === "/admin" && home === "pastor") || (path.startsWith("/pastor") && home !== "pastor"))) {
+      return redirectWithCookies(new URL(`/${home}`, request.url));
     }
   }
 

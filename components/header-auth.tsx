@@ -55,7 +55,7 @@ export function HeaderAuth() {
 
   return (
     <Link
-      href={signedIn ? "/member" : "/login"}
+      href={signedIn ? "/workspace" : "/login"}
       className="header-account-link"
       aria-label={signedIn ? "Open my church account" : "Member login"}
       data-auth-state={signedIn ? "signed-in" : "signed-out"}

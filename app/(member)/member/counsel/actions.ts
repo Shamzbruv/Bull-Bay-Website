@@ -36,52 +36,33 @@ export async function submitCounselRequest(_prev: ActionState, formData: FormDat
     return { status: "error", message: "Choose today or a future date." };
   }
 
-  // Outside published hours (or on a published day off) → flagged urgent so
-  // it stands out to whoever picks it up, rather than silently waiting for
-  // a slot that was never actually open.
-  let isUrgent = false;
-  if (requestedWith && preferredDate) {
-    const dayOfWeek = new Date(`${preferredDate}T12:00:00-05:00`).getUTCDay();
-    const { data: availability } = await supabase
-      .from("pastoral_calendar_availability")
-      .select("start_time, end_time")
-      .eq("profile_id", requestedWith)
-      .eq("day_of_week", dayOfWeek);
-
-    if (!availability || availability.length === 0) {
-      isUrgent = true;
-    } else if (preferredTime) {
-      const withinHours = availability.some((a) => preferredTime >= a.start_time.slice(0, 5) && preferredTime <= a.end_time.slice(0, 5));
-      if (!withinHours) isUrgent = true;
-    }
-
-    const { data: dayOff } = await supabase
-      .from("pastoral_calendar_events")
-      .select("id")
-      .eq("profile_id", requestedWith)
-      .eq("kind", "day_off")
-      .lt("starts_at", `${preferredDate}T23:59:59-05:00`)
-      .gt("ends_at", `${preferredDate}T00:00:00-05:00`);
-    if (dayOff && dayOff.length > 0) isUrgent = true;
-  }
-
+  if (!preferredDate || !preferredTime) return { status: "error", message: "Choose an available date and time." };
   const { error } = await supabase.from("counsel_requests").insert({
     organization_id: organizationId,
     requester_profile_id: profile.id,
     requested_with_profile_id: requestedWith,
     reason,
     details: details || null,
-    is_urgent: isUrgent,
+    is_urgent: false,
     preferred_date: preferredDate,
     preferred_time: preferredTime,
   });
-  if (error) return { status: "error", message: "We couldn't send that request. Please try again." };
+  if (error) return { status: "error", message: error.message };
 
   revalidatePath("/member/counsel");
   return {
     status: "success",
-    message: isUrgent
-      ? "Sent — marked as urgent since it falls outside their published hours. They'll get back to you as soon as they can."
-      : "Your request has been sent. You'll be notified once it's scheduled.",
+    message: "Your request has been sent. You will be notified when it is confirmed.",
   };
+}
+
+export async function cancelMyCounselRequest(requestId: string): Promise<ActionState> {
+  const profile = await getCurrentProfile();
+  if (!profile) return { status: "error", message: "Please sign in." };
+  const supabase = await createClient();
+  const { data } = await supabase.from("counsel_requests").select("requester_profile_id").eq("id", requestId).maybeSingle();
+  if (data?.requester_profile_id !== profile.id) return { status: "error", message: "Request not found." };
+  const { error } = await supabase.rpc("respond_counsel_request", { request_id: requestId, decision: "cancelled" });
+  revalidatePath("/", "layout");
+  return error ? { status: "error", message: error.message } : { status: "success", message: "Request cancelled." };
 }

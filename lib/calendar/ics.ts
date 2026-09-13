@@ -9,11 +9,12 @@ export function toIcsDateTime(iso: string) {
 }
 
 export function escapeIcs(value: string) {
-  return value.replace(/[\\,;]/g, (m) => `\\${m}`).replace(/\n/g, "\\n");
+  return value.replace(/[\\,;]/g, (m) => `\\${m}`).replace(/\r\n|\r|\n/g, "\\n");
 }
 
 export type IcsEvent = {
   uid: string;
+  transparent?: boolean;
   startsAt: string;
   endsAt?: string | null;
   summary: string;
@@ -34,8 +35,9 @@ export function buildIcsCalendar(calendarName: string, events: IcsEvent[]): stri
     `X-WR-CALNAME:${escapeIcs(calendarName)}`,
     ...events.flatMap((event) => [
       "BEGIN:VEVENT",
-      `UID:${event.uid}@bullbaychurch`,
+      `UID:${escapeIcs(event.uid)}@bullbaychurch`,
       `DTSTAMP:${now}`,
+      `TRANSP:${event.transparent ? "TRANSPARENT" : "OPAQUE"}`,
       `DTSTART:${toIcsDateTime(event.startsAt)}`,
       ...(event.endsAt ? [`DTEND:${toIcsDateTime(event.endsAt)}`] : []),
       ...(event.rrule ? [`RRULE:${event.rrule}`] : []),
@@ -46,7 +48,16 @@ export function buildIcsCalendar(calendarName: string, events: IcsEvent[]): stri
     ]),
     "END:VCALENDAR",
   ];
-  return lines.join("\r\n");
+  // RFC 5545 folds at 75 octets, keeping UTF-8 characters intact.
+  return lines.map(line => {
+    let folded = "", bytes = 0;
+    for (const char of line) {
+      const size = new TextEncoder().encode(char).length;
+      if (bytes + size > 75) { folded += "\r\n "; bytes = 1; }
+      folded += char; bytes += size;
+    }
+    return folded;
+  }).join("\r\n") + "\r\n";
 }
 
 /** The Google Calendar "quick add" deep link for one specific event — no

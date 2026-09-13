@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { declineCounselRequest, scheduleCounselRequest } from "../actions";
+import { useActionState, useState, useTransition } from "react";
+import { declineCounselRequest, scheduleCounselRequest, finishCounselRequest } from "../actions";
 import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
@@ -18,6 +18,8 @@ type Props = {
 };
 
 export function CounselRequestRow({ id, reason, requesterName, details, isUrgent, preferredDate, preferredTime, status }: Props) {
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<string | null>(null);
   const [responding, setResponding] = useState(false);
   const [scheduleState, scheduleAction] = useActionState(scheduleCounselRequest.bind(null, id), initialActionState);
   const [declineState, declineAction] = useActionState(declineCounselRequest.bind(null, id), initialActionState);
@@ -30,7 +32,7 @@ export function CounselRequestRow({ id, reason, requesterName, details, isUrgent
           {preferredDate && (
             <span style={{ color: "var(--color-muted-2)", fontSize: ".85rem" }}>
               {" "}
-              · wants {new Date(preferredDate).toLocaleDateString("en-JM", { dateStyle: "medium" })}
+              · wants {new Date(`${preferredDate}T12:00:00-05:00`).toLocaleDateString("en-JM", { dateStyle: "medium", timeZone: "America/Jamaica" })}
               {preferredTime && ` at ${preferredTime.slice(0, 5)}`}
             </span>
           )}
@@ -41,6 +43,12 @@ export function CounselRequestRow({ id, reason, requesterName, details, isUrgent
           <span className="badge blue">{status}</span>
         </span>
       </div>
+
+      {status === "scheduled" && <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <button type="button" className="secondary-button compact" disabled={pending} onClick={() => startTransition(async () => setResult((await finishCounselRequest(id, "completed")).message))}>Mark completed</button>
+        <button type="button" className="secondary-button compact" disabled={pending} onClick={() => { if (window.confirm("Cancel this meeting and free the calendar time?")) startTransition(async () => setResult((await finishCounselRequest(id, "cancelled")).message)); }}>Cancel meeting</button>
+      </div>}
+      {result && <p role="status">{result}</p>}
 
       {status === "requested" && !responding && (
         <button type="button" className="secondary-button compact" style={{ marginTop: 8 }} onClick={() => setResponding(true)}>
@@ -53,7 +61,7 @@ export function CounselRequestRow({ id, reason, requesterName, details, isUrgent
           <form action={scheduleAction} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
             <label style={{ fontSize: ".8rem" }}>
               Starts
-              <input type="datetime-local" name="starts_at" required style={{ display: "block" }} />
+              <input type="datetime-local" name="starts_at" defaultValue={preferredDate && preferredTime ? `${preferredDate}T${preferredTime.slice(0, 5)}` : ""} required style={{ display: "block" }} />
             </label>
             <label style={{ fontSize: ".8rem" }}>
               Ends

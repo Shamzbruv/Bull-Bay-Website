@@ -131,7 +131,10 @@ export function WorkspaceShell({
           onClose={closeNavigation}
         />
         <main className="dashboard-main" id="dashboard-main" tabIndex={-1}>
-          <div className="dashboard-content">{children}</div>
+          <div className="dashboard-content">
+            {workspaces.some(w => w.active && !w.href.endsWith("role=super_admin")) && <div className="panel" role="status">Role preview — navigation and dashboard tools reflect the selected role. Records remain those your administrator account can access. Changes are disabled. <a href="/auth/workspace?role=super_admin">Return to Super Administrator</a></div>}
+            {children}
+          </div>
         </main>
       </div>
     </div>

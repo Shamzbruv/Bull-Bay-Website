@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-export function SyncCalendarPanel({ feedUrl }: { feedUrl: string }) {
+export function SyncCalendarPanel({ feedUrl, publicFeed = false }: { feedUrl: string; publicFeed?: boolean }) {
   const [copied, setCopied] = useState(false);
   const webcalUrl = feedUrl.replace(/^https?:/, "webcal:");
   const googleUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(feedUrl)}`;
@@ -22,8 +22,7 @@ export function SyncCalendarPanel({ feedUrl }: { feedUrl: string }) {
     <div className="panel">
       <h2>Sync to your phone or Google Calendar</h2>
       <p className="form-note" style={{ marginTop: 0 }}>
-        Subscribe once and your working hours and calendar entries below keep showing up automatically — no need to
-        re-add them when they change.
+        Subscribe to see your confirmed meetings and, for pastoral team members, working hours and calendar entries. Updates flow from the church platform to your calendar. Changes made in Google or your phone do not update church availability. Google and other calendar apps refresh subscriptions on their own schedule.
       </p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
         <a className="secondary-button compact" href={googleUrl} target="_blank" rel="noreferrer">
@@ -43,8 +42,7 @@ export function SyncCalendarPanel({ feedUrl }: { feedUrl: string }) {
         </div>
       </label>
       <p className="form-note" style={{ marginBottom: 0 }}>
-        This link is private to you — anyone with it can see your working hours and calendar entries, so only add
-        it to your own calendar apps.
+        {publicFeed ? "This subscription contains published church events and can be shared." : "This link is private to you — anyone with it can see your calendar entries. Add it only to your own calendar apps."}
       </p>
     </div>
   );

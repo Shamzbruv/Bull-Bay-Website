@@ -45,7 +45,7 @@ export default async function AdminRolesPage() {
       <div className="panel">
         <h2>Invite or assign staff</h2>
         <InviteForm roles={roles ?? []} members={members} />
-        <p className="form-note">If the email already belongs to a member, the role is added immediately and they&apos;re emailed about it. New people receive a branded invitation to set their password.</p>
+        <p className="form-note">If the email already belongs to a member, their previous role is replaced immediately and they&apos;re emailed about it. New people receive a branded invitation to set their password.</p>
       </div>
 
       <div className="panel">

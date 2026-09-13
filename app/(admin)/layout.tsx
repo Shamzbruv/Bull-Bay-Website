@@ -1,69 +1,22 @@
+import PastorLayout from "@/app/(pastor)/layout";
 import { redirect } from "next/navigation";
 import { WorkspaceShell } from "@/components/workspace-shell";
-import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import type { DashboardNavSection } from "@/components/dashboard-nav";
+import { getWorkspaceAccess } from "@/lib/auth/workspace";
+import { getCurrentProfile, getOrganizationId } from "@/lib/auth/session";
 import { getAvatarUrl } from "@/lib/members/avatar";
 import { getMyNotifications } from "@/lib/notifications";
-
-const ADMIN_PERMISSIONS = [
-  "people.read",
-  "people.write",
-  "events.manage",
-  "groups.manage",
-  "volunteers.manage",
-  "sermons.manage",
-  "content.manage",
-  "giving.read",
-  "giving.manage",
-  "shop.manage",
-  "roles.manage",
-  "sites.manage",
-  "direction.manage",
-  "ministry_assignments.manage",
-  "documents.manage",
-  "documents.certify",
-  "media.manage",
-  "pastoral_calendar.manage",
-  "communications.send",
-  "attendance.manage",
-  "attendance.submit",
-];
-
-const PASTORAL_PERMISSIONS = [
-  "pastoral_workspace.access",
-  "care.manage",
-  "care.read",
-  "sermons.manage",
-  "documents.certify",
-  "pastoral_calendar.manage",
-] as const;
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const organizationId = await getOrganizationId();
   if (!organizationId) redirect("/");
 
-  const [permissions, profile] = await Promise.all([getUserPermissions(organizationId), getCurrentProfile()]);
-  const isStaff = ADMIN_PERMISSIONS.some((p) => permissions.has(p));
-  if (!isStaff) redirect("/member");
-
-  const supabase = await createClient();
-  const [{ data: roleRows }, avatarUrl] = await Promise.all([
-    profile?.auth_user_id
-      ? supabase
-          .from("user_roles")
-          .select("roles(code)")
-          .eq("organization_id", organizationId)
-          .eq("user_id", profile.auth_user_id)
-      : Promise.resolve({ data: [] }),
-    getAvatarUrl(profile?.avatar_path),
-  ]);
-  const roleCodes = new Set(
-    (roleRows ?? []).flatMap((row) => {
-      const role = row.roles as unknown as { code: string } | null;
-      return role?.code ? [role.code] : [];
-    }),
-  );
+  const access = await getWorkspaceAccess(organizationId);
+  const { permissions, roleCodes } = access;
+  const profile = await getCurrentProfile();
+  if (access.home === "pastor") return <PastorLayout>{children}</PastorLayout>;
+  if (access.home !== "admin" && !access.superAdmin) redirect("/workspace");
+  const avatarUrl = await getAvatarUrl(profile?.avatar_path);
   const title =
     roleCodes.has("super_admin") ||
     roleCodes.has("church_admin") ||
@@ -92,6 +45,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: "/admin", label: "Dashboard", icon: "home" },
         { href: "/admin/profile", label: "My profile", icon: "person" },
+        { href: "/member/calendar", label: "My calendar subscriptions", icon: "calendar" },
+        { href: "/member/security", label: "Account security", icon: "shield" },
         ...(allowed("sites.manage", "roles.manage")
           ? [{ href: "/admin/setup", label: "Setup center", icon: "sparkles" as const }]
           : []),
@@ -166,19 +121,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         ...(allowed("sites.manage") ? [{ href: "/admin/settings", label: "Settings", icon: "settings" as const }] : []),
       ],
     },
+    {
+      label: "My church",
+      items: [
+        { href: "/member/events", label: "My events", icon: "calendar" },
+        { href: "/member/counsel", label: "Request a meeting", icon: "heart" },
+        { href: "/member/documents", label: "My document requests", icon: "file" },
+        { href: "/member/serving", label: "My serving schedule", icon: "team" },
+        { href: "/member/giving", label: "My giving", icon: "coins" },
+      ],
+    },
   ];
   const sections = allSections.filter((section) => section.items.length > 0);
-  const canUsePastor = PASTORAL_PERMISSIONS.some((permission) => permissions.has(permission));
-  const workspaces: WorkspaceDestination[] = [
-    { href: "/member", label: "Member", icon: "home" },
-    { href: "/admin", label: "Admin", icon: "briefcase", active: true },
-    ...(canUsePastor ? [{ href: "/pastor", label: "Pastor", icon: "heart" as const }] : []),
-  ];
+  const workspaces = access.destinations;
   const { notifications, unreadCount } = await getMyNotifications();
 
   return (
     <WorkspaceShell
-      title={title}
+      title={access.roleName || title}
       subtitle="Operations workspace"
       tone="admin"
       sections={sections}

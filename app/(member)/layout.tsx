@@ -1,7 +1,11 @@
+import { redirect } from "next/navigation";
+import { getWorkspaceAccess } from "@/lib/auth/workspace";
+import AdminLayout from "@/app/(admin)/layout";
+import PastorLayout from "@/app/(pastor)/layout";
 import { WorkspaceShell } from "@/components/workspace-shell";
-import type { DashboardNavSection, WorkspaceDestination } from "@/components/dashboard-nav";
+import type { DashboardNavSection } from "@/components/dashboard-nav";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getCurrentProfile, getOrganizationId } from "@/lib/auth/session";
 import { getAvatarUrl } from "@/lib/members/avatar";
 import { getMyNotifications } from "@/lib/notifications";
 
@@ -18,6 +22,7 @@ const NAV_SECTIONS: DashboardNavSection[] = [
     label: "Church life",
     items: [
       { href: "/member/events", label: "Events", icon: "calendar" },
+      { href: "/member/calendar", label: "My calendar", icon: "calendar" },
       { href: "/member/groups", label: "Groups", icon: "people" },
       { href: "/member/ministry", label: "My ministry", icon: "church" },
       { href: "/member/serving", label: "Serving", icon: "heart" },
@@ -44,42 +49,13 @@ const NAV_SECTIONS: DashboardNavSection[] = [
   },
 ];
 
-const ADMIN_PERMISSIONS = [
-  "people.read",
-  "people.write",
-  "events.manage",
-  "groups.manage",
-  "volunteers.manage",
-  "sermons.manage",
-  "content.manage",
-  "giving.read",
-  "giving.manage",
-  "shop.manage",
-  "roles.manage",
-  "sites.manage",
-  "direction.manage",
-  "ministry_assignments.manage",
-  "documents.manage",
-  "documents.certify",
-  "media.manage",
-  "pastoral_calendar.manage",
-  "communications.send",
-  "attendance.manage",
-  "attendance.submit",
-] as const;
-
-const PASTORAL_PERMISSIONS = [
-  "pastoral_workspace.access",
-  "care.manage",
-  "care.read",
-  "sermons.manage",
-  "documents.certify",
-  "pastoral_calendar.manage",
-] as const;
-
 export default async function MemberLayout({ children }: { children: React.ReactNode }) {
   const [organizationId, profile] = await Promise.all([getOrganizationId(), getCurrentProfile()]);
-  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !profile) redirect("/login");
+  const access = await getWorkspaceAccess(organizationId);
+  // Shared account/member features retain the assigned workspace's shell.
+  if (access.home === "admin") return <AdminLayout>{children}</AdminLayout>;
+  if (access.home === "pastor") return <PastorLayout>{children}</PastorLayout>;
 
   const supabase = await createClient();
   const { data: ledMinistry } = profile
@@ -98,18 +74,12 @@ export default async function MemberLayout({ children }: { children: React.React
     email: profile?.email,
     avatarUrl: await getAvatarUrl(profile?.avatar_path),
   };
-  const canUseAdmin = ADMIN_PERMISSIONS.some((permission) => permissions.has(permission));
-  const canUsePastor = PASTORAL_PERMISSIONS.some((permission) => permissions.has(permission));
-  const workspaces: WorkspaceDestination[] = [
-    { href: "/member", label: "Member", icon: "home", active: true },
-    ...(canUseAdmin ? [{ href: "/admin", label: "Admin", icon: "briefcase" as const }] : []),
-    ...(canUsePastor ? [{ href: "/pastor", label: "Pastor", icon: "heart" as const }] : []),
-  ];
+  const workspaces = access.destinations;
   const { notifications, unreadCount } = await getMyNotifications();
 
   return (
     <WorkspaceShell
-      title="My Church"
+      title={access.roleCodes.has("group_leader") ? "Ministry Leader" : "My Church"}
       subtitle="Member portal"
       tone="member"
       sections={sections}

@@ -105,6 +105,6 @@ export async function updateAccountPassword(
     }
   }
 
-  if (profile.must_change_password) redirect("/member/profile?onboarding=1");
-  redirect("/member");
+
+  redirect("/workspace");
 }

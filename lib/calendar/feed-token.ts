@@ -1,18 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-/**
- * A calendar app subscribing "by URL" (Google Calendar, Apple/phone
- * Calendar) can't send a session cookie or bearer header — the URL itself
- * has to prove who it's for. Rather than add a database column and
- * another migration this environment has no way to apply promptly, the
- * token is a signed profile id: `<profileId>.<hmac>`, verified with an
- * HMAC keyed on the service-role key (already present in every
- * deployment, never new setup). The service-role key isn't weakened by
- * this — HMAC output reveals nothing about the key — and this use is
- * namespaced so it can never collide with any other HMAC use of it.
- */
+/** Signed private subscription URL. Rotate CALENDAR_FEED_SECRET to invalidate all subscriptions. */
 function feedSecret() {
-  return process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+  const key = process.env.CALENDAR_FEED_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) throw new Error("Calendar signing secret is not configured.");
+  return key;
 }
 
 function sign(profileId: string): string {
@@ -27,6 +19,7 @@ export function verifyCalendarFeedToken(token: string): string | null {
   const separatorIndex = token.lastIndexOf(".");
   if (separatorIndex <= 0) return null;
   const profileId = token.slice(0, separatorIndex);
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)) return null;
   const signature = token.slice(separatorIndex + 1);
   const expected = sign(profileId);
 

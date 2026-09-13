@@ -1,11 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { randomInt } from "node:crypto";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { generateAuthLink } from "@/lib/supabase/generate-link";
+import { SITE_URL } from "@/lib/org";
 import { sendMail } from "@/lib/email/resend";
-import { renderTempPasswordEmail } from "@/lib/email/templates";
+import { renderRecoveryEmail } from "@/lib/email/templates";
 import { createInvitedMember } from "@/lib/members/invite";
 import type { ActionState } from "@/app/(public)/actions";
 
@@ -65,19 +66,7 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
   return { status: "success", message: `Invitation sent to ${result.email}.` };
 }
 
-function generateTempPassword() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-  let out = "";
-  for (let i = 0; i < 14; i++) out += chars[randomInt(chars.length)];
-  return out;
-}
-
-/**
- * Admin/delegated-admin password reset: issues a temporary password and
- * forces the member to replace it (middleware enforces this) the moment
- * they next sign in. Shown once to the admin here, and emailed if Resend
- * is configured — never stored anywhere in the clear afterward.
- */
+/** Send recovery only to the email verified by Auth; staff never receive a password. */
 export async function resetMemberPassword(profileId: string): Promise<ActionState> {
   const organizationId = await getOrganizationId();
   const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
@@ -94,30 +83,15 @@ export async function resetMemberPassword(profileId: string): Promise<ActionStat
     .maybeSingle();
   if (!profile?.auth_user_id) return { status: "error", message: "This person doesn't have a login account yet." };
 
-  const tempPassword = generateTempPassword();
   const admin = createServiceRoleClient();
-  const { error } = await admin.auth.admin.updateUserById(profile.auth_user_id, { password: tempPassword });
-  if (error) return { status: "error", message: "Couldn't reset the password. Please try again." };
-
-  const { error: flagError } = await admin
-    .from("profiles")
-    .update({ must_change_password: true })
-    .eq("organization_id", organizationId)
-    .eq("id", profileId);
-  if (flagError) {
-    return { status: "error", message: "The password changed, but the required-reset flag could not be saved. Contact technical support." };
-  }
-
-  if (profile.email) {
-    await sendMail({
-      to: profile.email,
-      subject: "Your Bull Bay account password was reset",
-      html: renderTempPasswordEmail({ recipientName: profile.first_name ?? "there", tempPassword }),
-    }).catch(() => {});
-  }
-
-  return {
-    status: "success",
-    message: `Temporary password: ${tempPassword} — share this with them securely. They'll be asked to set a new one when they sign in.`,
-  };
+  const { data: account, error: accountError } = await admin.auth.admin.getUserById(profile.auth_user_id);
+  if (accountError || !account.user?.email) return { status: "error", message: "Account recovery is unavailable." };
+  const { actionLink, error } = await generateAuthLink({
+    type: "recovery", email: account.user.email,
+    redirectTo: `${SITE_URL}/auth/callback?next=${encodeURIComponent("/auth/update-password")}`,
+  });
+  if (error || !actionLink) return { status: "error", message: "Couldn't create a recovery link. Please retry." };
+  const result = await sendMail({ to: account.user.email, subject: "Reset your Bull Bay account password", html: renderRecoveryEmail({ actionUrl: actionLink }) });
+  return result.sent ? { status: "success", message: "A private password reset link was sent to the account's registered email." }
+    : { status: "error", message: "The recovery email could not be sent. Please retry." };
 }

@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { ORGANIZATION_SLUG } from "@/lib/org";
 
@@ -69,6 +70,17 @@ export const getUserPermissions = cache(async (organizationId: string): Promise<
       codes.add(rp.permission_code);
     }
   }
+  // Preview affects permission-gated UI; only a real super admin may select it.
+  const actualRoles = await getUserRoleCodes(organizationId);
+  const previewCode = actualRoles.has("super_admin") ? (await cookies()).get("workspace_preview")?.value : undefined;
+  if (previewCode && previewCode !== "super_admin") {
+    if (previewCode === "member") return new Set<string>();
+    const { data: previewRole, error } = await supabase.from("roles")
+      .select("role_permissions(permission_code)").eq("organization_id", organizationId).eq("code", previewCode).maybeSingle();
+    if (error) throw new Error("Role preview permissions could not be loaded.");
+    if (previewRole) return new Set(previewRole.role_permissions.map(p => p.permission_code));
+  }
+
   return codes;
 });
 

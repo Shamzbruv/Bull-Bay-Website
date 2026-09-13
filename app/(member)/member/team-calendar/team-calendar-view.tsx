@@ -27,7 +27,7 @@ export async function TeamCalendarView() {
     .eq("profile_id", profile.id)
     .maybeSingle();
 
-  if (!teamRow) {
+  if (!teamRow?.is_active) {
     return (
       <div className="panel">
         <h1>My Pastoral Calendar</h1>
@@ -41,7 +41,7 @@ export async function TeamCalendarView() {
 
   const [{ data: availability }, { data: events }, { data: counselRequests }, { data: assignedPrayers }] = await Promise.all([
     supabase.from("pastoral_calendar_availability").select("id, day_of_week, start_time, end_time, label").eq("profile_id", profile.id).order("day_of_week"),
-    supabase.from("pastoral_calendar_events").select("id, title, starts_at, ends_at, kind, visibility").eq("profile_id", profile.id).order("starts_at", { ascending: false }).limit(30),
+    supabase.from("pastoral_calendar_events").select("id, title, starts_at, ends_at, kind, visibility").eq("profile_id", profile.id).gte("ends_at", new Date().toISOString()).order("starts_at").limit(100),
     supabase
       .from("counsel_requests")
       .select("id, reason, details, is_urgent, status, preferred_date, preferred_time, profiles:requester_profile_id(first_name, last_name)")
@@ -159,11 +159,11 @@ export async function TeamCalendarView() {
         {events?.map((e) => (
           <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border)", fontSize: ".88rem" }}>
             <span>
-              <b>{e.title}</b> — {new Date(e.starts_at).toLocaleString("en-JM", { dateStyle: "medium", timeStyle: "short" })} to{" "}
-              {new Date(e.ends_at).toLocaleString("en-JM", { dateStyle: "medium", timeStyle: "short" })}{" "}
+              <b>{e.title}</b> — {new Date(e.starts_at).toLocaleString("en-JM", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Jamaica" })} to{" "}
+              {new Date(e.ends_at).toLocaleString("en-JM", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Jamaica" })}{" "}
               <span className="badge gray">{e.kind.replace("_", " ")}</span> <span className="badge gray">{e.visibility}</span>
             </span>
-            <RemoveEventButton id={e.id} />
+            {e.kind !== "appointment" && <RemoveEventButton id={e.id} />}
           </div>
         ))}
         <div style={{ marginTop: 16 }}>

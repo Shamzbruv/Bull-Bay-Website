@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
-import { getOrganizationId, getUserPermissions, isSuperAdmin } from "@/lib/auth/session";
+import { getOrganizationId, getUserPermissions, isSuperAdmin, getAuthUser } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { StatusSelect } from "./status-select";
 import { RoleSelect } from "./role-select";
@@ -16,6 +16,7 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
   if (!permissions.has("people.read")) return <AccessDenied />;
   const canManageRoles = organizationId ? await isSuperAdmin(organizationId) : false;
 
+  const actor = await getAuthUser();
   const supabase = await createClient();
   let request = supabase
     .from("profiles")
@@ -98,7 +99,9 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
                   </td>
                   <td>
                     {canManageRoles ? (
-                      p.auth_user_id ? (
+                      p.auth_user_id === actor?.id || p.email?.toLowerCase() === "shamzbiz1@gmail.com" ? (
+                        <span className="badge">{grant?.name ?? "Super Administrator"} (locked)</span>
+                      ) : p.auth_user_id ? (
                         <RoleSelect profileId={p.id} roleId={grant?.id ?? ""} roles={roles ?? []} />
                       ) : (
                         <span className="badge gray" title="Invite them first">invite first</span>
