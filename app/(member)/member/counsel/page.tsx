@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
-import { DAY_NAMES } from "@/lib/pastoral/reasons";
 import { SITE_URL } from "@/lib/org";
 import { AddToCalendarLinks } from "@/components/add-to-calendar-links";
-import { CounselRequestForm } from "./request-form";
+import { BookingCalendar } from "./booking-calendar";
 
 export const metadata: Metadata = { title: "Pastor & Calendar" };
 
@@ -21,22 +20,7 @@ export default async function MemberCounselPage() {
     .order("is_pastor", { ascending: false })
     .order("sort_order");
 
-  const pastor = team?.find((t) => t.is_pastor) ?? null;
-
-  const [{ data: pastorHours }, { data: upcoming }, { data: myRequests }, { data: myTeamRow }] = await Promise.all([
-    pastor
-      ? supabase.from("pastoral_calendar_availability").select("day_of_week, start_time, end_time, label").eq("profile_id", pastor.profile_id).order("day_of_week")
-      : Promise.resolve({ data: null }),
-    pastor
-      ? supabase
-          .from("pastoral_calendar_events")
-          .select("id, title, starts_at, ends_at, kind")
-          .eq("profile_id", pastor.profile_id)
-          .eq("visibility", "public")
-          .gte("ends_at", new Date().toISOString())
-          .order("starts_at")
-          .limit(8)
-      : Promise.resolve({ data: null }),
+  const [{ data: myRequests }, { data: myTeamRow }] = await Promise.all([
     profile
       ? supabase
           .from("counsel_requests")
@@ -72,12 +56,6 @@ export default async function MemberCounselPage() {
     };
   });
 
-  const pastorName = pastor
-    ? `${(pastor.profiles as unknown as { first_name: string | null; last_name: string | null } | null)?.first_name ?? ""} ${
-        (pastor.profiles as unknown as { first_name: string | null; last_name: string | null } | null)?.last_name ?? ""
-      }`.trim()
-    : null;
-
   return (
     <>
       <div className="dashboard-header">
@@ -90,50 +68,6 @@ export default async function MemberCounselPage() {
             Manage my calendar
           </Link>
         )}
-      </div>
-
-      <div className="panel">
-        <h2>{pastorName ? `Pastor ${pastorName}'s hours` : "Pastor's hours"}</h2>
-        {!pastor && <p className="panel-empty">The pastor&apos;s calendar hasn&apos;t been set up yet.</p>}
-        {pastor && (
-          <>
-            {DAY_NAMES.map((day, i) => {
-              const rows = pastorHours?.filter((h) => h.day_of_week === i) ?? [];
-              return (
-                <div key={day} style={{ padding: "6px 0", borderBottom: "1px solid var(--color-border)", fontSize: ".9rem" }}>
-                  <b style={{ display: "inline-block", width: 100 }}>{day}</b>
-                  {rows.length === 0 ? (
-                    <span style={{ color: "var(--color-muted-2)" }}>Not available</span>
-                  ) : (
-                    rows.map((r, idx) => (
-                      <span key={idx} style={{ marginRight: 12 }}>
-                        {r.start_time.slice(0, 5)}–{r.end_time.slice(0, 5)} {r.label && `(${r.label})`}
-                      </span>
-                    ))
-                  )}
-                </div>
-              );
-            })}
-            {upcoming && upcoming.length > 0 && (
-              <div style={{ marginTop: 16 }}>
-                <h3 style={{ fontSize: ".92rem", marginBottom: 8 }}>Coming up</h3>
-                {upcoming.map((e) => (
-                  <div key={e.id} style={{ fontSize: ".85rem", padding: "4px 0" }}>
-                    <span className="badge gray" style={{ marginRight: 8 }}>
-                      {e.kind.replace("_", " ")}
-                    </span>
-                    {e.title} — {new Date(e.starts_at).toLocaleDateString("en-JM", { dateStyle: "medium", timeZone: "America/Jamaica" })}
-                    {new Date(e.starts_at).toDateString() !== new Date(e.ends_at).toDateString() &&
-                      ` to ${new Date(e.ends_at).toLocaleDateString("en-JM", { dateStyle: "medium", timeZone: "America/Jamaica" })}`}
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-        <p className="form-note" style={{ marginTop: 14 }}>
-          All times are in Jamaica time. For help outside published hours, contact the church office.
-        </p>
       </div>
 
       <div className="panel">
@@ -152,10 +86,14 @@ export default async function MemberCounselPage() {
 
       <div className="panel">
         <h2>Request a meeting</h2>
+        <p className="form-note" style={{ marginTop: -4 }}>
+          Pick who you&apos;d like to meet with, browse their calendar in Month, Week, or Day view, and choose an open
+          time. All times are shown in Jamaica time.
+        </p>
         {teamOptions.length === 0 ? (
           <p className="panel-empty">Requests aren&apos;t available yet — check back soon.</p>
         ) : (
-          <CounselRequestForm team={teamOptions} />
+          <BookingCalendar team={teamOptions} />
         )}
       </div>
 

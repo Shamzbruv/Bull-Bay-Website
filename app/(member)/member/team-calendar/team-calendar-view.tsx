@@ -1,11 +1,11 @@
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
-import { DAY_NAMES } from "@/lib/pastoral/reasons";
 import { SITE_URL } from "@/lib/org";
 import { createCalendarFeedToken } from "@/lib/calendar/feed-token";
 import { CounselRequestRow } from "@/app/(pastor)/pastor/care/counsel-request-row";
 import { PrayerRequestRow } from "@/app/(pastor)/pastor/care/prayer-request-row";
-import { AvailabilityForm, EventForm, RemoveAvailabilityButton, RemoveEventButton } from "./calendar-forms";
+import { ManageCalendarPanel } from "@/components/calendar/manage-calendar-panel";
+import type { CalendarEntry } from "@/components/calendar/pastoral-calendar";
 import { SyncCalendarPanel } from "./sync-calendar-panel";
 
 /**
@@ -132,43 +132,24 @@ export async function TeamCalendarView() {
       </div>
 
       <div className="panel">
-        <h2>Weekly working hours</h2>
-        {DAY_NAMES.map((day, i) => {
-          const rows = availability?.filter((a) => a.day_of_week === i) ?? [];
-          return (
-            <div key={day} style={{ padding: "8px 0", borderBottom: "1px solid var(--color-border)" }}>
-              <b style={{ display: "inline-block", width: 100 }}>{day}</b>
-              {rows.length === 0 && <span style={{ color: "var(--color-muted-2)", fontSize: ".85rem" }}>Not published</span>}
-              {rows.map((r) => (
-                <span key={r.id} style={{ marginRight: 14, fontSize: ".85rem" }}>
-                  {r.start_time.slice(0, 5)}–{r.end_time.slice(0, 5)} {r.label && `(${r.label})`}{" "}
-                  <RemoveAvailabilityButton id={r.id} />
-                </span>
-              ))}
-            </div>
-          );
-        })}
-        <div style={{ marginTop: 16 }}>
-          <AvailabilityForm />
-        </div>
-      </div>
-
-      <div className="panel">
-        <h2>Days off &amp; calendar entries</h2>
-        {(!events || events.length === 0) && <p className="panel-empty">Nothing on your calendar yet.</p>}
-        {events?.map((e) => (
-          <div key={e.id} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--color-border)", fontSize: ".88rem" }}>
-            <span>
-              <b>{e.title}</b> — {new Date(e.starts_at).toLocaleString("en-JM", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Jamaica" })} to{" "}
-              {new Date(e.ends_at).toLocaleString("en-JM", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Jamaica" })}{" "}
-              <span className="badge gray">{e.kind.replace("_", " ")}</span> <span className="badge gray">{e.visibility}</span>
-            </span>
-            {e.kind !== "appointment" && <RemoveEventButton id={e.id} />}
+        <div className="panel-heading">
+          <div>
+            <p className="section-kicker">My calendar</p>
+            <h2>Hours &amp; entries</h2>
           </div>
-        ))}
-        <div style={{ marginTop: 16 }}>
-          <EventForm />
         </div>
+        <p className="form-note">Switch between Month, Week, and Day to see your published hours and calendar entries at a glance — add or remove them below.</p>
+        <ManageCalendarPanel
+          availability={(availability ?? []).map((a) => ({ id: a.id, dayOfWeek: a.day_of_week, startTime: a.start_time, endTime: a.end_time, label: a.label }))}
+          events={(events ?? []).map((e) => ({
+            id: e.id,
+            title: e.title,
+            startsAt: e.starts_at,
+            endsAt: e.ends_at,
+            kind: e.kind as CalendarEntry["kind"],
+            visibility: e.visibility as CalendarEntry["visibility"],
+          }))}
+        />
       </div>
     </>
   );

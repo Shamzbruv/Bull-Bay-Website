@@ -1921,6 +1921,174 @@ table.data-table tr:last-child td { border-bottom: 0; }
 }
 .notification-bell-viewall:hover { text-decoration: underline; }
 
+/* Pastoral calendar (components/calendar/pastoral-calendar.tsx) --------
+   A real Month/Week/Day calendar shared by "manage my hours" and "book a
+   time with the pastoral team" — replaces what used to be a flat list of
+   weekday text rows. */
+.pcal { margin-bottom: 20px; }
+.pcal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+.pcal-toolbar-nav { display: flex; align-items: center; gap: 6px; }
+.pcal-toolbar-nav button {
+  min-width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-blue-700);
+  font-size: 1rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-raised-sm);
+  cursor: pointer;
+}
+.pcal-toolbar-nav button:hover { color: var(--color-blue-600); }
+.pcal-today-button { width: auto !important; padding: 0 14px; font-size: .72rem !important; text-transform: uppercase; letter-spacing: .04em; }
+.pcal-toolbar-title { margin: 0; flex: 1; min-width: 160px; text-align: center; font-family: var(--font-display); font-size: 1.15rem; color: var(--color-blue-700); }
+.pcal-view-toggle { display: inline-flex; padding: 3px; border-radius: var(--radius-sm); background: var(--color-surface); box-shadow: var(--shadow-inset-sm); }
+.pcal-view-toggle button {
+  border: 0;
+  background: transparent;
+  padding: 6px 14px;
+  border-radius: calc(var(--radius-sm) - 3px);
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--color-muted);
+  cursor: pointer;
+}
+.pcal-view-toggle button.is-active { background: var(--color-blue-600); color: #fff; }
+
+.pcal-month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  overflow-x: auto;
+}
+.pcal-month-weekday { padding: 6px 4px; text-align: center; font-size: .64rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--color-muted); }
+.pcal-month-cell {
+  aspect-ratio: 1 / 1;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-inset-sm);
+  cursor: pointer;
+}
+.pcal-month-cell:hover { box-shadow: var(--shadow-inset); }
+.pcal-month-cell.is-outside { opacity: .38; }
+.pcal-month-cell.is-today { box-shadow: inset 0 0 0 2px var(--color-blue-600); }
+.pcal-month-cell.is-disabled { opacity: .4; cursor: default; }
+.pcal-month-date { font-size: .8rem; font-weight: 700; color: var(--color-blue-700); }
+.pcal-month-dots { display: flex; gap: 3px; min-height: 6px; }
+.pcal-dot { width: 6px; height: 6px; border-radius: 999px; }
+.pcal-dot-availability { background: var(--color-blue-600); }
+.pcal-dot-day_off { background: var(--color-olive-600); }
+.pcal-dot-busy { background: var(--color-muted); }
+.pcal-dot-appointment { background: #c9922b; }
+
+.pcal-week-grid { display: grid; grid-template-columns: repeat(7, minmax(128px, 1fr)); gap: 8px; overflow-x: auto; }
+.pcal-week-col { border-radius: var(--radius-sm); background: var(--color-surface); box-shadow: var(--shadow-inset-sm); overflow: hidden; }
+.pcal-week-col.is-disabled { opacity: .5; }
+.pcal-week-col-header {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  border: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--color-border);
+  cursor: pointer;
+}
+.pcal-week-col-header span { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--color-muted); }
+.pcal-week-col-header strong { font-size: .95rem; color: var(--color-blue-700); }
+.pcal-week-col.is-today .pcal-week-col-header strong {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--color-blue-600);
+  color: #fff;
+}
+.pcal-week-col-body { padding: 8px; display: flex; flex-direction: column; gap: 6px; min-height: 90px; }
+
+.pcal-hours-caption { margin: 0 0 2px; font-size: .68rem; font-weight: 700; color: var(--color-olive-600); }
+.pcal-hours-caption.pcal-muted { color: var(--color-muted); font-weight: 600; }
+.pcal-muted { color: var(--color-muted); }
+
+.pcal-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: var(--color-blue-tint);
+  color: var(--color-blue-700);
+  font-size: .68rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.pcal-chip-availability { background: var(--color-blue-tint); color: var(--color-blue-700); }
+.pcal-chip-dayoff { background: var(--color-olive-tint); color: var(--color-olive-700); }
+.pcal-chip-busy { background: var(--color-surface-raised, rgba(0,0,0,.04)); color: var(--color-muted-2); box-shadow: var(--shadow-inset-sm); }
+.pcal-chip-appointment { background: #f4e8c9; color: #8a6a1c; }
+.pcal-chip-remove { margin-left: auto; border: 0; background: transparent; color: inherit; opacity: .6; font-size: .9rem; line-height: 1; cursor: pointer; }
+.pcal-chip-remove:hover { opacity: 1; }
+
+.pcal-slot-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.pcal-slot-list-compact { gap: 5px; }
+.pcal-slot-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--color-surface);
+  color: var(--color-blue-700);
+  font-size: .72rem;
+  font-weight: 700;
+  box-shadow: var(--shadow-raised-sm);
+  cursor: pointer;
+}
+.pcal-slot-list-compact .pcal-slot-button { padding: 5px 9px; font-size: .66rem; }
+.pcal-slot-button:hover { color: #fff; background: var(--color-blue-500); }
+.pcal-slot-button.is-selected { color: #fff; background: var(--color-blue-600); box-shadow: none; }
+.pcal-slot-status { margin: 2px 0; font-size: .68rem; }
+
+.pcal-day-view { display: grid; gap: 22px; }
+.pcal-day-section h4 { margin: 0 0 10px; font-size: .92rem; color: var(--color-blue-700); }
+.pcal-agenda-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border); font-size: .85rem; }
+.pcal-agenda-row:last-child { border-bottom: 0; }
+.pcal-empty { margin: 0; color: var(--color-muted); font-size: .82rem; }
+
+.pcal-forms { display: grid; gap: 20px; margin-top: 22px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+
+.calendar-person-filter { display: block; max-width: 360px; margin-bottom: 16px; font-size: .76rem; font-weight: 700; color: var(--color-blue-700); }
+.calendar-person-filter select { width: 100%; margin-top: 6px; border: 0; border-radius: var(--radius-sm); padding: 12px; background: var(--color-surface); color: var(--color-blue-700); box-shadow: var(--shadow-inset); }
+
+.pcal-selected-slot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-blue-tint);
+  color: var(--color-blue-700);
+  font-size: .84rem;
+}
+
+@media (max-width: 640px) {
+  .pcal-week-grid { grid-template-columns: repeat(7, minmax(110px, 1fr)); }
+  .pcal-toolbar-title { order: -1; width: 100%; text-align: left; }
+}
+
 .workspace-root .dashboard-topbar-user {
   min-width: 0;
   gap: 9px;
