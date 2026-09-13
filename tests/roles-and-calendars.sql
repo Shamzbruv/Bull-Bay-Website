@@ -22,6 +22,7 @@ end $$;
 -- No browser role, including super admin, can directly write grants/catalogue.
 set local role authenticated;
 do $$ begin
+ if has_column_privilege('authenticated','public.counsel_requests','staff_notes','SELECT') then raise exception 'FAIL private office notes exposed'; end if;
  if has_table_privilege('authenticated','public.user_roles','INSERT') or has_table_privilege('authenticated','public.roles','UPDATE') or has_table_privilege('authenticated','public.role_permissions','INSERT') then raise exception 'FAIL direct role mutation privileges'; end if;
 end $$;
 reset role;

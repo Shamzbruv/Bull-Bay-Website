@@ -25,6 +25,8 @@ The live project had partially applied SQL files and no `supabase_migrations.sch
 - `20260911240000_notifications.sql`
 - `20260913131720_launch_roles_and_calendar_integrity.sql`
 
+A follow-up migration, `20260913183441_protect_counsel_staff_notes.sql`, restricts requester-visible request columns so office-only notes cannot be read through the Data API. Scheduling/status RPCs retain their authorized access.
+
 The shop/video migration was already present and was not replayed. The unrelated faith-content migration was not part of this release. Do not run an unreviewed `supabase db push` against this project: establish a verified migration-history baseline first.
 
 ## Verification
