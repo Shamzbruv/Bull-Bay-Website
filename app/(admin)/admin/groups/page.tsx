@@ -47,11 +47,16 @@ export default async function AdminGroupsPage() {
         </div>
       )}
 
-      <div className="panel">
-        <details className="dashboard-disclosure">
-          <summary>+ Create a group or ministry team</summary>
-          <GroupForm />
-        </details>
+      <div className="panel" style={{ textAlign: "center" }}>
+        <h2 style={{ marginTop: 0 }}>Create a group on GraceConnect</h2>
+        <p style={{ maxWidth: 560, margin: "0 auto 16px", color: "var(--color-muted-2)" }}>
+          New small groups and ministry teams are created on GraceConnect now — the same place members already join
+          them from — rather than here, so there&apos;s one canonical list instead of two that can drift apart. This
+          applies even to the super administrator account.
+        </p>
+        <a className="primary-button" href="https://graceconnect.love" target="_blank" rel="noreferrer">
+          Create on GraceConnect <span>→</span>
+        </a>
       </div>
 
       <div className="panel">

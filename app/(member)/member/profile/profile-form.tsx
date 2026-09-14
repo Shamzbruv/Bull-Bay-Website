@@ -297,6 +297,26 @@ export function ProfileForm({ profile, onboarding = false }: { profile: Profile;
           </label>
         </div>
 
+        <div style={{ marginTop: 4 }}>
+          <strong style={{ display: "block", marginBottom: 6, color: "var(--color-blue-700)", fontSize: ".82rem" }}>
+            Privacy
+          </strong>
+          <p className="form-note" style={{ marginTop: 0 }}>
+            By default, only the church office (admins, the pastor, the pastoral team, and the secretary) can see your
+            contact and personal details — other members can&apos;t. Turn this on only if you also want the leader of
+            a small group you join to see your full profile.
+          </p>
+          <label className="check-label">
+            <input
+              type="checkbox"
+              name="share_profile_with_group_leaders"
+              defaultChecked={profile.share_profile_with_group_leaders ?? false}
+            />
+            Also let the leader of any small group I join see my full profile (phone, address, emergency contact,
+            etc.)
+          </label>
+        </div>
+
         <p className="form-note" style={{ marginTop: 0 }}>
           <strong>Professional directory.</strong> If you opt in, other members can request your help without seeing
           your email or phone. You decide what to share after someone reaches out.

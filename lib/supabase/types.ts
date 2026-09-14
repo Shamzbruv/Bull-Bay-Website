@@ -2454,6 +2454,7 @@ export type Database = {
           phone: string | null
           preferred_contact_method: string | null
           professional_bio: string | null
+          share_profile_with_group_leaders: boolean
           signature_path: string | null
           stamp_path: string | null
           updated_at: string
@@ -2492,6 +2493,7 @@ export type Database = {
           phone?: string | null
           preferred_contact_method?: string | null
           professional_bio?: string | null
+          share_profile_with_group_leaders?: boolean
           signature_path?: string | null
           stamp_path?: string | null
           updated_at?: string
@@ -2530,6 +2532,7 @@ export type Database = {
           phone?: string | null
           preferred_contact_method?: string | null
           professional_bio?: string | null
+          share_profile_with_group_leaders?: boolean
           signature_path?: string | null
           stamp_path?: string | null
           updated_at?: string

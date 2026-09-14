@@ -167,6 +167,7 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
       occupation: occupation.value,
       professional_bio: professionalBio.value,
       open_to_professional_requests: openToProfessionalRequests,
+      share_profile_with_group_leaders: formData.get("share_profile_with_group_leaders") === "on",
     })
     .eq("id", profile.id)
     .eq("auth_user_id", profile.authUserId)
