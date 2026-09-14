@@ -17,10 +17,23 @@ export const getWorkspaceAccess = cache(async (organizationId: string) => {
   const roleCodes = preview ? new Set([selected!]) : actualRoles;
   const permissions = preview ? new Set(role?.role_permissions.map(p => p.permission_code) ?? []) : await getUserPermissions(organizationId);
   const home = workspaceForRoles(roleCodes);
+  const roleName = role?.name ?? roles?.find(r => actualRoles.has(r.code))?.name ?? (home === "pastor" ? "Pastor Workspace" : home === "member" ? "My Church" : "Church Admin");
+  // Everyone with a staff role is still a church member first — the admin
+  // workspace switcher needs its own real "Member" link (not the
+  // super-admin-only preview below, which simulates someone else's
+  // access) so any staff member can reach their own /member dashboard.
+  // Pastor's own layout already includes this unconditionally, and super
+  // admin's preview list below covers it too, so this only ever fires
+  // for everyone else. Mirrors member/pastor layouts always listing
+  // themselves first: without it, a plain staff member had no way back
+  // to Admin from the switcher either, since it was empty for them.
   const destinations: WorkspaceDestination[] = superAdmin ? [
     { href: "/auth/workspace?role=super_admin", label: "Super Administrator", icon: "shield", active: !preview },
     { href: "/auth/workspace?role=member", label: "Member", icon: "home", active: selected === "member" },
     ...(roles ?? []).filter(r => r.code !== "super_admin").map(r => ({ href: `/auth/workspace?role=${encodeURIComponent(r.code)}`, label: r.name, icon: "briefcase" as const, active: selected === r.code })),
-  ] : [];
-  return { roleCodes, permissions, home, preview, superAdmin, destinations, roleName: role?.name ?? roles?.find(r => actualRoles.has(r.code))?.name ?? (home === "pastor" ? "Pastor Workspace" : home === "member" ? "My Church" : "Church Admin") };
+  ] : [
+    { href: "/admin", label: roleName, icon: "briefcase", active: true },
+    { href: "/member", label: "Member", icon: "home" },
+  ];
+  return { roleCodes, permissions, home, preview, superAdmin, destinations, roleName };
 });

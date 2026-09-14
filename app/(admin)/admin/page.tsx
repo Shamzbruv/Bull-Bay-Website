@@ -363,7 +363,7 @@ export default async function AdminDashboardPage() {
         <EmptyState
           title="Your admin tools could not be determined"
           description="Refresh this page. If this remains empty, ask a super administrator to review your staff role."
-          action={{ href: "/member/security", label: "Review account security" }}
+          action={{ href: "/admin/profile", label: "Review account" }}
         />
       )}
 
@@ -388,7 +388,7 @@ export default async function AdminDashboardPage() {
               ))}
             </ActivityList>
           ) : (
-            <EmptyState title="No work queue is available" description="Your role may still need its permissions assigned." action={{ href: "/member/security", label: "Review account" }} />
+            <EmptyState title="No work queue is available" description="Your role may still need its permissions assigned." action={{ href: "/admin/profile", label: "Review account" }} />
           )}
         </DashboardPanel>
 

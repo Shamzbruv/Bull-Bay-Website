@@ -42,10 +42,7 @@ const NAV_SECTIONS: DashboardNavSection[] = [
   },
   {
     label: "Account",
-    items: [
-      { href: "/member/notifications", label: "Notifications", icon: "bell" },
-      { href: "/member/security", label: "Security", icon: "shield" },
-    ],
+    items: [{ href: "/member/notifications", label: "Notifications", icon: "bell" }],
   },
 ];
 

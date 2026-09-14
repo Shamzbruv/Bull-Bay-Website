@@ -23,7 +23,6 @@ export default async function PastorLayout({ children }: { children: React.React
         { href: "/pastor", label: "Today", icon: "home" },
         { href: "/pastor/profile", label: "My profile", icon: "person" },
         { href: "/member/calendar", label: "My calendar subscriptions", icon: "calendar" },
-        { href: "/member/security", label: "Account security", icon: "shield" },
         { href: "/pastor/care", label: "Pastoral care", icon: "heart" },
         { href: "/pastor/calendar", label: "My calendar", icon: "calendar" },
       ],

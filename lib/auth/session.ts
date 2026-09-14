@@ -118,11 +118,3 @@ export async function isSuperAdmin(organizationId: string): Promise<boolean> {
   const roleCodes = await getUserRoleCodes(organizationId);
   return roleCodes.has("super_admin");
 }
-
-/** Whether the current session has satisfied its MFA challenge (aal2). Staff/pastor/admin
- * route groups require this once the user has enrolled a factor. */
-export async function getAuthenticatorAssuranceLevel() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  return data?.currentLevel ?? "aal1";
-}

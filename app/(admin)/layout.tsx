@@ -46,7 +46,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         { href: "/admin", label: "Dashboard", icon: "home" },
         { href: "/admin/profile", label: "My profile", icon: "person" },
         { href: "/member/calendar", label: "My calendar subscriptions", icon: "calendar" },
-        { href: "/member/security", label: "Account security", icon: "shield" },
         ...(allowed("sites.manage", "roles.manage")
           ? [{ href: "/admin/setup", label: "Setup center", icon: "sparkles" as const }]
           : []),
