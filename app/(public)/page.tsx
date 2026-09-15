@@ -346,7 +346,7 @@ export default async function HomePage() {
         <section className="section home-visit" aria-labelledby="visit-heading">
           <div className="home-visit-photo">
             <Image
-              src="/images/church/congregation-full.jpg"
+              src="/images/church/congregation-worship.png"
               alt="The Bull Bay congregation gathered for Sunday worship"
               fill
               loading="eager"

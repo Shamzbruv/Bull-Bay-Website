@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { getUpcomingEvents } from "@/lib/data/public";
 
 export const revalidate = 120;
@@ -22,7 +23,8 @@ export default async function EventsPage() {
 
   return (
     <section aria-labelledby="events-title">
-      <div className="page-hero compact-hero olive-wash">
+      <div className="page-hero compact-hero olive-wash events-photo-hero">
+        <div className="events-photo-hero-copy">
         <p className="eyebrow">
           <span /> MARK YOUR CALENDAR
         </p>
@@ -32,6 +34,16 @@ export default async function EventsPage() {
           <em>together.</em>
         </h1>
         <p>Find a worship service, ministry gathering, outreach event, or something for your family.</p>
+        </div>
+        <div className="events-photo-hero-image">
+          <Image
+            src="/images/church/events-sanctuary.png"
+            alt="Rows of blue chairs ready to welcome guests at the Bull Bay church"
+            fill
+            sizes="(max-width: 760px) 100vw, 45vw"
+            loading="eager"
+          />
+        </div>
       </div>
       <section className="section">
         <div className="calendar-toolbar">

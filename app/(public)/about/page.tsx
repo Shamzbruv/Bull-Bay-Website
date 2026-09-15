@@ -59,7 +59,7 @@ export default function AboutPage() {
       <div className="section" style={{ paddingBottom: 0 }}>
         <div className="church-photo-hero" style={{ minHeight: 340 }}>
           <picture className="church-photo-hero-media">
-            <img src="/images/church/choir-pulpit.jpg" alt="The Bull Bay congregation gathered for worship" />
+            <img src="/images/church/bull-bay-pulpit.png" alt="The Bull Bay church pulpit framed by palms and blue and gold curtains" />
           </picture>
           <div className="church-photo-hero-overlay" />
           <div className="church-photo-hero-copy" style={{ padding: "34px 36px", width: "min(420px, 100%)" }}>
