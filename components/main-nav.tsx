@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const LINKS = [
   { href: "/visit", label: "I'm New" },
@@ -44,6 +44,41 @@ function ChevronDownIcon() {
 export function MainNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDetailsElement>(null);
+
+  function closeNavigation() {
+    setOpen(false);
+    if (dropdownRef.current) dropdownRef.current.open = false;
+  }
+
+  useEffect(() => {
+    function dismissOutside(event: PointerEvent | FocusEvent) {
+      const dropdown = dropdownRef.current;
+      if (dropdown?.open && event.target instanceof Node && !dropdown.contains(event.target)) {
+        dropdown.open = false;
+      }
+    }
+    function dismissOnEscape(event: KeyboardEvent) {
+      const dropdown = dropdownRef.current;
+      if (event.key === "Escape" && dropdown?.open) {
+        event.preventDefault();
+        dropdown.open = false;
+        dropdown.querySelector("summary")?.focus();
+      }
+    }
+    document.addEventListener("pointerdown", dismissOutside, true);
+    document.addEventListener("focusin", dismissOutside);
+    document.addEventListener("keydown", dismissOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", dismissOutside, true);
+      document.removeEventListener("focusin", dismissOutside);
+      document.removeEventListener("keydown", dismissOnEscape);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (dropdownRef.current) dropdownRef.current.open = false;
+  }, [pathname]);
   const exploreActive = EXPLORE_LINKS.some((l) => pathname.startsWith(l.href));
 
   return (
@@ -69,13 +104,13 @@ export function MainNav() {
               href={link.href}
               className={`nav-link${isActive ? " is-active" : ""}`}
               aria-current={isActive ? "page" : undefined}
-              onClick={() => setOpen(false)}
+              onClick={closeNavigation}
             >
               {link.label}
             </Link>
           );
         })}
-        <details className="nav-dropdown">
+        <details ref={dropdownRef} className="nav-dropdown">
           <summary
             className={`nav-dropdown-trigger${exploreActive ? " is-active" : ""}`}
             aria-current={exploreActive ? "page" : undefined}
@@ -90,14 +125,14 @@ export function MainNav() {
                 href={link.href}
                 className={`nav-dropdown-link${pathname.startsWith(link.href) ? " is-active" : ""}`}
                 aria-current={pathname.startsWith(link.href) ? "page" : undefined}
-                onClick={() => setOpen(false)}
+                onClick={closeNavigation}
               >
                 {link.label}
               </Link>
             ))}
           </div>
         </details>
-        <Link className="nav-mobile-give" href="/give" onClick={() => setOpen(false)}>
+        <Link className="nav-mobile-give" href="/give" onClick={closeNavigation}>
           Give online
         </Link>
       </nav>
