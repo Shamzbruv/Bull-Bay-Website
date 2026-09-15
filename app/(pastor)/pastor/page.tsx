@@ -1,3 +1,4 @@
+import MemberHome from "@/app/(member)/member/page";
 import type { Metadata } from "next";
 import { TrendAreaChart, ComparisonBarChart } from "@/components/charts";
 import { RealtimeRefresh } from "@/components/realtime-refresh";
@@ -528,6 +529,7 @@ export default async function PastorDashboardPage() {
           </DashboardPanel>
         </DashboardColumns>
       )}
+      <section aria-label="My church member dashboard"><MemberHome /></section>
     </DashboardHome>
   );
 }

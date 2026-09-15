@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import Link from "next/link";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { SignatureForm } from "./signature-form";
@@ -32,7 +33,9 @@ export default async function PastorDocumentsPage() {
       .limit(10),
   ]);
 
-  const canCertify = Boolean(profile?.signature_path);
+  const {data:authority} = await createServiceRoleClient().from("integration_settings").select("value").eq("key",`document_authority:${organizationId}`).maybeSingle();
+  const assets = authority?.value as {signature_path?:string;stamp_path?:string} | undefined;
+  const canCertify = Boolean((profile?.signature_path || assets?.signature_path) && (profile?.stamp_path || assets?.stamp_path));
 
   return (
     <>
@@ -43,9 +46,10 @@ export default async function PastorDocumentsPage() {
         </div>
       </div>
 
+      <nav className="office-toolbar"><Link className="secondary-button" href="/admin/documents">Document templates</Link><Link className="secondary-button" href="/admin/documents?type=certificates">Certificates</Link></nav>
       <div className="panel">
         <h2>Your signature &amp; stamp</h2>
-        <SignatureForm hasSignature={Boolean(profile?.signature_path)} hasStamp={Boolean(profile?.stamp_path)} />
+        <SignatureForm hasSignature={Boolean(profile?.signature_path || assets?.signature_path)} hasStamp={Boolean(profile?.stamp_path || assets?.stamp_path)} />
       </div>
 
       <div className="panel">
@@ -68,6 +72,7 @@ export default async function PastorDocumentsPage() {
                 </p>
               </details>
               <div style={{ marginTop: 10 }}>
+                <a className="secondary-button compact" href={`/api/office/documents/${r.id}/preview`} target="_blank" rel="noreferrer">Preview PDF</a>
                 <CertifyButton requestId={r.id} canCertify={canCertify} />
               </div>
             </div>

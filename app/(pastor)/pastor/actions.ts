@@ -1,4 +1,5 @@
 "use server";
+import { prayerAction } from "@/app/(member)/member/tasks/actions";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -128,68 +129,12 @@ export async function updateCareCase(caseId: string, _prev: ActionState, formDat
 }
 
 export async function updatePrayerStatus(prayerId: string, status: string): Promise<ActionState> {
-  const organizationId = await getOrganizationId();
-  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
-  if (!organizationId) return { status: "error", message: "The church workspace could not be resolved." };
-  if (!new Set(["new", "in_progress", "prayed", "closed"]).has(status)) {
-    return { status: "error", message: "Choose a valid prayer-request status." };
-  }
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { status: "error", message: "Please sign in again." };
-
-  const canManageAll = permissions.has("care.manage");
-  if (!canManageAll) {
-    const [{ data: teamMember }, { data: assignedRequest }] = await Promise.all([
-      supabase.from("pastoral_team_members").select("id").eq("profile_id", (await getCurrentProfile())?.id ?? "").eq("is_active", true).maybeSingle(),
-      createServiceRoleClient().from("prayer_requests").select("id").eq("organization_id", organizationId).eq("id", prayerId).eq("assigned_to", user.id).maybeSingle(),
-    ]);
-    if (!teamMember || !assignedRequest) {
-      return { status: "error", message: "Only the assigned pastoral team member can update this request." };
-    }
-  }
-
-  const writer = canManageAll ? supabase : createServiceRoleClient();
-  const { error } = await writer
-    .from("prayer_requests")
-    .update({ status })
-    .eq("organization_id", organizationId)
-    .eq("id", prayerId);
-  if (error) return { status: "error", message: "The prayer request could not be updated." };
-  revalidatePath("/pastor");
-  revalidatePath("/pastor/care");
-  revalidatePath("/member/team-calendar");
-  return { status: "success", message: "Prayer request updated." };
+  const form = new FormData(); form.set("id", prayerId); form.set("decision", status === "prayed" ? "approve" : status === "awaiting_review" ? "submit" : "return");
+  return prayerAction({ status: "idle", message: "" }, form);
 }
-
 export async function assignPrayerRequest(prayerId: string, assigneeUserId: string): Promise<ActionState> {
-  const organizationId = await getOrganizationId();
-  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
-  if (!organizationId || !permissions.has("care.manage")) {
-    return { status: "error", message: "You don't have permission to assign prayer requests." };
-  }
-
-  const supabase = await createClient();
-  if (assigneeUserId) {
-    const { data: teamMember } = await supabase
-      .from("pastoral_team_members")
-      .select("id, profiles!inner(auth_user_id)")
-      .eq("organization_id", organizationId)
-      .eq("is_active", true)
-      .eq("profiles.auth_user_id", assigneeUserId)
-      .maybeSingle();
-    if (!teamMember) return { status: "error", message: "Choose an active member of the pastoral team." };
-  }
-
-  const { error } = await supabase
-    .from("prayer_requests")
-    .update({ assigned_to: assigneeUserId || null, ...(assigneeUserId ? { status: "in_progress" } : {}) })
-    .eq("organization_id", organizationId)
-    .eq("id", prayerId);
-  if (error) return { status: "error", message: "The assignment could not be saved." };
-  revalidatePath("/pastor");
-  revalidatePath("/pastor/care");
-  return { status: "success", message: assigneeUserId ? "Prayer request assigned." : "Assignment cleared." };
+  const form = new FormData(); form.set("id", prayerId); form.set("decision", "assign"); form.set("assigned_to", assigneeUserId);
+  return prayerAction({ status: "idle", message: "" }, form);
 }
 
 // Counsel requests -----------------------------------------------------

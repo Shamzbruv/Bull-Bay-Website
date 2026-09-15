@@ -1,3 +1,4 @@
+import { PushSettings } from "./push-settings";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
@@ -18,6 +19,7 @@ export default async function NotificationsPage() {
 
   return (
     <>
+      <PushSettings />
       <div className="dashboard-header">
         <div>
           <h1>Notifications</h1>

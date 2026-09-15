@@ -44,7 +44,7 @@ async function getPastorEmail(organizationId: string): Promise<string | null> {
  */
 export async function notifyOffice(organizationId: string, opts: { subject: string; html: string }): Promise<{ sent: number; total: number }> {
   const [officeEmails, pastorEmail] = await Promise.all([
-    getRoleHolderEmails(organizationId, ["secretary", "church_admin", "super_admin"]),
+    getRoleHolderEmails(organizationId, ["secretary", "church_executive", "super_admin"]),
     getPastorEmail(organizationId),
   ]);
 

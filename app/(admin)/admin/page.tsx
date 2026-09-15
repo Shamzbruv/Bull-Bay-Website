@@ -1,3 +1,4 @@
+import MemberHome from "@/app/(member)/member/page";
 import type { Metadata } from "next";
 import { addQueryError, loadDashboardContext } from "@/components/dashboard/dashboard-data";
 import {
@@ -443,6 +444,7 @@ export default async function AdminDashboardPage() {
           )}
         </DashboardPanel>
       )}
+      <section aria-label="My church member dashboard"><MemberHome /></section>
     </DashboardHome>
   );
 }

@@ -8,6 +8,7 @@ export type AvailabilityBlock = { id: string; dayOfWeek: number; startTime: stri
 export type CalendarEntry = {
   id: string;
   title: string;
+  createdBy?: string;
   startsAt: string;
   endsAt: string;
   kind: "day_off" | "busy" | "appointment";
@@ -68,7 +69,7 @@ function formatSlotTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", { timeZone: "America/Jamaica", hour: "numeric", minute: "2-digit" });
 }
 
-const ENTRY_LABEL: Record<CalendarEntry["kind"], string> = { day_off: "Day off", busy: "Busy", appointment: "Appointment" };
+const ENTRY_LABEL: Record<CalendarEntry["kind"], string> = { day_off: "☀ Day off", busy: "◆ Busy", appointment: "◷ Appointment" };
 const ENTRY_CLASS: Record<CalendarEntry["kind"], string> = {
   day_off: "pcal-chip-dayoff",
   busy: "pcal-chip-busy",

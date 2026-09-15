@@ -7,10 +7,11 @@ import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
 import { DAY_NAMES } from "@/lib/pastoral/reasons";
 
-export function AvailabilityForm() {
+export function AvailabilityForm({ profileId }: { profileId?: string }) {
   const [state, formAction] = useActionState(addAvailability, initialActionState);
   return (
     <form className="clay-form" action={formAction} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, alignItems: "end" }}>
+      <input type="hidden" name="profile_id" value={profileId ?? ""} />
       <label>
         Day
         <select name="day_of_week" required defaultValue="">
@@ -57,10 +58,11 @@ export function RemoveAvailabilityButton({ id }: { id: string }) {
   );
 }
 
-export function EventForm() {
+export function EventForm({ profileId }: { profileId?: string }) {
   const [state, formAction] = useActionState(addCalendarEvent, initialActionState);
   return (
     <form className="clay-form" action={formAction} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12, alignItems: "end" }}>
+      <input type="hidden" name="profile_id" value={profileId ?? ""} />
       <label style={{ gridColumn: "1 / -1" }}>
         Title
         <input type="text" name="title" required placeholder="Day off, conference, appointment…" />
@@ -76,7 +78,7 @@ export function EventForm() {
         Visible to
         <select name="visibility" defaultValue="public">
           <option value="public">Everyone (shown on the calendar)</option>
-          <option value="private">Just me</option>
+          <option value="private">Pastor and administrative team</option>
         </select>
       </label>
       <label>

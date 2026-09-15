@@ -13,19 +13,19 @@ import { AvailabilityForm, EventForm } from "@/app/(member)/member/team-calendar
  * "remove" links used; those already revalidatePath the page, so the
  * fresh availability/events just flow back down as props.
  */
-export function ManageCalendarPanel({ availability, events }: { availability: AvailabilityBlock[]; events: CalendarEntry[] }) {
+export function ManageCalendarPanel({ availability, events, profileId }: { profileId?: string; availability: AvailabilityBlock[]; events: CalendarEntry[] }) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
 
   function handleRemoveAvailability(id: string) {
     startTransition(async () => {
-      const result = await removeAvailability(id);
+      const result = await removeAvailability(id, profileId);
       setMessage(result.message);
     });
   }
   function handleRemoveEvent(id: string) {
     startTransition(async () => {
-      const result = await removeCalendarEvent(id);
+      const result = await removeCalendarEvent(id, profileId);
       setMessage(result.message);
     });
   }
@@ -45,8 +45,8 @@ export function ManageCalendarPanel({ availability, events }: { availability: Av
         </p>
       )}
       <div className="pcal-forms">
-        <AvailabilityForm />
-        <EventForm />
+        <AvailabilityForm profileId={profileId} />
+        <EventForm profileId={profileId} />
       </div>
     </>
   );

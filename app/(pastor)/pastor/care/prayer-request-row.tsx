@@ -13,9 +13,10 @@ type Props = {
   assignedTo: string | null;
   assignees: { userId: string; name: string }[];
   canAssign?: boolean;
+  completionNote?: string | null;
 };
 
-export function PrayerRequestRow({ id, name, body, visibility, status, createdAt, assignedTo, assignees, canAssign = true }: Props) {
+export function PrayerRequestRow({ id, name, body, visibility, status, createdAt, assignedTo, assignees, canAssign = true, completionNote }: Props) {
   const [value, setValue] = useState(status);
   const [assignee, setAssignee] = useState(assignedTo ?? "");
   const [message, setMessage] = useState<string | null>(null);
@@ -30,9 +31,10 @@ export function PrayerRequestRow({ id, name, body, visibility, status, createdAt
         </div>
         <p>{body}</p>
         <b>{name}</b>
+        {completionNote && <p><strong>Completion update:</strong> {completionNote}</p>}
       </div>
       <span className="inline-action">
-        {canAssign && <label>
+        {canAssign && !["prayed","closed"].includes(value) && <label>
           <span className="sr-only">Assign prayer request</span>
           <select
             value={assignee}
@@ -54,29 +56,14 @@ export function PrayerRequestRow({ id, name, body, visibility, status, createdAt
             {assignees.map((person) => <option key={person.userId} value={person.userId}>{person.name}</option>)}
           </select>
         </label>}
-        <label>
-          <span className="sr-only">Prayer request status</span>
-          <select
-            value={value}
-            disabled={pending}
-            onChange={(event) => {
-              const previous = value;
-              const next = event.target.value;
-              setValue(next);
-              setMessage(null);
-              startTransition(async () => {
-                const result = await updatePrayerStatus(id, next);
-                setMessage(result.message);
-                if (result.status === "error") setValue(previous);
-              });
-            }}
-          >
-            <option value="new">New</option>
-            <option value="in_progress">In prayer / assigned</option>
-            <option value="prayed">Prayed for</option>
-            <option value="closed">Closed</option>
-          </select>
-        </label>
+        <span className="badge gold">{value.replaceAll("_", " ")}</span>
+        {(canAssign ? value === "awaiting_review" : value === "in_progress") && <button type="button" className="primary-button compact" disabled={pending} onClick={() => startTransition(async () => {
+          const next = canAssign ? "prayed" : "awaiting_review";
+          const result = await updatePrayerStatus(id,next);setMessage(result.message);if(result.status === "success") setValue(next);
+        })}>{canAssign ? "Approve prayer completion" : "Submit completion to Pastor"}</button>}
+        {canAssign && value === "awaiting_review" && <button type="button" className="secondary-button compact" disabled={pending} onClick={() => startTransition(async () => {
+          const result = await updatePrayerStatus(id,"in_progress");setMessage(result.message);if(result.status === "success")setValue("in_progress");
+        })}>Return for follow-up</button>}
         {message && <small role="status">{message}</small>}
       </span>
     </article>

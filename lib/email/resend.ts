@@ -1,8 +1,12 @@
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { renderComposedEmail } from "@/lib/email/templates";
+import { ORGANIZATION_SLUG } from "@/lib/org";
 import { SITE_NAME } from "@/lib/org";
 
 export type SendMailInput = {
   to: string | string[];
   subject: string;
+  idempotencyKey?: string;
   html: string;
   /** Shown to the recipient as "reply to" — Resend sends from a no-reply
    * address, so anywhere a staff member is composing a real message (not a
@@ -31,6 +35,30 @@ export async function sendMail(input: SendMailInput): Promise<{ sent: boolean; e
     return { sent: false, error: "not_configured" };
   }
 
+  let subject = input.subject;
+  let html = input.html;
+  const marker = html.match(/^<!--church-template:([A-Za-z0-9+/=]+)-->/);
+  if (marker) {
+    html = html.slice(marker[0].length);
+    try {
+      const metadata = JSON.parse(Buffer.from(marker[1]!, "base64").toString("utf8")) as {slug:string;fields:Record<string,string>};
+      const db = createServiceRoleClient();
+      const {data:org} = await db.from("organizations").select("id").eq("slug",ORGANIZATION_SLUG).maybeSingle();
+      if (org) {
+       const {data:template} = await db.from("email_templates").select("subject,body,reply_to").eq("organization_id",org.id).eq("slug",metadata.slug).maybeSingle();
+       if(template) {
+        const fields={...metadata.fields,church_name:SITE_NAME};
+        const fill=(text:string)=>text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,(match,key:string)=>(fields as Record<string,string>)[key] ?? match);
+        const candidateSubject=fill(template.subject),candidateBody=fill(template.body);
+        // Broken edits cannot strand an invitation or remove its role/link.
+        const required=metadata.slug==="invitation"?[metadata.fields.action_url,metadata.fields.role_name]:metadata.slug==="password-recovery"?[metadata.fields.action_url]:[];
+        if(!/\{\{[^}]+\}\}/.test(candidateSubject+candidateBody)&&required.every(value=>value&&(candidateSubject+candidateBody).includes(value))) {
+         subject=candidateSubject;html=renderComposedEmail({heading:subject,bodyText:candidateBody});input.replyTo ??= template.reply_to ?? undefined;
+        }
+       }
+      }
+    } catch { /* Keep the verified default if template storage is unavailable. */ }
+  }
   const from = input.from ?? process.env.RESEND_FROM_EMAIL ?? `${SITE_NAME} <notifications@bullbayntcog.org>`;
 
   try {
@@ -39,12 +67,13 @@ export async function sendMail(input: SendMailInput): Promise<{ sent: boolean; e
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+        ...(input.idempotencyKey ? { "Idempotency-Key": input.idempotencyKey } : {}),
       },
       body: JSON.stringify({
         from,
         to: input.to,
-        subject: input.subject,
-        html: input.html,
+        subject,
+        html,
         ...(input.replyTo ? { reply_to: input.replyTo } : {}),
         ...(input.attachments?.length
           ? {
