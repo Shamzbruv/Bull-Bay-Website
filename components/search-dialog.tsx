@@ -1,5 +1,6 @@
 "use client";
 
+import { PAYMENT_URL } from "@/lib/payments/external";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
@@ -9,7 +10,7 @@ type Result = { type: string; title: string; href: string };
 const STATIC_PAGES: Result[] = [
   { type: "Page", title: "Plan Your Visit", href: "/visit" },
   { type: "Page", title: "Prayer Request", href: "/prayer" },
-  { type: "Page", title: "Online Giving", href: "/give" },
+  { type: "Page", title: "Online Giving", href: PAYMENT_URL },
   { type: "Page", title: "Contact Us", href: "/contact" },
 ];
 

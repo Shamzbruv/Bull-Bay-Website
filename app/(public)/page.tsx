@@ -1,3 +1,4 @@
+import { PAYMENT_URL } from "@/lib/payments/external";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -70,7 +71,7 @@ const QUICK_LINKS: { href: string; title: string; copy: string; icon: IconName }
   { href: "/visit", title: "I’m new", copy: "Everything you need for Sunday", icon: "spark" },
   { href: "/sermons", title: "Watch a message", copy: "Faith for the week ahead", icon: "play" },
   { href: "/prayer", title: "Request prayer", copy: "You don’t have to carry it alone", icon: "heart" },
-  { href: "/give", title: "Give online", copy: "Help make a difference", icon: "book" },
+  { href: PAYMENT_URL, title: "Give online", copy: "Help make a difference", icon: "book" },
 ];
 
 const NEXT_STEPS: { href: string; eyebrow: string; title: string; copy: string; icon: IconName; external?: boolean }[] = [

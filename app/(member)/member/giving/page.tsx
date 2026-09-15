@@ -1,14 +1,13 @@
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
-import { getActiveFunds } from "@/lib/data/public";
 import { formatJmd } from "@/lib/money";
 import { GivingForm } from "@/app/(public)/give/giving-form";
 
 export const metadata: Metadata = { title: "My Giving" };
 
 export default async function MyGivingPage() {
-  const [profile, funds] = await Promise.all([getCurrentProfile(), getActiveFunds()]);
+  const profile = await getCurrentProfile();
   const supabase = await createClient();
   const { data: donations } = await supabase
     .from("donations")
@@ -23,16 +22,14 @@ export default async function MyGivingPage() {
       <div className="dashboard-header">
         <div>
           <h1>My Giving</h1>
-          <p>Give directly from here, and see your full giving history and receipts.</p>
+          <p>Give through SpurrOpen and view giving records entered by the church office.</p>
         </div>
       </div>
 
-      {funds.length > 0 && (
-        <div className="panel">
-          <h2>Give now</h2>
-          <GivingForm funds={funds.map((f) => ({ id: f.id, name: f.name }))} signedIn />
-        </div>
-      )}
+      <div className="panel">
+        <h2>Give now</h2>
+        <GivingForm />
+      </div>
 
       <div className="stat-grid">
         <div className="stat-card">
@@ -45,7 +42,8 @@ export default async function MyGivingPage() {
         </div>
       </div>
       <div className="panel">
-        <h2>History</h2>
+        <h2>Church giving records</h2>
+        <p className="form-note">SpurrOpen payments are not automatically added here. Your payment confirmation is provided by SpurrOpen.</p>
         {(!donations || donations.length === 0) && <p className="panel-empty">No gifts recorded yet.</p>}
         <div className="data-table-wrap">
           {donations && donations.length > 0 && (

@@ -1,5 +1,6 @@
 "use client";
 
+import { PAYMENT_URL } from "@/lib/payments/external";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -132,7 +133,7 @@ export function MainNav() {
             ))}
           </div>
         </details>
-        <Link className="nav-mobile-give" href="/give" onClick={closeNavigation}>
+        <Link className="nav-mobile-give" href={PAYMENT_URL} onClick={closeNavigation}>
           Give online
         </Link>
       </nav>

@@ -2,7 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId } from "@/lib/auth/session";
-import { parseJmdToMinorUnits } from "@/lib/money";
+import { redirect } from "next/navigation";
+import { PAYMENT_URL } from "@/lib/payments/external";
 import { revalidatePath } from "next/cache";
 import { notifyOffice } from "@/lib/notify";
 import { renderStaffNotificationEmail } from "@/lib/email/templates";
@@ -254,44 +255,7 @@ export async function applyForShift(shiftId: string, _prev: ActionState): Promis
   return { status: "success", message: "You're signed up to serve. Thank you!" };
 }
 
-export async function submitGivingIntent(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const organizationId = await getOrganizationId();
-  if (!organizationId) return { status: "error", message: "Something went wrong. Please try again." };
-
-  const amountMinor = parseJmdToMinorUnits(String(formData.get("amount") || ""));
-  const fundId = String(formData.get("fundId") || "");
-  if (!amountMinor || amountMinor <= 0) return { status: "error", message: "Please enter a valid amount." };
-  if (!fundId) return { status: "error", message: "Please choose a fund to give to." };
-
-  const supabase = await createClient();
-  const { profileId, profile } = await currentProfileId();
-  const guestName = String(formData.get("donorName") || "").trim();
-  const guestEmail = String(formData.get("donorEmail") || "").trim();
-
-  const { data: donation, error } = await supabase
-    .from("donations")
-    .insert({
-      organization_id: organizationId,
-      donor_profile_id: profileId,
-      donor_name: profileId ? `${profile?.first_name ?? ""} ${profile?.last_name ?? ""}`.trim() || null : guestName || null,
-      donor_email: profileId ? profile?.email ?? null : guestEmail || null,
-      amount_minor: amountMinor,
-      status: "pending",
-    })
-    .select("id")
-    .single();
-
-  if (error || !donation) return { status: "error", message: "We couldn't record your gift. Please try again." };
-
-  const { error: allocationError } = await supabase
-    .from("donation_allocations")
-    .insert({ donation_id: donation.id, fund_id: fundId, amount_minor: amountMinor });
-
-  if (allocationError) return { status: "error", message: "We couldn't record your gift. Please try again." };
-
-  return {
-    status: "success",
-    message:
-      "Thank you! Online payment is being finalized as we set up a Jamaican payment provider. Our office will follow up, or you're welcome to give in person or by bank transfer in the meantime.",
-  };
+/** Old forms must also leave the site without creating a giving intent. */
+export async function submitGivingIntent(_prev: ActionState, _formData: FormData): Promise<ActionState> {
+  redirect(PAYMENT_URL);
 }

@@ -1,3 +1,4 @@
+import { PAYMENT_URL } from "@/lib/payments/external";
 import Link from "next/link";
 import Image from "next/image";
 import { getPrimaryCampus } from "@/lib/data/public";
@@ -89,7 +90,7 @@ export async function SiteFooter() {
             <div className="footer-nav-column">
               <h3>Watch &amp; Give</h3>
               <Link href="/live">Watch Online</Link>
-              <Link href="/give">Give Online</Link>
+              <Link href={PAYMENT_URL}>Give Online</Link>
               <Link href="/calendar">Calendar</Link>
               <Link href="/shop">Church Store</Link>
             </div>

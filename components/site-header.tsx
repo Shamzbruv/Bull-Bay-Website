@@ -1,3 +1,4 @@
+import { PAYMENT_URL } from "@/lib/payments/external";
 import Link from "next/link";
 import Image from "next/image";
 import { MainNav } from "@/components/main-nav";
@@ -70,7 +71,7 @@ export function SiteHeader() {
               <SearchDialog />
             </div>
             <HeaderAuth />
-            <Link href="/give" className="give-button header-give-link">
+            <Link href={PAYMENT_URL} className="give-button header-give-link">
               <span>Give</span>
               <ArrowUpRightIcon />
             </Link>
