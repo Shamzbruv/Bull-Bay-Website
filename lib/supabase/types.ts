@@ -1,3 +1,4 @@
+import type { WorkflowTables, EmailDelivery } from "@/lib/office/types";
 export type Json =
   | string
   | number
@@ -13,7 +14,7 @@ export type Database = {
     PostgrestVersion: "14.5"
   }
   public: {
-    Tables: {
+    Tables: WorkflowTables & {
       announcements: {
         Row: {
           body: string
@@ -700,6 +701,10 @@ export type Database = {
       }
       document_requests: {
         Row: {
+          template_snapshot: Json
+          signer_profile_id: string | null
+          prepared_by: string | null
+
           assigned_to: string | null
           certified_at: string | null
           certified_by: string | null
@@ -719,6 +724,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          template_snapshot?: Json
+          signer_profile_id?: string | null
+          prepared_by?: string | null
+
           assigned_to?: string | null
           certified_at?: string | null
           certified_by?: string | null
@@ -738,6 +747,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          template_snapshot?: Json
+          signer_profile_id?: string | null
+          prepared_by?: string | null
+
           assigned_to?: string | null
           certified_at?: string | null
           certified_by?: string | null
@@ -789,6 +802,11 @@ export type Database = {
       }
       document_templates: {
         Row: {
+          layout: string
+          design: Json
+          email_template_id: string | null
+          version: number
+
           body: string
           category: string | null
           created_at: string
@@ -802,6 +820,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          layout?: string
+          design?: Json
+          email_template_id?: string | null
+          version?: number
+
           body: string
           category?: string | null
           created_at?: string
@@ -815,6 +838,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          layout?: string
+          design?: Json
+          email_template_id?: string | null
+          version?: number
+
           body?: string
           category?: string | null
           created_at?: string
@@ -1623,6 +1651,8 @@ export type Database = {
       }
       notifications: {
         Row: {
+          push_processed_at: string | null
+
           body: string | null
           created_at: string
           id: string
@@ -1634,6 +1664,8 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          push_processed_at?: string | null
+
           body?: string | null
           created_at?: string
           id?: string
@@ -1645,6 +1677,8 @@ export type Database = {
           user_id: string
         }
         Update: {
+          push_processed_at?: string | null
+
           body?: string | null
           created_at?: string
           id?: string
@@ -1942,6 +1976,9 @@ export type Database = {
       }
       pastoral_calendar_availability: {
         Row: {
+          created_by: string | null
+          updated_by: string | null
+
           created_at: string
           day_of_week: number
           end_time: string
@@ -1951,6 +1988,9 @@ export type Database = {
           start_time: string
         }
         Insert: {
+          created_by?: string | null
+          updated_by?: string | null
+
           created_at?: string
           day_of_week: number
           end_time: string
@@ -1960,6 +2000,9 @@ export type Database = {
           start_time: string
         }
         Update: {
+          created_by?: string | null
+          updated_by?: string | null
+
           created_at?: string
           day_of_week?: number
           end_time?: string
@@ -1987,6 +2030,9 @@ export type Database = {
       }
       pastoral_calendar_events: {
         Row: {
+          created_by: string | null
+          updated_by: string | null
+
           counsel_request_id: string | null
           created_at: string
           ends_at: string
@@ -1998,6 +2044,9 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          created_by?: string | null
+          updated_by?: string | null
+
           counsel_request_id?: string | null
           created_at?: string
           ends_at: string
@@ -2009,6 +2058,9 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          created_by?: string | null
+          updated_by?: string | null
+
           counsel_request_id?: string | null
           created_at?: string
           ends_at?: string
@@ -2188,6 +2240,11 @@ export type Database = {
       }
       prayer_requests: {
         Row: {
+          completion_note: string | null
+          completion_requested_at: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+
           assigned_to: string | null
           created_at: string
           id: string
@@ -2201,6 +2258,11 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          completion_note?: string | null
+          completion_requested_at?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+
           assigned_to?: string | null
           created_at?: string
           id?: string
@@ -2214,6 +2276,11 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          completion_note?: string | null
+          completion_requested_at?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+
           assigned_to?: string | null
           created_at?: string
           id?: string
@@ -3272,6 +3339,11 @@ export type Database = {
       }
     }
     Functions: {
+      claim_office_worker: { Args: Record<PropertyKey, never>; Returns: boolean }
+      office_delete_member: { Args: {org: string; actor: string; person: string}; Returns: undefined }
+      office_prayer_transition: { Args: { org: string; actor: string; prayer: string; decision: string; assignee?: string; note?: string }; Returns: Database["public"]["Tables"]["prayer_requests"]["Row"] }
+      claim_office_email: { Args: { delivery: string }; Returns: EmailDelivery[] }
+
       assign_person_role: { Args: { org: string; target_user: string; selected_role?: string | null }; Returns: undefined }
       available_counsel_slots: { Args: { person: string; on_date: string }; Returns: { starts_at: string; ends_at: string }[] }
       respond_counsel_request: { Args: { request_id: string; decision: string; slot_start?: string | null; slot_end?: string | null; note?: string | null }; Returns: undefined }

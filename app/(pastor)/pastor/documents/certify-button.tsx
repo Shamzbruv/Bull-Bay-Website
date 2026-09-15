@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { certifyDocument } from "./actions";
 
-export function CertifyButton({ requestId, canCertify }: { requestId: string; canCertify: boolean }) {
+export function CertifyButton({ requestId, canCertify = true }: { requestId: string; canCertify?: boolean }) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getOrganizationId } from "@/lib/auth/session";
+import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { CounselRequestRow } from "./counsel-request-row";
+import { roleMembers } from "@/lib/office/context";
 import { PrayerRequestRow } from "./prayer-request-row";
 
 export const metadata: Metadata = { title: "Pastoral Care" };
@@ -10,10 +11,11 @@ export const metadata: Metadata = { title: "Pastoral Care" };
 export default async function PastoralCarePage() {
   const organizationId = await getOrganizationId();
   const supabase = await createClient();
+  const permissions = await getUserPermissions(organizationId ?? "");
 
   // RLS already scopes this to cases the signed-in pastor owns or has been
   // explicitly granted access to — no broad "admin sees everything" here.
-  const [{ data: cases }, { data: prayers }, { data: counselRequests }, { data: pastoralTeam }] = await Promise.all([
+  const [{ data: cases }, { data: prayers }, { data: counselRequests }, pastoralTeam] = await Promise.all([
     supabase
       .from("care_cases")
       .select("id, category, status, summary, created_at")
@@ -21,7 +23,7 @@ export default async function PastoralCarePage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("prayer_requests")
-      .select("id, submitter_name, request_body, visibility, status, assigned_to, created_at")
+      .select("id, submitter_name, request_body, visibility, status, assigned_to, created_at, completion_note")
       .eq("organization_id", organizationId ?? "")
       .order("created_at", { ascending: false })
       .limit(20),
@@ -31,22 +33,10 @@ export default async function PastoralCarePage() {
       .order("is_urgent", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(30),
-    supabase
-      .from("pastoral_team_members")
-      .select("role_title, profiles(first_name, last_name, auth_user_id)")
-      .eq("organization_id", organizationId ?? "")
-      .eq("is_active", true)
-      .order("is_pastor", { ascending: false }),
+    permissions.has("prayer.review") ? roleMembers(organizationId ?? "", ["pastoral_care_team", "student_pastor"]) : Promise.resolve([]),
   ]);
 
-  const prayerAssignees = (pastoralTeam ?? []).flatMap((teamMember) => {
-    const person = teamMember.profiles as unknown as { first_name: string | null; last_name: string | null; auth_user_id: string | null } | null;
-    if (!person?.auth_user_id) return [];
-    return [{
-      userId: person.auth_user_id,
-      name: `${person.first_name ?? ""} ${person.last_name ?? ""}`.trim() || teamMember.role_title,
-    }];
-  });
+  const prayerAssignees = pastoralTeam.flatMap(person => person.auth_user_id ? [{ userId: person.auth_user_id, name: `${person.first_name ?? ""} ${person.last_name ?? ""}`.trim() }] : []);
 
   return (
     <>
@@ -103,6 +93,8 @@ export default async function PastoralCarePage() {
             createdAt={prayer.created_at}
             assignedTo={prayer.assigned_to}
             assignees={prayerAssignees}
+            canAssign={permissions.has("prayer.review")}
+            completionNote={prayer.completion_note}
           />
         ))}
       </div>

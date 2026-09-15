@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
-import { verifyCalendarFeedToken } from "@/lib/calendar/feed-token";
+import { createHash } from "node:crypto";
+import { canSubscribe } from "@/lib/calendar/integrations";
 import { buildIcsCalendar, type IcsEvent } from "@/lib/calendar/ics";
 
 
@@ -15,12 +16,12 @@ import { buildIcsCalendar, type IcsEvent } from "@/lib/calendar/ics";
  */
 export async function GET(_request: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const profileId = verifyCalendarFeedToken(token);
-  if (!profileId) {
-    return NextResponse.json({ error: "This calendar link is invalid or has expired." }, { status: 404 });
-  }
-
+  if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return NextResponse.json({error:"Reconnect this calendar from Calendar connections."},{status:410});
   const admin = createServiceRoleClient();
+  const {data:subscription}=await admin.from("calendar_subscriptions").select("user_id,organization_id,calendar_profile_id").eq("token_hash",createHash("sha256").update(token).digest("hex")).is("revoked_at",null).maybeSingle();
+  if(!subscription?.calendar_profile_id || !await canSubscribe(subscription.user_id,subscription.organization_id,subscription.calendar_profile_id)) return NextResponse.json({error:"This subscription is no longer active."},{status:404});
+  const profileId=subscription.calendar_profile_id;
+
   const [profileResult, availabilityResult, eventsResult] = await Promise.all([
     admin.from("profiles").select("first_name, last_name, organization_id").eq("id", profileId).maybeSingle(),
     admin
@@ -82,7 +83,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     headers: {
       "Content-Type": "text/calendar; charset=utf-8",
       "Content-Disposition": 'inline; filename="pastoral-calendar.ics"',
-      "Cache-Control": "private, max-age=900",
+      "Cache-Control": "private, no-store",
     },
   });
 }

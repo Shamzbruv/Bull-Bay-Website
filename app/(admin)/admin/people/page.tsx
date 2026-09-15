@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions, isSuperAdmin, getAuthUser } from "@/lib/auth/session";
@@ -24,7 +25,7 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
     .eq("organization_id", organizationId ?? "")
     .order("last_name", { ascending: true })
     .limit(200);
-  if (q) request = request.ilike("last_name", `%${q}%`);
+  if (q) { const term = q.replace(/[^a-zA-Z0-9 @.+_-]/g, "").slice(0,100); request = request.or(`first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`); }
   const { data: people } = await request;
 
   // Staff role, shown and changed right here — Roles & Access is now
@@ -65,7 +66,7 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
       )}
 
       <form className="filter-row" style={{ marginBottom: 20 }}>
-        <input className="filter-input" type="search" name="q" defaultValue={q} placeholder="Search by last name" />
+        <input className="filter-input" type="search" name="q" defaultValue={q} placeholder="Search name, email or phone" />
       </form>
       <div className="data-table-wrap">
         <table className="data-table">
@@ -86,7 +87,7 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
               return (
                 <tr key={p.id}>
                   <td>
-                    {p.first_name} {p.last_name}
+                    <Link href={`/admin/people/${p.id}`}>{p.first_name} {p.last_name}</Link>
                   </td>
                   <td>{p.email}</td>
                   <td>{p.phone}</td>

@@ -45,7 +45,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       items: [
         { href: "/admin", label: "Dashboard", icon: "home" },
         { href: "/admin/profile", label: "My profile", icon: "person" },
-        { href: "/member/calendar", label: "My calendar subscriptions", icon: "calendar" },
+        { href: "/member/calendar", label: "Calendar connections", icon: "calendar" },
+        { href: "/member/tasks", label: "Tasks & prayer assignments", icon: "checklist" },
+        ...(allowed("forms.manage") ? [{ href: "/admin/forms", label: "Forms & responses", icon: "clipboard" as const }] : []),
+        ...(allowed("emails.manage") ? [{ href: "/admin/emails", label: "Email templates & delivery", icon: "mail" as const }] : []),
+        ...(allowed("documents.manage") ? [{ href: "/admin/documents?type=certificates", label: "Certificates", icon: "file" as const }] : []),
+        ...(allowed("integrations.manage") ? [{ href: "/admin/integrations", label: "Calendar & phone setup", icon: "settings" as const }] : []),
         ...(allowed("sites.manage", "roles.manage")
           ? [{ href: "/admin/setup", label: "Setup center", icon: "sparkles" as const }]
           : []),
@@ -73,7 +78,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           : []),
         ...(allowed("documents.manage") ? [{ href: "/admin/documents", label: "Documents", icon: "file" as const }] : []),
         ...(allowed("pastoral_calendar.manage")
-          ? [{ href: "/admin/pastoral-team", label: "Pastoral team", icon: "calendar" as const }]
+          ? [{ href: "/member/team-calendar", label: "Pastor calendar & hours", icon: "calendar" as const }]
           : []),
         ...(allowed("communications.send")
           ? [{ href: "/admin/communications", label: "Communications", icon: "mail" as const }]
@@ -123,6 +128,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     {
       label: "My church",
       items: [
+        { href: "/member", label: "My church home", icon: "home" },
+        { href: "/member/household", label: "My household", icon: "users" },
+        { href: "/member/groups", label: "My groups", icon: "people" },
+        { href: "/member/ministry", label: "My ministry", icon: "church" },
+        { href: "/member/prayer", label: "Request prayer", icon: "heart" },
+        { href: "/member/attendance", label: "My attendance", icon: "chart" },
+        { href: "/member/orders", label: "Orders & downloads", icon: "shop" },
+        { href: "/member/notifications", label: "Phone & notifications", icon: "bell" },
         { href: "/member/events", label: "My events", icon: "calendar" },
         { href: "/member/counsel", label: "Request a meeting", icon: "heart" },
         { href: "/member/documents", label: "My document requests", icon: "file" },

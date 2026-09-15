@@ -1,29 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { getCurrentProfile } from "@/lib/auth/session";
+import { getCalendarContext } from "@/lib/calendar/context";
 import type { ActionState } from "@/app/(public)/actions";
 
-// Every write here relies on RLS ("profile_id = current_profile_id() OR
-// staff with pastoral_calendar.manage") to enforce who can touch what — the
-// app code only ever writes profile_id = the signed-in person's own id.
-
-async function getTeamContext() {
-  const profile = await getCurrentProfile();
-  if (!profile) return null;
-  const supabase = await createClient();
-  const { data: teamMember } = await supabase
-    .from("pastoral_team_members")
-    .select("id")
-    .eq("profile_id", profile.id)
-    .eq("is_active", true)
-    .maybeSingle();
-  return teamMember ? { profile, supabase } : null;
-}
-
 export async function addAvailability(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const context = await getTeamContext();
+  const context = await getCalendarContext(String(formData.get("profile_id") || ""));
   if (!context) return { status: "error", message: "Only active pastoral-team members can publish availability." };
   const { profile, supabase } = context;
 
@@ -49,8 +31,8 @@ export async function addAvailability(_prev: ActionState, formData: FormData): P
   return { status: "success", message: "Hours added." };
 }
 
-export async function removeAvailability(id: string): Promise<ActionState> {
-  const context = await getTeamContext();
+export async function removeAvailability(id: string, profileId?: string): Promise<ActionState> {
+  const context = await getCalendarContext(profileId);
   if (!context) return { status: "error", message: "Only active pastoral-team members can change availability." };
   const { profile, supabase } = context;
   const { error } = await supabase.from("pastoral_calendar_availability").delete().eq("profile_id", profile.id).eq("id", id);
@@ -62,7 +44,7 @@ export async function removeAvailability(id: string): Promise<ActionState> {
 }
 
 export async function addCalendarEvent(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const context = await getTeamContext();
+  const context = await getCalendarContext(String(formData.get("profile_id") || ""));
   if (!context) return { status: "error", message: "Only active pastoral-team members can edit this calendar." };
   const { profile, supabase } = context;
 
@@ -106,8 +88,8 @@ export async function addCalendarEvent(_prev: ActionState, formData: FormData): 
   return { status: "success", message: "Added to your calendar." };
 }
 
-export async function removeCalendarEvent(id: string): Promise<ActionState> {
-  const context = await getTeamContext();
+export async function removeCalendarEvent(id: string, profileId?: string): Promise<ActionState> {
+  const context = await getCalendarContext(profileId);
   if (!context) return { status: "error", message: "Only active pastoral-team members can edit this calendar." };
   const { profile, supabase } = context;
   const { data: event } = await supabase

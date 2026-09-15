@@ -1,0 +1,20 @@
+import type { Json } from "@/lib/supabase/types";
+type Table<R> = { Row: R; Insert: Partial<R>; Update: Partial<R>; Relationships: [] };
+type Base = { id: string; organization_id: string; created_at: string };
+export type OfficeTask = Base & { title: string; description: string; assigned_to: string; assigned_by: string; parent_id: string | null; due_at: string | null; status: string; completion_note: string | null; completed_at: string | null; reviewed_by: string | null; updated_at: string };
+export type EmailTemplate = Base & { name: string; slug: string; subject: string; body: string; reply_to: string | null; updated_at: string };
+export type EmailDelivery = Base & { template_id: string | null; recipient: string; subject: string; html: string; reply_to: string | null; attachment_path: string | null; attachment_name: string | null; status: string; attempts: number; last_error: string | null; dedupe_key: string | null; created_by: string | null; sent_at: string | null; locked_at: string | null };
+export type OfficeForm = Base & { title: string; description: string; fields: Json; is_active: boolean; created_by: string | null; updated_at: string };
+export type FormAssignment = Base & { form_id: string; recipient_profile_id: string; token_hash: string; form_snapshot: Json; expires_at: string; sent_by: string | null; answers: Json; submitted_at: string | null };
+export type CalendarConnection = Base & { user_id: string; calendar_profile_id: string | null; google_email: string; refresh_token: string; google_calendar_id: string; last_synced_at: string | null; last_error: string | null };
+export type WorkflowTables = {
+ office_tasks: Table<OfficeTask>;
+ email_templates: Table<EmailTemplate>;
+ email_deliveries: Table<EmailDelivery>;
+ office_forms: Table<OfficeForm>;
+ form_assignments: Table<FormAssignment>;
+ integration_settings: Table<{ key: string; value: Json; updated_at: string }>;
+ calendar_connections: Table<CalendarConnection>;
+ calendar_subscriptions: Table<Base & { user_id: string; calendar_profile_id: string | null; token_hash: string; revoked_at: string | null }>;
+ push_subscriptions: Table<Base & { user_id: string; endpoint: string; p256dh: string; auth: string }>;
+};

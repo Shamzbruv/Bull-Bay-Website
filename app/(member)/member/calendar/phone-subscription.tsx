@@ -1,0 +1,7 @@
+"use client";
+import { useActionState } from "react";
+import { createSubscription,revokeSubscriptions } from "./actions";
+import { initialActionState } from "@/lib/action-state";
+import { OfficeActionForm } from "@/components/office-action-form";
+import { SubmitButton } from "@/components/submit-button";
+export function PhoneSubscription({profileId}:{profileId:string}){const [state,action]=useActionState(createSubscription,initialActionState);const url=state.status==='success'?state.message:null;return <details><summary>Connect Apple Calendar or another phone calendar</summary><p>On iPhone, subscribe using the link below. For Android, connect Google Calendar above and enable the church calendar in your phone’s calendar app.</p><form action={action}><input type="hidden" name="profile_id" value={profileId}/><SubmitButton>Create private phone calendar link</SubmitButton></form>{state.status==='error'&&<p role="alert">{state.message}</p>}{url&&<><a className="secondary-button" href={url.replace(/^https?:/,'webcal:')}>Open phone calendar</a><label>Subscription URL<input readOnly value={url} onFocus={e=>e.currentTarget.select()}/></label><p className="form-note">Keep this private. The link grants read access to this calendar until you revoke it.</p></>}<OfficeActionForm action={revokeSubscriptions} label="Revoke phone links"><input type="hidden" name="profile_id" value={profileId}/></OfficeActionForm></details>;}

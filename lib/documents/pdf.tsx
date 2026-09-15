@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/alt-text -- this is @react-pdf/renderer's <Image>, a PDF-drawing
    primitive with no `alt` prop, not an HTML <img>; the a11y rule doesn't apply here. */
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { cleanDesign, type DocumentDesign } from "@/lib/documents/design";
 import { SITE_NAME } from "@/lib/org";
 
 const BRAND_BLUE = "#173f89";
@@ -37,6 +38,9 @@ export type CertifyingSigner = {
 };
 
 export type DocumentPdfInput = {
+  layout?: string;
+  design?: DocumentDesign;
+  draft?: boolean;
   documentNumber: string;
   title: string;
   bodyParagraphs: string[];
@@ -47,6 +51,18 @@ export type DocumentPdfInput = {
 };
 
 function DocumentPdf({ input }: { input: DocumentPdfInput }) {
+  const design = cleanDesign(input.design);
+  if (input.layout === "certificate") return <Document title={input.title}><Page size="A4" orientation={design.orientation} style={{padding:36,fontFamily:"Times-Roman",color:"#12334e",backgroundColor:"#fffdf8"}}>
+    <View style={{position:"absolute",top:18,left:18,right:18,bottom:18,border:`3 solid ${design.accent}`}}/><View style={{position:"absolute",top:25,left:25,right:25,bottom:25,border:`0.7 solid ${design.accent}`}}/>
+    <View style={{alignItems:"center",marginBottom:12}}><Image src={input.logoImage} style={{width:52,height:52}}/><Text style={{fontFamily:"Times-Bold",fontSize:16,marginTop:5}}>NEW TESTAMENT CHURCH OF GOD</Text><Text style={{fontSize:10,letterSpacing:3,marginTop:3}}>BULL BAY · JAMAICA</Text></View>
+    <Text style={{textAlign:"center",fontFamily:"Times-Bold",fontSize:30,marginTop:8,marginBottom:8}}>{input.title}</Text>
+    {design.banner && <Text style={{backgroundColor:design.accent,color:"#fff",textAlign:"center",padding:6,fontSize:12,marginHorizontal:80}}>{design.banner}</Text>}
+    {design.subtitle && <Text style={{textAlign:"center",fontSize:11,marginTop:8}}>{design.subtitle}</Text>}
+    <Text style={{textAlign:"center",fontFamily:"Times-Italic",fontSize:28,color:"#866421",marginTop:16,marginBottom:12}}>{input.recipientName}</Text>
+    <View style={{marginHorizontal:35}}>{input.bodyParagraphs.map((p,i)=><Text key={i} style={{textAlign:"center",fontSize:12,lineHeight:1.55,marginBottom:8}}>{p}</Text>)}</View>
+    <View style={{flexDirection:"row",justifyContent:"space-between",marginTop:22,marginHorizontal:40,alignItems:"flex-end"}}><View style={{width:180}}>{input.signer?.signatureImage?<Image src={input.signer.signatureImage} style={{width:130,height:45,objectFit:"contain"}}/>:<View style={{height:45}}/>}<Text style={{borderTop:"0.8 solid #12334e",paddingTop:5,fontSize:10}}>{input.signer?.name || design.signer_name || "Pastor signature"}</Text><Text style={{fontSize:9}}>Pastor</Text></View><View style={{width:80,alignItems:"center"}}>{input.signer?.stampImage?<Image src={input.signer.stampImage} style={{width:75,height:75,objectFit:"contain"}}/>:<View style={{border:`1 dashed ${design.accent}`,width:70,height:70,justifyContent:"center",alignItems:"center"}}><Text style={{fontSize:8}}>CHURCH STAMP</Text></View>}</View><View style={{width:180}}><Text style={{borderTop:"0.8 solid #12334e",paddingTop:5,fontSize:10}}>{design.secretary_name || "Administrative team"}</Text><Text style={{fontSize:9}}>Issued {input.issuedDate}</Text></View></View>
+    <Text style={{position:"absolute",bottom:34,left:40,right:40,textAlign:"center",fontSize:8,color:"#637181"}}>{input.draft?"DRAFT · Awaiting authorization":`Certificate No. ${input.documentNumber}`} · {design.footer || "One Family · One Faith · One Mission"}</Text>
+  </Page></Document>;
   return (
     <Document title={input.title}>
       <Page size="A4" style={styles.page}>
@@ -54,7 +70,7 @@ function DocumentPdf({ input }: { input: DocumentPdfInput }) {
           <Image src={input.logoImage} style={styles.logo} />
           <View>
             <Text style={styles.churchName}>New Testament Church of God</Text>
-            <Text style={styles.churchSub}>Bull Bay · St. Andrew · Jamaica</Text>
+            <Text style={styles.churchSub}>Weise Road, 9 Miles, Bull Bay · St. Andrew · Jamaica</Text>
           </View>
         </View>
 
@@ -63,6 +79,7 @@ function DocumentPdf({ input }: { input: DocumentPdfInput }) {
           <Text>Issued {input.issuedDate}</Text>
         </View>
 
+        {design.banner && <Text style={{backgroundColor:design.accent,color:"#fff",padding:8,textAlign:"center",marginBottom:18}}>{design.banner}</Text>}
         <Text style={styles.title}>{input.title}</Text>
 
         <View style={styles.body}>
@@ -82,14 +99,15 @@ function DocumentPdf({ input }: { input: DocumentPdfInput }) {
             <Text style={{ fontSize: 9, color: MUTED }}>Prepared for</Text>
             <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 11, marginTop: 2 }}>{input.recipientName}</Text>
           </View>
-          {input.signer && (
+          {(
             <View style={[styles.signatureCol, { position: "relative", alignItems: "flex-end" }]}>
-              {input.signer.stampImage && <Image src={input.signer.stampImage} style={styles.stampImg} />}
-              {input.signer.signatureImage && <Image src={input.signer.signatureImage} style={styles.signatureImg} />}
+              {input.signer?.stampImage && <Image src={input.signer.stampImage} style={styles.stampImg} />}
+              {input.signer?.signatureImage && <Image src={input.signer.signatureImage} style={styles.signatureImg} />}
+              {!input.signer && <View style={{height:55,border:`1 dashed ${design.accent}`,padding:8,marginBottom:8}}><Text style={{fontSize:8}}>CHURCH STAMP</Text></View>}
               <View style={{ width: "100%" }}>
                 <View style={styles.signatureLine}>
-                  <Text style={styles.signatureName}>{input.signer.name}</Text>
-                  <Text style={styles.signatureTitle}>{input.signer.title}</Text>
+                  <Text style={styles.signatureName}>{input.signer?.name || design.signer_name || "Pastor signature"}</Text>
+                  <Text style={styles.signatureTitle}>{input.signer?.title || "Pastor"}</Text>
                 </View>
               </View>
             </View>
@@ -98,7 +116,7 @@ function DocumentPdf({ input }: { input: DocumentPdfInput }) {
 
         <View style={styles.footer} fixed>
           <Text>{SITE_NAME}</Text>
-          <Text>This document was generated and certified electronically via the church platform.</Text>
+          <Text>{input.draft ? "DRAFT · Awaiting authorization" : design.footer || "Certified electronically by the church office."}</Text>
         </View>
       </Page>
     </Document>

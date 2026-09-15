@@ -1,55 +1,12 @@
 "use client";
-
-import { useActionState } from "react";
+import { useState } from "react";
 import { saveTemplate } from "./actions";
-import { initialActionState } from "@/lib/action-state";
-import { SubmitButton } from "@/components/submit-button";
-import { FormStatus } from "@/components/form-status";
-import { STANDARD_MERGE_FIELDS } from "@/lib/documents/merge";
-
-type EditableTemplate = {
-  id: string;
-  name: string;
-  category: string | null;
-  description: string | null;
-  body: string;
-};
-
-export function TemplateForm({ template }: { template?: EditableTemplate }) {
-  const [state, formAction] = useActionState(saveTemplate, initialActionState);
-  return (
-    <form className="clay-form" action={formAction}>
-      {template && <input type="hidden" name="id" value={template.id} />}
-      <div className="form-row">
-        <label>
-          Document name
-          <input name="name" required placeholder="e.g. Letter of Good Standing" defaultValue={template?.name ?? ""} />
-        </label>
-        <label>
-          Category
-          <input name="category" placeholder="e.g. Membership, Reference" defaultValue={template?.category ?? ""} />
-        </label>
-      </div>
-      <label>
-        Short description
-        <input name="description" placeholder="Shown to members when choosing a document type" defaultValue={template?.description ?? ""} />
-      </label>
-      <label>
-        Document body
-        <textarea
-          name="body"
-          required
-          style={{ minHeight: 200 }}
-          defaultValue={template?.body ?? ""}
-          placeholder={"This letter certifies that {{member_name}} is a member in good standing of {{church_name}}, since {{membership_since}}.\n\nThis letter is issued for the purpose of: {{purpose}}."}
-        />
-      </label>
-      <p className="form-note">
-        Available merge fields: {STANDARD_MERGE_FIELDS.map((f) => `{{${f.key}}}`).join(", ")}. Separate paragraphs
-        with a blank line.
-      </p>
-      <FormStatus state={state} />
-      <SubmitButton pendingLabel="Saving…">{template ? "Save changes" : "Create template"}</SubmitButton>
-    </form>
-  );
+import { OfficeActionForm } from "@/components/office-action-form";
+import { cleanDesign } from "@/lib/documents/design";
+import type { EmailTemplate } from "@/lib/office/types";
+import type { Json } from "@/lib/supabase/types";
+type EditableTemplate={id:string;name:string;category:string|null;description:string|null;body:string;layout?:string;design?:Json;email_template_id?:string|null};
+export function TemplateForm({template,emails=[]}:{template?:EditableTemplate;emails?:EmailTemplate[]}){
+ const design=cleanDesign(template?.design);const [layout,setLayout]=useState(template?.layout??"letter");const [name,setName]=useState(template?.name??"");const [accent,setAccent]=useState(design.accent??"#ba963c");const [banner,setBanner]=useState(design.banner??"");
+ return <OfficeActionForm action={saveTemplate} label={template?"Save master template":"Create master template"}><input type="hidden" name="id" value={template?.id??""}/><div className="office-template-preview" style={{borderColor:accent}}><small>NEW TESTAMENT CHURCH OF GOD · BULL BAY</small><h3>{name||"Your document title"}</h3>{banner&&<p style={{background:accent,color:"white",padding:8}}>{banner}</p>}<p>Recipient name and document details</p><small>Pastor signature · Church stamp</small></div><div className="form-row"><label>Template name<input name="name" required value={name} onChange={e=>setName(e.target.value)}/></label><label>Format<select name="layout" value={layout} onChange={e=>setLayout(e.target.value)}><option value="letter">Letter / document</option><option value="certificate">Certificate</option></select></label></div><label>Category<input name="category" defaultValue={template?.category??""}/></label><label>Description<input name="description" defaultValue={template?.description??""}/></label><label>Document text<textarea name="body" required rows={10} defaultValue={template?.body??""} placeholder="This certifies that {{member_name}}..."/></label><p className="form-note">Create editable fields using double braces, for example {"{{member_name}}"}, {"{{recipient_address}}"}, {"{{ceremony_date}}"}. Each becomes a field when you select Use template.</p><div className="form-row"><label>Accent colour<input name="accent" type="color" value={accent} onChange={e=>setAccent(e.target.value)}/></label><label>Certificate orientation<select name="orientation" defaultValue={design.orientation}><option value="landscape">Landscape</option><option value="portrait">Portrait</option></select></label></div><label>Banner<input name="banner" value={banner} onChange={e=>setBanner(e.target.value)}/></label><label>Subtitle<input name="subtitle" defaultValue={design.subtitle}/></label><label>Footer<textarea name="footer" defaultValue={design.footer} rows={2}/></label><div className="form-row"><label>Pastor display name<input name="signer_name" defaultValue={design.signer_name}/></label><label>Secretary display name<input name="secretary_name" defaultValue={design.secretary_name}/></label></div><label>Email sent with the PDF<select name="email_template_id" defaultValue={template?.email_template_id??""}><option value="">Default {layout==="certificate"?"certificate":"document"} email</option>{emails.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}</select></label></OfficeActionForm>;
 }

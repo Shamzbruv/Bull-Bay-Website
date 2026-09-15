@@ -1,0 +1,25 @@
+import { getAuthUser, getCurrentProfile, getUserPermissions } from "@/lib/auth/session";
+import { createClient } from "@/lib/supabase/server";
+import { roleMembers } from "@/lib/office/context";
+import { OfficeActionForm } from "@/components/office-action-form";
+import { saveTask, updateTask, prayerAction } from "./actions";
+
+export default async function TasksPage() {
+ const [user,profile,supabase]=await Promise.all([getAuthUser(),getCurrentProfile(),createClient()]);
+ if(!user || !profile) return null;
+ const permissions=await getUserPermissions(profile.organization_id);
+ const canAssign=permissions.has("tasks.assign"), canReview=permissions.has("prayer.review");
+ const [{data:tasks,error},{data:prayers},people]=await Promise.all([
+  supabase.from("office_tasks").select("*").eq("organization_id",profile.organization_id).order("created_at",{ascending:false}).limit(100),
+  supabase.from("prayer_requests").select("id,submitter_name,request_body,status,completion_note").eq("organization_id",profile.organization_id).eq("assigned_to",user.id).in("status",["in_progress","awaiting_review","prayed"]).order("created_at",{ascending:false}),
+  canAssign?roleMembers(profile.organization_id,canReview?["pastor","church_executive","secretary","pastoral_care_team","student_pastor"]:["secretary"]):Promise.resolve([])
+ ]);
+ const ids=[...new Set((tasks??[]).flatMap(t=>[t.assigned_to,t.assigned_by]))];
+ const {data:names}=ids.length?await supabase.from("profiles").select("auth_user_id,first_name,last_name").in("auth_user_id",ids):{data:[]};
+ const name=(id:string)=>{const p=names?.find(n=>n.auth_user_id===id);return p?[p.first_name,p.last_name].filter(Boolean).join(" "):"Church team member";};
+ return <><div className="dashboard-header"><div><p className="section-kicker">Working together</p><h1>Tasks & prayer assignments</h1><p>Follow each assignment through to review and completion.</p></div></div>
+ {error && <p role="alert">Tasks could not be loaded. Please retry.</p>}
+ {canAssign && <details className="panel"><summary><strong>Assign a task</strong></summary><OfficeActionForm action={saveTask} label="Assign task"><label>Task<input name="title" required maxLength={200}/></label><label>Instructions<textarea name="description" rows={4}/></label><div className="form-row"><label>Assign to<select name="assigned_to" required><option value="">Choose a team member</option>{people.map(p=><option key={p.id} value={p.auth_user_id??""}>{p.first_name} {p.last_name}</option>)}</select></label><label>Due date & time<input name="due_at" type="datetime-local"/></label></div><label>Delegate from one of my tasks (optional)<select name="parent_id"><option value="">New assignment</option>{tasks?.filter(t=>t.assigned_to===user.id && !["completed","cancelled"].includes(t.status)).map(t=><option key={t.id} value={t.id}>{t.title}</option>)}</select></label></OfficeActionForm></details>}
+ <div className="panel"><h2>Prayer assignments</h2>{!prayers?.length && <p className="panel-empty">Your assigned prayer requests will appear here.</p>}{prayers?.map(p=><article key={p.id} className="office-card"><span className="badge gold">{p.status.replaceAll('_',' ')}</span><h3>{p.submitter_name||"Church family"}</h3><p style={{whiteSpace:"pre-wrap"}}>{p.request_body}</p>{p.completion_note&&<p>{p.completion_note}</p>}{p.status==="in_progress"&&<OfficeActionForm action={prayerAction} label="Submit prayer completion to Pastor"><input type="hidden" name="id" value={p.id}/><input type="hidden" name="decision" value="submit"/><label>Completion note<textarea name="note" placeholder="Share a brief update for the Pastor"/></label></OfficeActionForm>}</article>)}</div>
+ <div className="panel"><h2>Office tasks</h2>{!tasks?.length&&<p className="panel-empty">No tasks yet.</p>}{tasks?.map(t=><article key={t.id} className="office-card"><div className="button-row"><span className="badge blue">{t.status.replaceAll('_',' ')}</span>{t.due_at&&<small>Due {new Date(t.due_at).toLocaleString("en-JM",{timeZone:"America/Jamaica"})}</small>}</div><h3>{t.title}</h3><p style={{whiteSpace:"pre-wrap"}}>{t.description}</p><p className="form-note">Assigned by {name(t.assigned_by)} · Assigned to {name(t.assigned_to)}{t.parent_id&&" · Delegated task"}</p>{t.completion_note&&<p><strong>Completion note:</strong> {t.completion_note}</p>}{t.assigned_to===user.id&&["assigned","in_progress"].includes(t.status)&&<OfficeActionForm action={updateTask} label="Submit completion"><input type="hidden" name="id" value={t.id}/><input type="hidden" name="decision" value="submit"/><label>What was completed?<textarea name="note" required/></label></OfficeActionForm>}{t.status==="awaiting_review"&&(t.assigned_by===user.id||canReview)&&<OfficeActionForm action={updateTask} label="Save review"><input type="hidden" name="id" value={t.id}/><label>Decision<select name="decision"><option value="approve">Approve completion</option><option value="return">Return for follow-up</option></select></label><label>Review note<textarea name="note"/></label></OfficeActionForm>}</article>)}</div></>;
+}

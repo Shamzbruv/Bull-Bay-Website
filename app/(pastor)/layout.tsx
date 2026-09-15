@@ -22,7 +22,12 @@ export default async function PastorLayout({ children }: { children: React.React
       items: [
         { href: "/pastor", label: "Today", icon: "home" },
         { href: "/pastor/profile", label: "My profile", icon: "person" },
-        { href: "/member/calendar", label: "My calendar subscriptions", icon: "calendar" },
+        { href: "/member/calendar", label: "Calendar connections", icon: "calendar" },
+        { href: "/member/tasks", label: "Tasks & prayer assignments", icon: "checklist" },
+        ...(allowed("forms.manage") ? [{ href: "/admin/forms", label: "Forms & responses", icon: "clipboard" as const }] : []),
+        ...(allowed("emails.manage") ? [{ href: "/admin/emails", label: "Email templates & delivery", icon: "mail" as const }] : []),
+        ...(allowed("documents.manage") ? [{ href: "/admin/documents?type=certificates", label: "Certificates", icon: "file" as const }] : []),
+        ...(allowed("integrations.manage") ? [{ href: "/admin/integrations", label: "Calendar & phone setup", icon: "settings" as const }] : []),
         { href: "/pastor/care", label: "Pastoral care", icon: "heart" },
         { href: "/pastor/calendar", label: "My calendar", icon: "calendar" },
       ],
@@ -48,6 +53,14 @@ export default async function PastorLayout({ children }: { children: React.React
     {
       label: "My church",
       items: [
+        { href: "/member", label: "My church home", icon: "home" },
+        { href: "/member/household", label: "My household", icon: "users" },
+        { href: "/member/groups", label: "My groups", icon: "people" },
+        { href: "/member/ministry", label: "My ministry", icon: "church" },
+        { href: "/member/prayer", label: "Request prayer", icon: "heart" },
+        { href: "/member/attendance", label: "My attendance", icon: "chart" },
+        { href: "/member/orders", label: "Orders & downloads", icon: "shop" },
+        { href: "/member/notifications", label: "Phone & notifications", icon: "bell" },
         { href: "/member/events", label: "My events", icon: "calendar" },
         { href: "/member/counsel", label: "Request a meeting", icon: "heart" },
         { href: "/member/documents", label: "My document requests", icon: "file" },

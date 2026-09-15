@@ -22,7 +22,7 @@ function escapeHtml(input: string): string {
 function paragraphsFromPlainText(input: string): string {
   return input
     .split(/\n\s*\n/)
-    .map((paragraph) => `<p style="margin:0 0 14px;">${escapeHtml(paragraph).replace(/\n/g, "<br/>")}</p>`)
+    .map((paragraph) => `<p style="margin:0 0 14px;">${paragraph.split(/(https?:\/\/[^\s]+)/g).map(part => /^https?:\/\//.test(part) ? `<a href="${escapeHtml(part)}" style="color:#173f89;word-break:break-all">${escapeHtml(part)}</a>` : escapeHtml(part).replace(/\n/g, "<br/>")).join("")}</p>`)
     .join("");
 }
 
@@ -100,7 +100,7 @@ function button(label: string, url: string) {
  * whole point: this is the only place that email goes out, straight
  * through Resend, with nothing routed through Supabase's own mailer.
  */
-export function renderInviteEmail(opts: { recipientName: string; actionUrl: string; roleName?: string }) {
+function renderInviteEmailDefault(opts: { recipientName: string; actionUrl: string; roleName?: string }) {
   return shell({
     preheader: "You've been invited to the Bull Bay church platform.",
     bodyHtml: `
@@ -120,7 +120,7 @@ export function renderInviteEmail(opts: { recipientName: string; actionUrl: stri
  * as renderInviteEmail above: mint-only, we send it, nothing touches
  * Supabase's mailer.
  */
-export function renderRecoveryEmail(opts: { actionUrl: string }) {
+function renderRecoveryEmailDefault(opts: { actionUrl: string }) {
   return shell({
     preheader: "Reset your Bull Bay church platform password.",
     bodyHtml: `
@@ -155,7 +155,7 @@ export function renderTempPasswordEmail(opts: { recipientName: string; tempPassw
  * People (see setPersonRole) or from a Roles & Access invitation that
  * assigns a role to someone who already has an account.
  */
-export function renderRoleChangedEmail(opts: { recipientName: string; roleName: string | null; changedByName?: string | null }) {
+function renderRoleChangedEmailDefault(opts: { recipientName: string; roleName: string | null; changedByName?: string | null }) {
   const by = opts.changedByName ? ` by ${escapeHtml(opts.changedByName)}` : "";
   return shell({
     preheader: opts.roleName ? `Your role is now ${opts.roleName}.` : "Your staff role was removed.",
@@ -204,7 +204,7 @@ export function renderDocumentReadyEmail(opts: { recipientName: string; document
  * who submitted it. Field values are escaped since they're unauthenticated
  * user input landing straight in a staff inbox.
  */
-export function renderStaffNotificationEmail(opts: {
+function renderStaffNotificationEmailDefault(opts: {
   heading: string;
   intro?: string;
   fields: { label: string; value: string | null }[];
@@ -231,4 +231,22 @@ export function renderStaffNotificationEmail(opts: {
     `,
     footerNote: "Sent automatically by the church platform when someone submits this form.",
   });
+}
+
+// Metadata travels only inside server-rendered email HTML. sendMail resolves
+// office-managed templates before transport; authentication links are not logged.
+function managedEmail(slug: string, fields: Record<string,string>, fallback: string) {
+  return `<!--church-template:${Buffer.from(JSON.stringify({slug,fields})).toString("base64")}-->${fallback}`;
+}
+export function renderInviteEmail(opts: Parameters<typeof renderInviteEmailDefault>[0]) {
+ return managedEmail("invitation", {recipient_name:opts.recipientName,action_url:opts.actionUrl,role_name:opts.roleName ?? "Member"},renderInviteEmailDefault(opts));
+}
+export function renderRecoveryEmail(opts: Parameters<typeof renderRecoveryEmailDefault>[0]) {
+ return managedEmail("password-recovery", {action_url:opts.actionUrl},renderRecoveryEmailDefault(opts));
+}
+export function renderRoleChangedEmail(opts: Parameters<typeof renderRoleChangedEmailDefault>[0]) {
+ return managedEmail("role-changed", {recipient_name:opts.recipientName,role_name:opts.roleName ?? "Member",action_url:`${SITE_URL}/workspace`},renderRoleChangedEmailDefault(opts));
+}
+export function renderStaffNotificationEmail(opts: Parameters<typeof renderStaffNotificationEmailDefault>[0]) {
+ return managedEmail("staff-notification", {heading:opts.heading,intro:opts.intro ?? "",details:opts.fields.map(f=>`${f.label}: ${f.value ?? "—"}`).join("\n"),action_url:opts.actionUrl ?? `${SITE_URL}/workspace`},renderStaffNotificationEmailDefault(opts));
 }

@@ -1,7 +1,7 @@
 /** Deterministic home for assigned roles. Permissions still authorize each operation. */
 export function workspaceForRoles(codes: Set<string>): "admin" | "pastor" | "member" {
   if (codes.has("super_admin")) return "admin";
-  if (codes.has("pastor") || codes.has("pastoral_care_team")) return "pastor";
+  if (codes.has("pastor") || codes.has("pastoral_care_team") || codes.has("student_pastor")) return "pastor";
   if ([...codes].some(code => !["member", "group_leader"].includes(code))) return "admin";
   return "member";
 }

@@ -1,0 +1,12 @@
+
+/* Office workflows share the church's navy, cream and gold identity. */
+.office-card { border: 1px solid var(--color-border, #d9dfe5); border-left: 4px solid #c6a348; border-radius: 14px; padding: 20px; margin: 18px 0; background: #fffdf8; }
+.office-card h3 { margin: 10px 0; color: #10314a; }
+.office-grid { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,310px),1fr)); gap: 22px; }
+.office-template-preview { border: 8px double #c6a348; border-radius: 4px; background: #fffdf8; text-align: center; padding: 32px 20px; color: #12334e; margin-bottom: 18px; }
+.office-template-preview h3 { font-family: Georgia, serif; font-size: 28px; }
+.office-toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+.office-form-field { padding: 16px; border: 1px solid #d9dfe5; border-radius: 12px; background: #fffdf8; }
+.office-form-field input, .office-form-field select { width: 100%; }
+.clay-form summary, details.panel > summary { cursor: pointer; padding: 8px 0; color: #12334e; }
+.office-form-public { max-width: 800px; margin: 40px auto; border-top: 7px solid #c6a348; }
