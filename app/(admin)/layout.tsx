@@ -156,6 +156,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       sections={sections}
       user={user}
       workspaces={workspaces}
+      previewing={access.preview}
       notifications={notifications}
       unreadCount={unreadCount}
     >

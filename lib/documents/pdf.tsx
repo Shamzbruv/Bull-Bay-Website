@@ -2,33 +2,20 @@
    primitive with no `alt` prop, not an HTML <img>; the a11y rule doesn't apply here. */
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import { cleanDesign, type DocumentDesign } from "@/lib/documents/design";
-import { SITE_NAME } from "@/lib/org";
 
-const BRAND_BLUE = "#173f89";
-const BRAND_OLIVE = "#6a7e30";
-const INK = "#1d2b45";
-const MUTED = "#5c6a80";
-const BORDER = "#dde1d9";
+/** The church's own palette, matching styles/globals.css and the email
+ * templates so a printed certificate, the website and an emailed letter all
+ * read as the same institution. */
+const NAVY = "#0f2f5e";
+const NAVY_DEEP = "#0a2340";
+const INK = "#12334e";
+const MUTED = "#637181";
+const CREAM = "#fffdf8";
 
-const styles = StyleSheet.create({
-  page: { padding: 56, fontSize: 11, color: INK, fontFamily: "Helvetica", lineHeight: 1.5 },
-  letterhead: { flexDirection: "row", alignItems: "center", gap: 14, borderBottom: `2 solid ${BRAND_BLUE}`, paddingBottom: 18, marginBottom: 30 },
-  logo: { width: 56, height: 56 },
-  churchName: { fontSize: 15, fontFamily: "Helvetica-Bold", color: BRAND_BLUE },
-  churchSub: { fontSize: 8.5, color: MUTED, letterSpacing: 1, marginTop: 2, textTransform: "uppercase" },
-  metaRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 24, fontSize: 9.5, color: MUTED },
-  title: { fontSize: 18, fontFamily: "Helvetica-Bold", color: BRAND_BLUE, marginBottom: 20, textAlign: "center" },
-  body: { fontSize: 11.5, color: INK, marginBottom: 40, textAlign: "justify" },
-  signatureBlock: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 50 },
-  signatureCol: { width: "48%" },
-  signatureImg: { width: 140, height: 50, objectFit: "contain", marginBottom: 4 },
-  stampImg: { width: 90, height: 90, objectFit: "contain", position: "absolute", right: 0, top: -30 },
-  signatureLine: { borderTop: `1 solid ${INK}`, paddingTop: 5, fontSize: 10 },
-  signatureName: { fontFamily: "Helvetica-Bold", fontSize: 10.5 },
-  signatureTitle: { fontSize: 9, color: MUTED },
-  footer: { position: "absolute", bottom: 34, left: 56, right: 56, borderTop: `0.5 solid ${BORDER}`, paddingTop: 10, flexDirection: "row", justifyContent: "space-between", fontSize: 8, color: MUTED },
-  certifiedBadge: { marginTop: 30, alignSelf: "flex-start", backgroundColor: "#eef1ec", borderRadius: 6, paddingVertical: 6, paddingHorizontal: 12, fontSize: 9, color: BRAND_OLIVE, fontFamily: "Helvetica-Bold" },
-});
+const CHURCH_NAME = "New Testament Church of God";
+const CHURCH_CAMPUS = "Bull Bay · Jamaica";
+const CHURCH_ADDRESS = "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica";
+const CHURCH_CONTACT = "(876) 833-5566 / (876) 596-3890 · ntcog_bullbay@yahoo.com";
 
 export type CertifyingSigner = {
   name: string;
@@ -50,76 +37,263 @@ export type DocumentPdfInput = {
   logoImage: Buffer;
 };
 
-function DocumentPdf({ input }: { input: DocumentPdfInput }) {
-  const design = cleanDesign(input.design);
-  if (input.layout === "certificate") return <Document title={input.title}><Page size="A4" orientation={design.orientation} style={{padding:36,fontFamily:"Times-Roman",color:"#12334e",backgroundColor:"#fffdf8"}}>
-    <View style={{position:"absolute",top:18,left:18,right:18,bottom:18,border:`3 solid ${design.accent}`}}/><View style={{position:"absolute",top:25,left:25,right:25,bottom:25,border:`0.7 solid ${design.accent}`}}/>
-    <View style={{alignItems:"center",marginBottom:12}}><Image src={input.logoImage} style={{width:52,height:52}}/><Text style={{fontFamily:"Times-Bold",fontSize:16,marginTop:5}}>NEW TESTAMENT CHURCH OF GOD</Text><Text style={{fontSize:10,letterSpacing:3,marginTop:3}}>BULL BAY · JAMAICA</Text></View>
-    <Text style={{textAlign:"center",fontFamily:"Times-Bold",fontSize:30,marginTop:8,marginBottom:8}}>{input.title}</Text>
-    {design.banner && <Text style={{backgroundColor:design.accent,color:"#fff",textAlign:"center",padding:6,fontSize:12,marginHorizontal:80}}>{design.banner}</Text>}
-    {design.subtitle && <Text style={{textAlign:"center",fontSize:11,marginTop:8}}>{design.subtitle}</Text>}
-    <Text style={{textAlign:"center",fontFamily:"Times-Italic",fontSize:28,color:"#866421",marginTop:16,marginBottom:12}}>{input.recipientName}</Text>
-    <View style={{marginHorizontal:35}}>{input.bodyParagraphs.map((p,i)=><Text key={i} style={{textAlign:"center",fontSize:12,lineHeight:1.55,marginBottom:8}}>{p}</Text>)}</View>
-    <View style={{flexDirection:"row",justifyContent:"space-between",marginTop:22,marginHorizontal:40,alignItems:"flex-end"}}><View style={{width:180}}>{input.signer?.signatureImage?<Image src={input.signer.signatureImage} style={{width:130,height:45,objectFit:"contain"}}/>:<View style={{height:45}}/>}<Text style={{borderTop:"0.8 solid #12334e",paddingTop:5,fontSize:10}}>{input.signer?.name || design.signer_name || "Pastor signature"}</Text><Text style={{fontSize:9}}>Pastor</Text></View><View style={{width:80,alignItems:"center"}}>{input.signer?.stampImage?<Image src={input.signer.stampImage} style={{width:75,height:75,objectFit:"contain"}}/>:<View style={{border:`1 dashed ${design.accent}`,width:70,height:70,justifyContent:"center",alignItems:"center"}}><Text style={{fontSize:8}}>CHURCH STAMP</Text></View>}</View><View style={{width:180}}><Text style={{borderTop:"0.8 solid #12334e",paddingTop:5,fontSize:10}}>{design.secretary_name || "Administrative team"}</Text><Text style={{fontSize:9}}>Issued {input.issuedDate}</Text></View></View>
-    <Text style={{position:"absolute",bottom:34,left:40,right:40,textAlign:"center",fontSize:8,color:"#637181"}}>{input.draft?"DRAFT · Awaiting authorization":`Certificate No. ${input.documentNumber}`} · {design.footer || "One Family · One Faith · One Mission"}</Text>
-  </Page></Document>;
+/* -- Ornaments ---------------------------------------------------------
+   Built from plain Views rather than SVG paths: @react-pdf lays these out
+   deterministically at any page size, and a bracket + diamond reads as a
+   proper engraved corner flourish without risking a malformed path. */
+
+function CornerFlourish({ accent, corner, size = 26 }: { accent: string; corner: "tl" | "tr" | "bl" | "br"; size?: number }) {
+  const top = corner === "tl" || corner === "tr";
+  const left = corner === "tl" || corner === "bl";
+  return (
+    <View style={{ position: "absolute", width: size, height: size, ...(top ? { top: 0 } : { bottom: 0 }), ...(left ? { left: 0 } : { right: 0 }) }}>
+      <View
+        style={{
+          position: "absolute",
+          width: size,
+          height: size,
+          ...(top ? { top: 0, borderTop: `2 solid ${accent}` } : { bottom: 0, borderBottom: `2 solid ${accent}` }),
+          ...(left ? { left: 0, borderLeft: `2 solid ${accent}` } : { right: 0, borderRight: `2 solid ${accent}` }),
+        }}
+      />
+      <View
+        style={{
+          position: "absolute",
+          width: 5,
+          height: 5,
+          backgroundColor: accent,
+          transform: "rotate(45deg)",
+          ...(top ? { top: 5 } : { bottom: 5 }),
+          ...(left ? { left: 5 } : { right: 5 }),
+        }}
+      />
+    </View>
+  );
+}
+
+/** A centred rule with a small diamond at its middle — the divider used
+ * under the crest and above the signature row. */
+function RuleWithDiamond({ accent, width = 150 }: { accent: string; width?: number }) {
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", marginVertical: 8 }}>
+      <View style={{ width, height: 0.8, backgroundColor: accent }} />
+      <View style={{ width: 6, height: 6, backgroundColor: accent, transform: "rotate(45deg)", marginHorizontal: 7 }} />
+      <View style={{ width, height: 0.8, backgroundColor: accent }} />
+    </View>
+  );
+}
+
+/** The church crest: logo, name and campus line. Shared by both layouts so
+ * a letter and a certificate are unmistakably from the same church. */
+function Crest({ logo, accent, dark = false, size = 54 }: { logo: Buffer; accent: string; dark?: boolean; size?: number }) {
+  return (
+    <View style={{ alignItems: "center" }}>
+      <Image src={logo} style={{ width: size, height: size }} />
+      <Text style={{ fontFamily: "Times-Bold", fontSize: 15, marginTop: 6, color: dark ? "#ffffff" : INK, letterSpacing: 0.4 }}>
+        {CHURCH_NAME.toUpperCase()}
+      </Text>
+      <Text style={{ fontSize: 8.5, letterSpacing: 2.6, marginTop: 3, color: dark ? "#d7e2f2" : accent }}>
+        {CHURCH_CAMPUS.toUpperCase()}
+      </Text>
+    </View>
+  );
+}
+
+function SignatureRow({ input, design, accent }: { input: DocumentPdfInput; design: DocumentDesign; accent: string }) {
+  return (
+    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 26 }}>
+      <View style={{ width: "36%" }}>
+        {input.signer?.signatureImage ? (
+          <Image src={input.signer.signatureImage} style={{ width: 128, height: 44, objectFit: "contain", marginBottom: 2 }} />
+        ) : (
+          <View style={{ height: 46 }} />
+        )}
+        <View style={{ borderTop: `0.8 solid ${INK}`, paddingTop: 4 }}>
+          <Text style={{ fontFamily: "Times-Bold", fontSize: 10 }}>{input.signer?.name || design.signer_name || "Pastor"}</Text>
+          <Text style={{ fontSize: 8.5, color: MUTED }}>{input.signer?.title || "Pastor"}</Text>
+        </View>
+      </View>
+
+      <View style={{ width: "22%", alignItems: "center", paddingBottom: 4 }}>
+        {input.signer?.stampImage ? (
+          <Image src={input.signer.stampImage} style={{ width: 78, height: 78, objectFit: "contain" }} />
+        ) : (
+          <View style={{ width: 72, height: 72, borderRadius: 36, border: `1 dashed ${accent}`, justifyContent: "center", alignItems: "center" }}>
+            <Text style={{ fontSize: 7, color: accent, textAlign: "center" }}>CHURCH{"\n"}SEAL</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={{ width: "36%" }}>
+        <View style={{ height: 46 }} />
+        <View style={{ borderTop: `0.8 solid ${INK}`, paddingTop: 4 }}>
+          <Text style={{ fontFamily: "Times-Bold", fontSize: 10 }}>{design.secretary_name || "Church Office"}</Text>
+          <Text style={{ fontSize: 8.5, color: MUTED }}>Issued {input.issuedDate}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const letterStyles = StyleSheet.create({
+  page: { padding: 0, fontSize: 11, color: INK, fontFamily: "Times-Roman", lineHeight: 1.55, backgroundColor: CREAM },
+  band: { backgroundColor: NAVY, paddingTop: 15, paddingBottom: 13, paddingHorizontal: 40 },
+  content: { paddingHorizontal: 62, paddingTop: 26, paddingBottom: 96 },
+  metaRow: { flexDirection: "row", justifyContent: "space-between", fontSize: 9, color: MUTED, marginBottom: 18, fontFamily: "Helvetica" },
+  title: { fontSize: 17, fontFamily: "Times-Bold", color: NAVY, marginBottom: 14, textAlign: "center", letterSpacing: 0.3 },
+  paragraph: { fontSize: 11.5, marginBottom: 11, textAlign: "justify" },
+});
+
+/* Deliberately uses no `fixed` elements. A masthead/footer marked `fixed`
+ * (so it repeats on later pages) made @react-pdf resolve the absolutely
+ * positioned footer to the full page height, which painted the entire
+ * sheet navy — a letter nobody could read. The certificate layout below
+ * never used `fixed` and always rendered correctly, so this matches it:
+ * a plain flow masthead and a bottom-pinned footer with a fixed height.
+ * Church letters are single-page in practice; a very long one simply
+ * carries its letterhead on the first page. */
+function LetterDocument({ input, design, accent }: { input: DocumentPdfInput; design: DocumentDesign; accent: string }) {
   return (
     <Document title={input.title}>
-      <Page size="A4" style={styles.page}>
-        <View style={styles.letterhead}>
-          <Image src={input.logoImage} style={styles.logo} />
-          <View>
-            <Text style={styles.churchName}>New Testament Church of God</Text>
-            <Text style={styles.churchSub}>Weise Road, 9 Miles, Bull Bay · St. Andrew · Jamaica</Text>
+      <Page size="A4" style={letterStyles.page}>
+        {/* Navy masthead with the crest, then a gold rule under it. */}
+        <View style={letterStyles.band}>
+          <Crest logo={input.logoImage} accent={accent} dark size={36} />
+          <Text style={{ textAlign: "center", fontSize: 7, color: "#c9d6e8", marginTop: 5, fontFamily: "Helvetica", lineHeight: 1.3 }}>
+            {CHURCH_ADDRESS} · {CHURCH_CONTACT}
+          </Text>
+        </View>
+        <View style={{ height: 4, backgroundColor: accent }} />
+
+        {/* Slim gold rules down both margins. */}
+        <View style={{ position: "absolute", top: 150, bottom: 96, left: 34, width: 0.8, backgroundColor: accent, opacity: 0.55 }} />
+        <View style={{ position: "absolute", top: 150, bottom: 96, right: 34, width: 0.8, backgroundColor: accent, opacity: 0.55 }} />
+
+        <View style={letterStyles.content}>
+          <View style={letterStyles.metaRow}>
+            <Text>Document No. {input.documentNumber}</Text>
+            <Text>Issued {input.issuedDate}</Text>
           </View>
-        </View>
 
-        <View style={styles.metaRow}>
-          <Text>Document No. {input.documentNumber}</Text>
-          <Text>Issued {input.issuedDate}</Text>
-        </View>
-
-        {design.banner && <Text style={{backgroundColor:design.accent,color:"#fff",padding:8,textAlign:"center",marginBottom:18}}>{design.banner}</Text>}
-        <Text style={styles.title}>{input.title}</Text>
-
-        <View style={styles.body}>
-          {input.bodyParagraphs.map((p, i) => (
-            <Text key={i} style={{ marginBottom: 12 }}>
-              {p}
+          {design.banner ? (
+            <Text style={{ backgroundColor: accent, color: "#ffffff", paddingVertical: 6, paddingHorizontal: 10, textAlign: "center", marginBottom: 14, fontSize: 10, letterSpacing: 1.4, fontFamily: "Helvetica-Bold" }}>
+              {design.banner.toUpperCase()}
             </Text>
-          ))}
-        </View>
+          ) : null}
 
-        {input.signer && (
-          <Text style={styles.certifiedBadge}>Certified by the Pastor&apos;s Office</Text>
-        )}
+          <Text style={letterStyles.title}>{input.title}</Text>
+          <RuleWithDiamond accent={accent} width={80} />
 
-        <View style={styles.signatureBlock}>
-          <View style={styles.signatureCol}>
-            <Text style={{ fontSize: 9, color: MUTED }}>Prepared for</Text>
-            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 11, marginTop: 2 }}>{input.recipientName}</Text>
+          <View style={{ marginTop: 10 }}>
+            {input.bodyParagraphs.map((paragraph, index) => (
+              <Text key={index} style={letterStyles.paragraph}>
+                {paragraph}
+              </Text>
+            ))}
           </View>
-          {(
-            <View style={[styles.signatureCol, { position: "relative", alignItems: "flex-end" }]}>
-              {input.signer?.stampImage && <Image src={input.signer.stampImage} style={styles.stampImg} />}
-              {input.signer?.signatureImage && <Image src={input.signer.signatureImage} style={styles.signatureImg} />}
-              {!input.signer && <View style={{height:55,border:`1 dashed ${design.accent}`,padding:8,marginBottom:8}}><Text style={{fontSize:8}}>CHURCH STAMP</Text></View>}
-              <View style={{ width: "100%" }}>
-                <View style={styles.signatureLine}>
-                  <Text style={styles.signatureName}>{input.signer?.name || design.signer_name || "Pastor signature"}</Text>
-                  <Text style={styles.signatureTitle}>{input.signer?.title || "Pastor"}</Text>
-                </View>
-              </View>
-            </View>
-          )}
+
+          {input.signer ? (
+            <Text style={{ marginTop: 16, alignSelf: "flex-start", backgroundColor: "#eef2f7", color: NAVY, borderRadius: 4, paddingVertical: 5, paddingHorizontal: 11, fontSize: 8.5, fontFamily: "Helvetica-Bold", letterSpacing: 0.8 }}>
+              CERTIFIED BY THE PASTOR&apos;S OFFICE
+            </Text>
+          ) : null}
+
+          <SignatureRow input={input} design={design} accent={accent} />
         </View>
 
-        <View style={styles.footer} fixed>
-          <Text>{SITE_NAME}</Text>
-          <Text>{input.draft ? "DRAFT · Awaiting authorization" : design.footer || "Certified electronically by the church office."}</Text>
+        {/* Footer band mirrors the masthead, pinned to the bottom with an
+            explicit height so its box can never resolve to the full page. */}
+        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 52 }}>
+          <View style={{ height: 3, backgroundColor: accent }} />
+          <View style={{ backgroundColor: NAVY_DEEP, paddingVertical: 10, paddingHorizontal: 42, flexGrow: 1 }}>
+            <Text style={{ textAlign: "center", fontSize: 7.5, color: "#c9d6e8", fontFamily: "Helvetica" }}>
+              {input.draft ? "DRAFT · Awaiting authorization" : design.footer || `${CHURCH_ADDRESS} · ${CHURCH_CONTACT}`}
+            </Text>
+            <Text style={{ textAlign: "center", fontSize: 7, color: "#93a8c4", marginTop: 3, fontFamily: "Helvetica" }}>
+              {CHURCH_NAME}, Bull Bay · Document No. {input.documentNumber}
+            </Text>
+          </View>
         </View>
       </Page>
     </Document>
+  );
+}
+
+function CertificateDocument({ input, design, accent }: { input: DocumentPdfInput; design: DocumentDesign; accent: string }) {
+  const landscape = design.orientation !== "portrait";
+  const inset = 22;
+  return (
+    <Document title={input.title}>
+      <Page size="A4" orientation={design.orientation} style={{ padding: 0, backgroundColor: CREAM, fontFamily: "Times-Roman", color: INK }}>
+        {/* Engraved double frame with flourished corners. */}
+        <View style={{ position: "absolute", top: inset, left: inset, right: inset, bottom: inset, border: `2.5 solid ${accent}` }} />
+        <View style={{ position: "absolute", top: inset + 7, left: inset + 7, right: inset + 7, bottom: inset + 7, border: `0.7 solid ${accent}`, opacity: 0.75 }} />
+        <View style={{ position: "absolute", top: inset + 14, left: inset + 14, right: inset + 14, bottom: inset + 14 }}>
+          <CornerFlourish accent={accent} corner="tl" />
+          <CornerFlourish accent={accent} corner="tr" />
+          <CornerFlourish accent={accent} corner="bl" />
+          <CornerFlourish accent={accent} corner="br" />
+        </View>
+
+        {/* Faint crest watermark behind the text. */}
+        <View style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, justifyContent: "center", alignItems: "center" }}>
+          <Image src={input.logoImage} style={{ width: landscape ? 300 : 260, height: landscape ? 300 : 260, opacity: 0.05 }} />
+        </View>
+
+        <View style={{ paddingHorizontal: landscape ? 74 : 58, paddingTop: 44, paddingBottom: 40, flexGrow: 1 }}>
+          <Crest logo={input.logoImage} accent={accent} size={46} />
+          <RuleWithDiamond accent={accent} width={landscape ? 170 : 120} />
+
+          <Text style={{ textAlign: "center", fontFamily: "Times-Bold", fontSize: landscape ? 31 : 27, color: NAVY, letterSpacing: 1.2, marginTop: 2 }}>
+            {input.title}
+          </Text>
+
+          {design.banner ? (
+            <Text style={{ alignSelf: "center", backgroundColor: accent, color: "#ffffff", paddingVertical: 5, paddingHorizontal: 22, marginTop: 10, fontSize: 9.5, letterSpacing: 2, fontFamily: "Helvetica-Bold" }}>
+              {design.banner.toUpperCase()}
+            </Text>
+          ) : null}
+
+          {design.subtitle ? (
+            <Text style={{ textAlign: "center", fontSize: 10.5, color: MUTED, marginTop: 9, fontFamily: "Times-Italic" }}>{design.subtitle}</Text>
+          ) : null}
+
+          <Text style={{ textAlign: "center", fontSize: 9, letterSpacing: 3, color: MUTED, marginTop: 16, fontFamily: "Helvetica" }}>
+            THIS CERTIFICATE IS PRESENTED TO
+          </Text>
+          <Text style={{ textAlign: "center", fontFamily: "Times-Italic", fontSize: landscape ? 33 : 28, color: accent, marginTop: 6 }}>
+            {input.recipientName}
+          </Text>
+          <RuleWithDiamond accent={accent} width={landscape ? 200 : 150} />
+
+          <View style={{ marginHorizontal: landscape ? 46 : 16, marginTop: 6 }}>
+            {input.bodyParagraphs.map((paragraph, index) => (
+              <Text key={index} style={{ textAlign: "center", fontSize: 11.5, lineHeight: 1.6, marginBottom: 7 }}>
+                {paragraph}
+              </Text>
+            ))}
+          </View>
+
+          <View style={{ flexGrow: 1 }} />
+          <SignatureRow input={input} design={design} accent={accent} />
+
+          <Text style={{ textAlign: "center", fontSize: 7.5, color: MUTED, marginTop: 16, fontFamily: "Helvetica" }}>
+            {input.draft ? "DRAFT · Awaiting authorization" : `Certificate No. ${input.documentNumber}`} ·{" "}
+            {design.footer || `${CHURCH_ADDRESS} · ${CHURCH_CONTACT}`}
+          </Text>
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+function DocumentPdf({ input }: { input: DocumentPdfInput }) {
+  const design = cleanDesign(input.design);
+  const accent = design.accent ?? "#ba963c";
+  return input.layout === "certificate" ? (
+    <CertificateDocument input={input} design={design} accent={accent} />
+  ) : (
+    <LetterDocument input={input} design={design} accent={accent} />
   );
 }
 

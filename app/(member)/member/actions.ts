@@ -3,11 +3,20 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getUserPermissions } from "@/lib/auth/session";
 import type { ActionState } from "@/app/(public)/actions";
 
 const CONTACT_METHODS = new Set(["email", "sms", "whatsapp", "phone"]);
 const GENDERS = new Set(["female", "male"]);
 const MARITAL_STATUSES = new Set(["single", "married", "widowed", "divorced", "separated"]);
+const MEMBERSHIP_STATUSES = new Set([
+  "visitor",
+  "returning_visitor",
+  "attendee",
+  "prospective_member",
+  "member",
+  "inactive",
+]);
 
 type ParsedField = { value: string | null; error: string | null };
 
@@ -145,9 +154,31 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
     return { status: "error", message: "Add your occupation before joining the professional directory." };
   }
 
+  // Membership status and the joined date are the office's record of
+  // someone, not a self-service field — they're only read off the form for
+  // staff who hold people.write, and ignored entirely for everyone else
+  // even if the fields are posted directly.
+  const permissions = await getUserPermissions(profile.organization_id);
+  const officeFields: { membership_status?: string; joined_at?: string | null } = {};
+  if (permissions.has("people.write")) {
+    const status = String(formData.get("membership_status") || "");
+    if (status) {
+      if (!MEMBERSHIP_STATUSES.has(status)) return { status: "error", message: "Choose a valid membership status." };
+      officeFields.membership_status = status;
+    }
+    if (formData.has("joined_at")) {
+      const joined = String(formData.get("joined_at") || "").trim();
+      if (joined && !/^\d{4}-\d{2}-\d{2}$/.test(joined)) {
+        return { status: "error", message: "Enter the member-since date as a real date." };
+      }
+      officeFields.joined_at = joined || null;
+    }
+  }
+
   const { data: updatedProfile, error } = await supabase
     .from("profiles")
     .update({
+      ...officeFields,
       first_name: firstName.value,
       last_name: lastName.value,
       phone: phone.value,

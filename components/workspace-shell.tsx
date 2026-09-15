@@ -12,6 +12,7 @@ export function WorkspaceShell({
   sections,
   user,
   workspaces,
+  previewing = false,
   notifications = [],
   unreadCount = 0,
   children,
@@ -22,6 +23,11 @@ export function WorkspaceShell({
   sections: DashboardNavSection[];
   user: DashboardUser;
   workspaces: WorkspaceDestination[];
+  /** True only when a super admin is actively previewing a different
+   * role (getWorkspaceAccess().preview) — never inferred from the shape
+   * of `workspaces`, which regular staff also populate for their own
+   * real "switch to Member" link and isn't a preview at all. */
+  previewing?: boolean;
   notifications?: NotificationRow[];
   unreadCount?: number;
   children: React.ReactNode;
@@ -132,7 +138,13 @@ export function WorkspaceShell({
         />
         <main className="dashboard-main" id="dashboard-main" tabIndex={-1}>
           <div className="dashboard-content">
-            {workspaces.some(w => w.active && !w.href.endsWith("role=super_admin")) && <div className="panel" role="status">Role preview — navigation and dashboard tools reflect the selected role. Records remain those your administrator account can access. Changes are disabled. <a href="/auth/workspace?role=super_admin">Return to Super Administrator</a></div>}
+            {previewing && (
+              <div className="panel" role="status">
+                Role preview — navigation and dashboard tools reflect the selected role. Records remain those your
+                administrator account can access. Changes are disabled.{" "}
+                <a href="/auth/workspace?role=super_admin">Return to Super Administrator</a>
+              </div>
+            )}
             {children}
           </div>
         </main>

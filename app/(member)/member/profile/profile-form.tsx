@@ -36,7 +36,20 @@ function initialCompletedFields(profile: Profile) {
   return COMPLETION_FIELDS.filter((field) => hasValue(profile[field])).length;
 }
 
-export function ProfileForm({ profile, onboarding = false }: { profile: Profile; onboarding?: boolean }) {
+const MEMBERSHIP_STATUSES = ["visitor", "returning_visitor", "attendee", "prospective_member", "member", "inactive"];
+
+export function ProfileForm({
+  profile,
+  onboarding = false,
+  canEditMembership = false,
+}: {
+  profile: Profile;
+  onboarding?: boolean;
+  /** Office staff (people.write) can set membership status and the joined
+   * date from here; for everyone else those stay read-only, since they're
+   * the church office's record of someone, not a self-service field. */
+  canEditMembership?: boolean;
+}) {
   const [state, formAction] = useActionState(updateProfile, initialActionState);
   const [completedFields, setCompletedFields] = useState(() => initialCompletedFields(profile));
   const completionPercentage = Math.round((completedFields / COMPLETION_FIELDS.length) * 100);
@@ -282,18 +295,34 @@ export function ProfileForm({ profile, onboarding = false }: { profile: Profile;
           </div>
           <h2 id="profile-community-heading" style={{ margin: "3px 0 4px" }}>Membership and professional community</h2>
           <p className="form-note" style={{ marginTop: 0 }}>
-            Membership details are maintained by the office. Work and directory details are entirely optional.
+            {canEditMembership
+              ? "You can set membership details here as well as the work and directory details below."
+              : "Membership details are maintained by the office. Work and directory details are entirely optional."}
           </p>
         </div>
 
         <div className="form-row">
           <label>
             Membership status
-            <input value={profile.membership_status.replaceAll("_", " ")} disabled />
+            {canEditMembership ? (
+              <select name="membership_status" defaultValue={profile.membership_status}>
+                {MEMBERSHIP_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replaceAll("_", " ")}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input value={profile.membership_status.replaceAll("_", " ")} disabled />
+            )}
           </label>
           <label>
             Attending / member since
-            <input type="date" value={profile.joined_at ?? ""} disabled />
+            {canEditMembership ? (
+              <input type="date" name="joined_at" defaultValue={profile.joined_at ?? ""} />
+            ) : (
+              <input type="date" value={profile.joined_at ?? ""} disabled />
+            )}
           </label>
         </div>
 

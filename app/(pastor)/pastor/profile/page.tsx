@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getCurrentProfile } from "@/lib/auth/session";
+import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { getAvatarUrl } from "@/lib/members/avatar";
 import { ProfileForm } from "@/app/(member)/member/profile/profile-form";
 import { AvatarUploader } from "@/app/(member)/member/profile/avatar-uploader";
@@ -14,6 +14,10 @@ export const metadata: Metadata = { title: "My Profile" };
  */
 export default async function PastorProfilePage() {
   const profile = await getCurrentProfile();
+  const organizationId = await getOrganizationId();
+  const canEditMembership = organizationId
+    ? (await getUserPermissions(organizationId)).has("people.write")
+    : false;
 
   return (
     <>
@@ -29,7 +33,7 @@ export default async function PastorProfilePage() {
             name={[profile.first_name, profile.last_name].filter(Boolean).join(" ") || profile.email || "Pastor"}
             avatarUrl={await getAvatarUrl(profile.avatar_path)}
           />
-          <ProfileForm profile={profile} />
+          <ProfileForm profile={profile} canEditMembership={canEditMembership} />
         </>
       ) : (
         <div className="alert warn">We couldn&apos;t load your church profile. Please contact the church office.</div>

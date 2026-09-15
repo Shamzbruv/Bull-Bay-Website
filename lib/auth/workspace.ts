@@ -27,13 +27,22 @@ export const getWorkspaceAccess = cache(async (organizationId: string) => {
   // for everyone else. Mirrors member/pastor layouts always listing
   // themselves first: without it, a plain staff member had no way back
   // to Admin from the switcher either, since it was empty for them.
-  const destinations: WorkspaceDestination[] = superAdmin ? [
-    { href: "/auth/workspace?role=super_admin", label: "Super Administrator", icon: "shield", active: !preview },
-    { href: "/auth/workspace?role=member", label: "Member", icon: "home", active: selected === "member" },
-    ...(roles ?? []).filter(r => r.code !== "super_admin").map(r => ({ href: `/auth/workspace?role=${encodeURIComponent(r.code)}`, label: r.name, icon: "briefcase" as const, active: selected === r.code })),
-  ] : [
-    { href: "/admin", label: roleName, icon: "briefcase", active: true },
-    { href: "/member", label: "Member", icon: "home" },
-  ];
+  //
+  // Only ever built for someone who actually holds that elevated access
+  // (home === "admin"/"pastor") — a plain member has no admin/pastor
+  // workspace to switch to, so their destinations list stays empty, same
+  // as before staff members got this at all.
+  const destinations: WorkspaceDestination[] = superAdmin
+    ? [
+        { href: "/auth/workspace?role=super_admin", label: "Super Administrator", icon: "shield", active: !preview },
+        { href: "/auth/workspace?role=member", label: "Member", icon: "home", active: selected === "member" },
+        ...(roles ?? []).filter(r => r.code !== "super_admin").map(r => ({ href: `/auth/workspace?role=${encodeURIComponent(r.code)}`, label: r.name, icon: "briefcase" as const, active: selected === r.code })),
+      ]
+    : home === "admin" || home === "pastor"
+      ? [
+          { href: home === "admin" ? "/admin" : "/pastor", label: roleName, icon: "briefcase", active: true },
+          { href: "/member", label: "Member", icon: "home" },
+        ]
+      : [];
   return { roleCodes, permissions, home, preview, superAdmin, destinations, roleName };
 });

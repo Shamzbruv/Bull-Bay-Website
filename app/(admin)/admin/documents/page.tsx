@@ -37,11 +37,31 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
         </div>
       </div>
 
-      <nav className="office-toolbar"><Link className="secondary-button" href="/admin/documents">Documents & letters</Link><Link className="secondary-button" href="/admin/documents?type=certificates">Certificates</Link><Link className="secondary-button" href="/admin/emails">Email templates & delivery</Link></nav>
+      <nav className="office-toolbar" aria-label="Document library">
+        <Link
+          className={`secondary-button${type === "certificates" ? "" : " is-active"}`}
+          aria-current={type === "certificates" ? undefined : "page"}
+          href="/admin/documents"
+        >
+          Documents &amp; letters
+        </Link>
+        <Link
+          className={`secondary-button${type === "certificates" ? " is-active" : ""}`}
+          aria-current={type === "certificates" ? "page" : undefined}
+          href="/admin/documents?type=certificates"
+        >
+          Certificates
+        </Link>
+        <Link className="secondary-button" href="/admin/emails">
+          Email templates &amp; delivery
+        </Link>
+      </nav>
       <div className="panel">
         <details className="dashboard-disclosure">
-          <summary>+ Create a custom template</summary>
-          <TemplateForm emails={emails ?? []} />
+          <summary>+ Create a custom {type === "certificates" ? "certificate" : "document"} template</summary>
+          {/* Starts on the format of the tab you're standing on, so creating
+              from the Certificates tab doesn't silently make a letter. */}
+          <TemplateForm emails={emails ?? []} defaultLayout={type === "certificates" ? "certificate" : "letter"} />
         </details>
       </div>
 

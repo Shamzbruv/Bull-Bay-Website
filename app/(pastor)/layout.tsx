@@ -87,6 +87,7 @@ export default async function PastorLayout({ children }: { children: React.React
       sections={sections}
       user={user}
       workspaces={workspaces}
+      previewing={access.preview}
       notifications={notifications}
       unreadCount={unreadCount}
     >
