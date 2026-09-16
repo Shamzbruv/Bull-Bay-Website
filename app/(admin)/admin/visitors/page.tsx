@@ -21,7 +21,7 @@ export default async function AdminVisitorsPage() {
   const supabase = await createClient();
   const { data: submissions } = await supabase
     .from("contact_submissions")
-    .select("*")
+    .select("*").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("created_at", { ascending: false })
     .limit(100);

@@ -15,7 +15,7 @@ export default async function AdminPastoralTeamPage() {
   const supabase = await createClient();
   const { data: members } = await supabase
     .from("pastoral_team_members")
-    .select("id, role_title, bio, is_pastor, is_trained_counselor, is_active, profiles(first_name, last_name)")
+    .select("id, role_title, bio, is_pastor, is_trained_counselor, is_active, profiles(first_name, last_name)").throwOnError()
     .order("is_pastor", { ascending: false })
     .order("sort_order");
 

@@ -14,7 +14,7 @@ export default async function AdminBulletinPage() {
   const supabase = await createClient();
   const { data: announcements } = await supabase
     .from("announcements")
-    .select("id, title, body, status, published_at, created_at")
+    .select("id, title, body, status, published_at, created_at").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("created_at", { ascending: false })
     .limit(50);

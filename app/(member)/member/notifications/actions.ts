@@ -11,12 +11,12 @@ import { createClient } from "@/lib/supabase/server";
  */
 export async function markNotificationRead(id: string): Promise<void> {
   const supabase = await createClient();
-  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id).is("read_at", null);
+  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", id).is("read_at", null).throwOnError();
   revalidatePath("/", "layout");
 }
 
 export async function markAllNotificationsRead(): Promise<void> {
   const supabase = await createClient();
-  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null);
+  await supabase.from("notifications").update({ read_at: new Date().toISOString() }).is("read_at", null).throwOnError();
   revalidatePath("/", "layout");
 }

@@ -16,8 +16,8 @@ export default async function AdminGroupsPage() {
 
   const supabase = await createClient();
   const [{ data: groups }, { data: requests }] = await Promise.all([
-    supabase.from("groups").select("id, name, category, description, meeting_schedule, visibility, is_active, group_members(id)").eq("organization_id", organizationId ?? "").order("name"),
-    supabase.from("group_members").select("id, profiles(first_name, last_name), groups(name)").eq("status", "requested"),
+    supabase.from("groups").select("id, name, category, description, meeting_schedule, visibility, is_active, group_members(id)").throwOnError().eq("organization_id", organizationId ?? "").order("name"),
+    supabase.from("group_members").select("id, profiles(first_name, last_name), groups(name)").throwOnError().eq("status", "requested"),
   ]);
 
   return (

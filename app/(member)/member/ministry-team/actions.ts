@@ -1,7 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { recordOfficeAction } from "@/lib/office/context";
 import { getCurrentProfile } from "@/lib/auth/session";
 import type { ActionState } from "@/app/(public)/actions";
 
@@ -15,7 +16,7 @@ async function requireLeaderOf(ministryId: string) {
     .eq("id", ministryId)
     .eq("leader_profile_id", profile.id)
     .maybeSingle();
-  return ministry ? { allowed: true as const, supabase, profile, organizationId: ministry.organization_id } : { allowed: false as const };
+  return ministry ? { allowed: true as const, supabase, roster: createServiceRoleClient(), profile, organizationId: ministry.organization_id } : { allowed: false as const };
 }
 
 /** Only the description — name/slug/icon stay with the staff-only
@@ -51,7 +52,7 @@ export async function addTeamMember(ministryId: string, _prev: ActionState, form
   const positionTitle = String(formData.get("position_title") || "").trim();
   if (!displayName || !positionTitle) return { status: "error", message: "Enter a name and their role on the team." };
 
-  const { error } = await check.supabase.from("ministry_assignments").insert({
+  const { data: created, error } = await check.roster.from("ministry_assignments").insert({
     organization_id: check.organizationId,
     ministry_id: ministryId,
     display_name: displayName,
@@ -59,8 +60,9 @@ export async function addTeamMember(ministryId: string, _prev: ActionState, form
     public_visible: formData.get("public_visible") === "on",
     is_active: true,
     created_by: check.profile.auth_user_id,
-  });
+  }).select("id").single();
   if (error) return { status: "error", message: "Couldn't add this team member." };
+  await recordOfficeAction(check.organizationId, check.profile.auth_user_id!, "ministry_assignment.created", "ministry_assignments", created.id);
 
   revalidatePath("/member/ministry-team");
   revalidatePath("/ministries");
@@ -70,7 +72,8 @@ export async function addTeamMember(ministryId: string, _prev: ActionState, form
 export async function toggleTeamMemberVisible(assignmentId: string, ministryId: string, publicVisible: boolean): Promise<void> {
   const check = await requireLeaderOf(ministryId);
   if (!check.allowed) return;
-  await check.supabase.from("ministry_assignments").update({ public_visible: publicVisible }).eq("id", assignmentId).eq("ministry_id", ministryId);
+  await check.roster.from("ministry_assignments").update({ public_visible: publicVisible }).eq("organization_id", check.organizationId).eq("id", assignmentId).eq("ministry_id", ministryId).select("id").single().throwOnError();
+  await recordOfficeAction(check.organizationId, check.profile.auth_user_id!, "ministry_assignment.updated", "ministry_assignments", assignmentId);
   revalidatePath("/member/ministry-team");
   revalidatePath("/ministries");
 }
@@ -78,7 +81,8 @@ export async function toggleTeamMemberVisible(assignmentId: string, ministryId: 
 export async function removeTeamMember(assignmentId: string, ministryId: string): Promise<void> {
   const check = await requireLeaderOf(ministryId);
   if (!check.allowed) return;
-  await check.supabase.from("ministry_assignments").delete().eq("id", assignmentId).eq("ministry_id", ministryId);
+  await check.roster.from("ministry_assignments").delete().eq("organization_id", check.organizationId).eq("id", assignmentId).eq("ministry_id", ministryId).select("id").single().throwOnError();
+  await recordOfficeAction(check.organizationId, check.profile.auth_user_id!, "ministry_assignment.deleted", "ministry_assignments", assignmentId);
   revalidatePath("/member/ministry-team");
   revalidatePath("/ministries");
 }

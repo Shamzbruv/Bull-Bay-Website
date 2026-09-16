@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { AssignmentRow } from "./assignment-row";
@@ -18,11 +18,12 @@ export default async function AdminMinistryAssignmentsPage({
   if (!permissions.has("ministry_assignments.manage")) return <AccessDenied />;
 
   const supabase = await createClient();
-  const { data: ministries } = await supabase.from("ministries").select("id, slug, name").order("name");
+  const { data: ministries } = await supabase.from("ministries").select("id, slug, name").throwOnError().order("name");
 
-  let query = supabase
+  let query = createServiceRoleClient()
     .from("ministry_assignments")
-    .select("id, position_title, display_name, is_active, public_visible, ministry_id, profiles(first_name, last_name)")
+    .select("id, position_title, display_name, is_active, public_visible, ministry_id, profiles(first_name, last_name)").throwOnError()
+    .eq("organization_id", organizationId!)
     .order("sort_order");
   if (ministryFilter) {
     const m = ministries?.find((mm) => mm.slug === ministryFilter);
@@ -31,7 +32,7 @@ export default async function AdminMinistryAssignmentsPage({
   const { data: assignments } = await query;
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, first_name, last_name, email")
+    .select("id, first_name, last_name, email").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("first_name");
 

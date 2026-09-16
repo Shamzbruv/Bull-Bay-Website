@@ -28,13 +28,13 @@ export default async function MyDocumentsPage() {
     // policy from the hardening migration.
     admin
       .from("document_templates")
-      .select("id, name, description")
+      .select("id, name, description").throwOnError()
       .eq("organization_id", profile?.organization_id ?? "")
       .eq("is_active", true)
       .order("name"),
     supabase
       .from("document_requests")
-      .select("id, title, purpose, status, created_at, document_number")
+      .select("id, title, purpose, status, created_at, document_number").throwOnError()
       .eq("requester_profile_id", profile?.id ?? "")
       .order("created_at", { ascending: false }),
   ]);

@@ -10,7 +10,7 @@ export default async function MyEventsPage() {
   const supabase = await createClient();
   const { data: registrations } = await supabase
     .from("event_registrations")
-    .select("id, status, quantity, created_at, events(title, slug, starts_at)")
+    .select("id, status, quantity, created_at, events(title, slug, starts_at)").throwOnError()
     .eq("profile_id", profile?.id ?? "")
     .order("created_at", { ascending: false });
 

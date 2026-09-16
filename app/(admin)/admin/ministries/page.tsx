@@ -17,10 +17,10 @@ export default async function AdminMinistriesPage() {
   const [{ data: ministries }, { data: profiles }] = await Promise.all([
     supabase
       .from("ministries")
-      .select("id, slug, name, description, icon, leader_profile_id, is_active, profiles:leader_profile_id(first_name, last_name)")
+      .select("id, slug, name, description, icon, leader_profile_id, is_active, profiles:leader_profile_id(first_name, last_name)").throwOnError()
       .eq("organization_id", organizationId ?? "")
       .order("sort_order"),
-    supabase.from("profiles").select("id, first_name, last_name").eq("organization_id", organizationId ?? "").order("first_name"),
+    supabase.from("profiles").select("id, first_name, last_name").throwOnError().eq("organization_id", organizationId ?? "").order("first_name"),
   ]);
 
   const leaders = (profiles ?? []).map((p) => ({

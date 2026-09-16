@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { ConferenceDownload } from "./conference-download";
 
@@ -7,17 +7,19 @@ export const metadata: Metadata = { title: "My Ministry & Serving" };
 
 export default async function MyMinistryPage() {
   const profile = await getCurrentProfile();
+  if (!profile) throw new Error("Please sign in again.");
   const supabase = await createClient();
 
   const [{ data: assignments }, { data: shifts }] = await Promise.all([
-    supabase
+    createServiceRoleClient()
       .from("ministry_assignments")
-      .select("id, position_title, is_active, ministries(name, slug)")
-      .eq("profile_id", profile?.id ?? "")
+      .select("id, position_title, is_active, ministries(name, slug)").throwOnError()
+      .eq("organization_id", profile.organization_id)
+      .eq("profile_id", profile.id)
       .eq("is_active", true),
     supabase
       .from("volunteer_assignments")
-      .select("shift_id, status, volunteer_shifts(starts_at, volunteer_opportunities(title))")
+      .select("shift_id, status, volunteer_shifts(starts_at, volunteer_opportunities(title))").throwOnError()
       .eq("profile_id", profile?.id ?? ""),
   ]);
 

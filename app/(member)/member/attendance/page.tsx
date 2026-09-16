@@ -8,7 +8,7 @@ export default async function MemberAttendancePage() {
   const supabase = await createClient();
   const { data: records } = await supabase
     .from("attendance_records")
-    .select("id, service_date, headcount, service_schedules(label)")
+    .select("id, service_date, headcount, service_schedules(label)").throwOnError()
     .order("service_date", { ascending: false })
     .limit(52);
 

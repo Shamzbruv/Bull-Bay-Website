@@ -13,7 +13,7 @@ export default async function NotificationsPage() {
   const profile = await getCurrentProfile();
   const supabase = await createClient();
   const [{ data: prefs }, { notifications, unreadCount }] = await Promise.all([
-    supabase.from("notification_preferences").select("*").eq("profile_id", profile?.id ?? "").maybeSingle(),
+    supabase.from("notification_preferences").select("*").throwOnError().eq("profile_id", profile?.id ?? "").maybeSingle(),
     getMyNotifications(50),
   ]);
 

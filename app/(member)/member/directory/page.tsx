@@ -11,18 +11,18 @@ export default async function DirectoryPage() {
   const supabase = await createClient();
 
   const [{ data: listings }, { data: received }, { data: sent }] = await Promise.all([
-    supabase.from("professional_directory").select("profile_id, first_name, last_name, occupation, professional_bio").order("occupation"),
+    supabase.from("professional_directory").select("profile_id, first_name, last_name, occupation, professional_bio").throwOnError().order("occupation"),
     profile
       ? supabase
           .from("professional_help_requests")
-          .select("id, message, status, created_at, profiles:requester_profile_id(first_name, last_name)")
+          .select("id, message, status, created_at, profiles:requester_profile_id(first_name, last_name)").throwOnError()
           .eq("target_profile_id", profile.id)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: null }),
     profile
       ? supabase
           .from("professional_help_requests")
-          .select("id, message, status, created_at, profiles:target_profile_id(first_name, last_name)")
+          .select("id, message, status, created_at, profiles:target_profile_id(first_name, last_name)").throwOnError()
           .eq("requester_profile_id", profile.id)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: null }),

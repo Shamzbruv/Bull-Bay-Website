@@ -16,10 +16,10 @@ export default async function AdminAnnualPlanPage() {
   if (!permissions.has("events.manage")) return <AccessDenied />;
 
   const supabase = await createClient();
-  const { data: churchYear } = await supabase.from("church_years").select("id, label").eq("status", "active").maybeSingle();
+  const { data: churchYear } = await supabase.from("church_years").select("id, label").throwOnError().eq("status", "active").maybeSingle();
   const { data: items } = await supabase
     .from("annual_plan_items")
-    .select("*")
+    .select("*").throwOnError()
     .eq("church_year_id", churchYear?.id ?? "")
     .order("month");
 

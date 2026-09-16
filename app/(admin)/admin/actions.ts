@@ -9,6 +9,8 @@ import { parseJmdToMinorUnits } from "@/lib/money";
 import { sendMail } from "@/lib/email/resend";
 import { renderInviteEmail, renderRoleChangedEmail } from "@/lib/email/templates";
 import { generateAuthLink } from "@/lib/supabase/generate-link";
+import { officeContext, recordOfficeAction } from "@/lib/office/context";
+import { officeAction } from "@/lib/office/action";
 import { notifyUser } from "@/lib/notifications";
 import type { ActionState } from "@/app/(public)/actions";
 
@@ -681,76 +683,62 @@ export async function togglePriorityVisibility(priorityId: string, publicVisible
 
 // Ministry assignments -------------------------------------------------
 export async function toggleAssignmentVisibility(assignmentId: string, publicVisible: boolean): Promise<void> {
-  const supabase = await createClient();
-  await supabase.from("ministry_assignments").update({ public_visible: publicVisible }).eq("id", assignmentId);
+  const { db, org, user } = await officeContext("ministry_assignments.manage");
+  await db.from("ministry_assignments").update({ public_visible: publicVisible }).eq("organization_id", org).eq("id", assignmentId).select("id").single().throwOnError();
+  await recordOfficeAction(org, user.id, "ministry_assignment.updated", "ministry_assignments", assignmentId);
   revalidatePath("/admin/ministry-assignments");
   revalidatePath("/ministries");
 }
 
 export async function toggleAssignmentActive(assignmentId: string, isActive: boolean): Promise<void> {
-  const supabase = await createClient();
-  await supabase.from("ministry_assignments").update({ is_active: isActive }).eq("id", assignmentId);
+  const { db, org, user } = await officeContext("ministry_assignments.manage");
+  await db.from("ministry_assignments").update({ is_active: isActive }).eq("organization_id", org).eq("id", assignmentId).select("id").single().throwOnError();
+  await recordOfficeAction(org, user.id, "ministry_assignment.updated", "ministry_assignments", assignmentId);
   revalidatePath("/admin/ministry-assignments");
 }
 
-/** Deliberately requires a staff member to type the exact email of the
- * profile they intend to link — never an automatic name match. */
 export async function linkAssignmentToProfile(assignmentId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
-  const email = String(formData.get("email") || "").trim();
-  if (!email) return { status: "error", message: "Enter the member's email address." };
-
-  const supabase = await createClient();
-  const { data: profile } = await supabase.from("profiles").select("id, first_name, last_name").eq("email", email).maybeSingle();
-  if (!profile) return { status: "error", message: "No profile found with that email." };
-
-  const { error } = await supabase.from("ministry_assignments").update({ profile_id: profile.id }).eq("id", assignmentId);
-  if (error) return { status: "error", message: "Couldn't link this row." };
-  revalidatePath("/admin/ministry-assignments");
-  const name = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
-  return { status: "success", message: name ? `Linked to ${name}.` : "Linked." };
+  return officeAction(async () => {
+    const { db, org, user } = await officeContext("ministry_assignments.manage");
+    const email = String(formData.get("email") || "").trim();
+    if (!email) throw new Error("Enter the member's email address.");
+    const { data: profile } = await db.from("profiles").select("id, first_name, last_name").eq("organization_id", org).eq("email", email).maybeSingle().throwOnError();
+    if (!profile) throw new Error("No profile found with that email in this church.");
+    await db.from("ministry_assignments").update({ profile_id: profile.id }).eq("organization_id", org).eq("id", assignmentId).select("id").single().throwOnError();
+    await recordOfficeAction(org, user.id, "ministry_assignment.linked", "ministry_assignments", assignmentId);
+    const name = `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim();
+    return name ? `Linked to ${name}.` : "Linked.";
+  });
 }
 
 export async function unlinkAssignmentFromProfile(assignmentId: string): Promise<void> {
-  const supabase = await createClient();
-  await supabase.from("ministry_assignments").update({ profile_id: null }).eq("id", assignmentId);
+  const { db, org, user } = await officeContext("ministry_assignments.manage");
+  const { data: assignment } = await db.from("ministry_assignments").select("display_name, profiles(first_name, last_name)").eq("organization_id", org).eq("id", assignmentId).single().throwOnError();
+  const person = assignment.profiles as unknown as { first_name: string | null; last_name: string | null } | null;
+  const displayName = assignment.display_name || [person?.first_name, person?.last_name].filter(Boolean).join(" ") || "Unlinked member";
+  await db.from("ministry_assignments").update({ profile_id: null, display_name: displayName }).eq("organization_id", org).eq("id", assignmentId).select("id").single().throwOnError();
+  await recordOfficeAction(org, user.id, "ministry_assignment.updated", "ministry_assignments", assignmentId);
   revalidatePath("/admin/ministry-assignments");
 }
 
-/** Staff add someone to a ministry's roster directly here — either
- * linked to a searched-and-picked member (verified identity, safe to
- * mark public immediately) or by a plain name for someone not yet in
- * the system (stays unlinked until a real account exists to link). */
 export async function createMinistryAssignment(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const organizationId = await getOrganizationId();
-  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
-  if (!organizationId || !permissions.has("ministry_assignments.manage")) {
-    return { status: "error", message: "You don't have permission to manage ministry assignments." };
-  }
-
-  const ministryId = String(formData.get("ministry_id") || "");
-  const positionTitle = String(formData.get("position_title") || "").trim();
-  const profileId = String(formData.get("profile_id") || "").trim() || null;
-  const displayName = String(formData.get("display_name") || "").trim() || null;
-  if (!ministryId) return { status: "error", message: "Choose a ministry." };
-  if (!positionTitle) return { status: "error", message: "Enter their role or position." };
-  if (!profileId && !displayName) {
-    return { status: "error", message: "Search for a member, or type a name for someone not yet in the system." };
-  }
-
-  const supabase = await createClient();
-  const { error } = await supabase.from("ministry_assignments").insert({
-    organization_id: organizationId,
-    ministry_id: ministryId,
-    profile_id: profileId,
-    display_name: profileId ? null : displayName,
-    position_title: positionTitle,
-    is_active: true,
-    public_visible: formData.get("public_visible") === "on",
+  return officeAction(async () => {
+    const { db, org, user } = await officeContext("ministry_assignments.manage");
+    const ministryId = String(formData.get("ministry_id") || "");
+    const positionTitle = String(formData.get("position_title") || "").trim().slice(0, 200);
+    const profileId = String(formData.get("profile_id") || "").trim() || null;
+    const displayName = String(formData.get("display_name") || "").trim().slice(0, 200) || null;
+    if (!ministryId || !positionTitle || (!profileId && !displayName)) throw new Error("Choose a ministry, a position, and a member or display name.");
+    const { data: ministry } = await db.from("ministries").select("id").eq("organization_id", org).eq("id", ministryId).maybeSingle().throwOnError();
+    if (!ministry) throw new Error("Choose a ministry in this church.");
+    if (profileId) {
+      const { data: person } = await db.from("profiles").select("id").eq("organization_id", org).eq("id", profileId).maybeSingle().throwOnError();
+      if (!person) throw new Error("Choose a member in this church.");
+    }
+    const { data: created } = await db.from("ministry_assignments").insert({ organization_id: org, ministry_id: ministryId, profile_id: profileId, display_name: profileId ? null : displayName, position_title: positionTitle, is_active: true, public_visible: formData.get("public_visible") === "on" }).select("id").single().throwOnError();
+    await recordOfficeAction(org, user.id, "ministry_assignment.created", "ministry_assignments", created.id);
+    return "Added to the roster.";
   });
-  if (error) return { status: "error", message: "Couldn't add this assignment." };
-  revalidatePath("/admin/ministry-assignments");
-  revalidatePath("/ministries");
-  return { status: "success", message: "Added to the roster." };
 }
 
 // Annual plan --------------------------------------------------------------

@@ -13,8 +13,8 @@ export default async function AdminGalleryPage() {
 
   const supabase = await createClient();
   const [{ data: images }, { data: campus }] = await Promise.all([
-    supabase.from("gallery_images").select("id, storage_path, caption, is_published").order("created_at", { ascending: false }),
-    supabase.from("campuses").select("livestream_url").eq("organization_id", organizationId ?? "").maybeSingle(),
+    supabase.from("gallery_images").select("id, storage_path, caption, is_published").throwOnError().order("created_at", { ascending: false }),
+    supabase.from("campuses").select("livestream_url").throwOnError().eq("organization_id", organizationId ?? "").maybeSingle(),
   ]);
 
   const withUrls = (images ?? []).map((img) => ({

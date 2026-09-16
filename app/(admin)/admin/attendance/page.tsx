@@ -17,10 +17,10 @@ export default async function AdminAttendancePage() {
 
   const supabase = await createClient();
   const [{ data: schedules }, { data: recent }] = await Promise.all([
-    supabase.from("service_schedules").select("id, label, day_of_week, service_time, is_active").order("day_of_week"),
+    supabase.from("service_schedules").select("id, label, day_of_week, service_time, is_active").throwOnError().order("day_of_week"),
     supabase
       .from("attendance_records")
-      .select("id, service_date, headcount, notes, service_schedules(label)")
+      .select("id, service_date, headcount, notes, service_schedules(label)").throwOnError()
       .order("service_date", { ascending: false })
       .limit(20),
   ]);

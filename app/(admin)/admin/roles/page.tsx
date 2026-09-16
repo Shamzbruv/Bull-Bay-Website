@@ -24,8 +24,8 @@ export default async function AdminRolesPage() {
 
   const supabase = await createClient();
   const [{ data: roles }, { data: profiles }] = await Promise.all([
-    supabase.from("roles").select("id, name, code").eq("organization_id", organizationId ?? "").order("name"),
-    supabase.from("profiles").select("id, first_name, last_name, email").eq("organization_id", organizationId ?? "").order("first_name"),
+    supabase.from("roles").select("id, name, code").throwOnError().eq("organization_id", organizationId ?? "").order("name"),
+    supabase.from("profiles").select("id, first_name, last_name, email").throwOnError().eq("organization_id", organizationId ?? "").order("first_name"),
   ]);
   const members = (profiles ?? []).map((p) => ({
     id: p.id,

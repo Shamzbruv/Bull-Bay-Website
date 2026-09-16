@@ -21,7 +21,7 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
   const supabase = await createClient();
   let request = supabase
     .from("profiles")
-    .select("id, first_name, last_name, email, phone, membership_status, joined_at, auth_user_id, must_change_password")
+    .select("id, first_name, last_name, email, phone, membership_status, joined_at, auth_user_id, must_change_password").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("last_name", { ascending: true })
     .limit(200);
@@ -32,14 +32,14 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
   // invitation-only (see app/(admin)/admin/roles/page.tsx).
   const { data: roles } = await supabase
     .from("roles")
-    .select("id, name")
+    .select("id, name").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("name");
   const authUserIds = (people ?? []).flatMap((p) => (p.auth_user_id ? [p.auth_user_id] : []));
   const { data: grants } = authUserIds.length
     ? await supabase
         .from("user_roles")
-        .select("user_id, role_id, roles(name)")
+        .select("user_id, role_id, roles(name)").throwOnError()
         .eq("organization_id", organizationId ?? "")
         .in("user_id", authUserIds)
     : { data: [] as { user_id: string; role_id: string; roles: { name: string } | null }[] };

@@ -15,7 +15,7 @@ export default async function EditSermonPage({
   const { id } = await params;
   const { from } = await searchParams;
   const supabase = await createClient();
-  const { data: sermon } = await supabase.from("sermons").select("*").eq("id", id).single();
+  const { data: sermon } = await supabase.from("sermons").select("*").throwOnError().eq("id", id).single();
   if (!sermon) notFound();
 
   return (

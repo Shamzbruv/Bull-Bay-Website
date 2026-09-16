@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/auth/session";
 import { DescriptionForm, AddTeamMemberForm } from "./ministry-team-forms";
 import { TeamMemberRow } from "./team-member-row";
@@ -13,7 +13,7 @@ export default async function MyMinistryTeamPage() {
   const { data: ledMinistries } = profile
     ? await supabase
         .from("ministries")
-        .select("id, name, icon, description, slug")
+        .select("id, name, icon, description, slug").throwOnError()
         .eq("leader_profile_id", profile.id)
         .order("name")
     : { data: null };
@@ -35,9 +35,10 @@ export default async function MyMinistryTeamPage() {
   }
 
   const ministryIds = ledMinistries.map((m) => m.id);
-  const { data: assignments } = await supabase
+  const { data: assignments } = await createServiceRoleClient()
     .from("ministry_assignments")
-    .select("id, ministry_id, position_title, display_name, public_visible, profiles(first_name, last_name)")
+    .select("id, ministry_id, position_title, display_name, public_visible, profiles(first_name, last_name)").throwOnError()
+    .eq("organization_id", profile!.organization_id)
     .in("ministry_id", ministryIds)
     .eq("is_active", true)
     .order("sort_order");

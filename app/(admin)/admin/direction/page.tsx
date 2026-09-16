@@ -13,11 +13,11 @@ export default async function AdminDirectionPage() {
   if (!permissions.has("direction.manage")) return <AccessDenied />;
 
   const supabase = await createClient();
-  const { data: churchYear } = await supabase.from("church_years").select("*").eq("status", "active").maybeSingle();
+  const { data: churchYear } = await supabase.from("church_years").select("*").throwOnError().eq("status", "active").maybeSingle();
 
   const [{ data: priorities }, { data: movements }] = await Promise.all([
-    supabase.from("strategic_priorities").select("*").eq("church_year_id", churchYear?.id ?? "").order("sort_order"),
-    supabase.from("strategic_movements").select("*, strategic_goals(*)").eq("church_year_id", churchYear?.id ?? "").order("sort_order"),
+    supabase.from("strategic_priorities").select("*").throwOnError().eq("church_year_id", churchYear?.id ?? "").order("sort_order"),
+    supabase.from("strategic_movements").select("*, strategic_goals(*)").throwOnError().eq("church_year_id", churchYear?.id ?? "").order("sort_order"),
   ]);
 
   return (

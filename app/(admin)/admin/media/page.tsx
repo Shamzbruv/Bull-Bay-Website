@@ -28,11 +28,11 @@ export default async function AdminMediaPage() {
   const [{ data: sermons }, { data: campus }] = await Promise.all([
     supabase
       .from("sermons")
-      .select("id, title, status, preached_at")
+      .select("id, title, status, preached_at").throwOnError()
       .eq("organization_id", organizationId ?? "")
       .order("preached_at", { ascending: false }),
     permissions.has("media.manage")
-      ? supabase.from("campuses").select("livestream_url").eq("organization_id", organizationId ?? "").eq("is_primary", true).maybeSingle()
+      ? supabase.from("campuses").select("livestream_url").throwOnError().eq("organization_id", organizationId ?? "").eq("is_primary", true).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 

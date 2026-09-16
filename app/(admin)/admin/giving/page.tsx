@@ -21,22 +21,22 @@ export default async function AdminGivingPage() {
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5, 1);
 
   const [{ data: funds }, { data: donations }, { data: expenses }, { data: recentSales }] = await Promise.all([
-    supabase.from("funds").select("id, name, code, is_active").eq("organization_id", organizationId ?? "").order("name"),
+    supabase.from("funds").select("id, name, code, is_active").throwOnError().eq("organization_id", organizationId ?? "").order("name"),
     supabase
       .from("donations")
-      .select("id, donor_name, donor_email, amount_minor, status, created_at, donation_allocations(amount_minor, funds(name))")
+      .select("id, donor_name, donor_email, amount_minor, status, created_at, donation_allocations(amount_minor, funds(name))").throwOnError()
       .eq("organization_id", organizationId ?? "")
       .order("created_at", { ascending: false })
       .limit(100),
     supabase
       .from("expenses")
-      .select("id, category, vendor, description, amount_minor, expense_date, created_at")
+      .select("id, category, vendor, description, amount_minor, expense_date, created_at").throwOnError()
       .eq("organization_id", organizationId ?? "")
       .order("expense_date", { ascending: false })
       .limit(100),
     supabase
       .from("payments")
-      .select("id, amount_minor, status, provider, created_at, orders(order_number, customer_name)")
+      .select("id, amount_minor, status, provider, created_at, orders(order_number, customer_name)").throwOnError()
       .eq("organization_id", organizationId ?? "")
       .eq("status", "succeeded")
       .order("created_at", { ascending: false })

@@ -28,6 +28,6 @@ export async function sendHelpRequest(targetProfileId: string, _prev: ActionStat
 
 export async function updateHelpRequestStatus(requestId: string, status: "responded" | "closed"): Promise<void> {
   const supabase = await createClient();
-  await supabase.from("professional_help_requests").update({ status }).eq("id", requestId);
+  await supabase.from("professional_help_requests").update({ status }).eq("id", requestId).throwOnError();
   revalidatePath("/member/directory");
 }

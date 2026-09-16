@@ -80,7 +80,7 @@ export async function updateSession(request: NextRequest) {
       return NextResponse.json({ error: "Role preview is read-only. Return to Super Administrator to make changes." }, { status: 403 });
     }
     const home = workspaceForRoles(roles);
-    if (!isSuper && ((path === "/member" && home !== "member") || (path.startsWith("/admin") && home === "member") || (path === "/admin" && home === "pastor") || (path.startsWith("/pastor") && home !== "pastor"))) {
+    if (!isSuper && ((path.startsWith("/admin") && home === "member") || (path === "/admin" && home === "pastor") || (path.startsWith("/pastor") && home !== "pastor"))) {
       return redirectWithCookies(new URL(`/${home}`, request.url));
     }
   }

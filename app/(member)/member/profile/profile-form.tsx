@@ -331,19 +331,21 @@ export function ProfileForm({
             Privacy
           </strong>
           <p className="form-note" style={{ marginTop: 0 }}>
-            By default, only the church office (admins, the pastor, the pastoral team, and the secretary) can see your
-            contact and personal details — other members can&apos;t. Turn this on only if you also want the leader of
-            a small group you join to see your full profile.
+            {Object.hasOwn(profile, "share_profile_with_group_leaders")
+              ? "Your details are available to authorized church staff and your household. You can also choose to share your full profile with the leader of a small group you join."
+              : "The church office uses your profile for membership and pastoral care. Contact the office if you need help with access to your information."}
           </p>
           <label className="check-label">
             <input
               type="checkbox"
               name="share_profile_with_group_leaders"
+              disabled={!Object.hasOwn(profile, "share_profile_with_group_leaders")}
               defaultChecked={profile.share_profile_with_group_leaders ?? false}
             />
             Also let the leader of any small group I join see my full profile (phone, address, emergency contact,
             etc.)
           </label>
+          {!Object.hasOwn(profile, "share_profile_with_group_leaders") && <p className="form-note">Sharing preferences are temporarily unavailable. You can still save your profile details.</p>}
         </div>
 
         <p className="form-note" style={{ marginTop: 0 }}>

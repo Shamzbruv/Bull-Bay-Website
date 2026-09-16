@@ -15,7 +15,7 @@ export default async function MemberCounselPage() {
 
   const { data: team } = await supabase
     .from("pastoral_team_members")
-    .select("profile_id, role_title, is_pastor, is_trained_counselor, bio, profiles(first_name, last_name)")
+    .select("profile_id, role_title, is_pastor, is_trained_counselor, bio, profiles(first_name, last_name)").throwOnError()
     .eq("is_active", true)
     .order("is_pastor", { ascending: false })
     .order("sort_order");
@@ -24,12 +24,12 @@ export default async function MemberCounselPage() {
     profile
       ? supabase
           .from("counsel_requests")
-          .select("id, reason, status, is_urgent, preferred_date, created_at, scheduled_event_id, profiles:requested_with_profile_id(first_name, last_name)")
+          .select("id, reason, status, is_urgent, preferred_date, created_at, scheduled_event_id, profiles:requested_with_profile_id(first_name, last_name)").throwOnError()
           .eq("requester_profile_id", profile.id)
           .order("created_at", { ascending: false })
           .limit(15)
       : Promise.resolve({ data: null }),
-    profile ? supabase.from("pastoral_team_members").select("id").eq("profile_id", profile.id).maybeSingle() : Promise.resolve({ data: null }),
+    profile ? supabase.from("pastoral_team_members").select("id").throwOnError().eq("profile_id", profile.id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
 
   // The confirmed meeting time lives on pastoral_calendar_events, owned by
@@ -40,7 +40,7 @@ export default async function MemberCounselPage() {
   const scheduledEventIds = (myRequests ?? []).map((r) => r.scheduled_event_id).filter((id): id is string => Boolean(id));
   const { data: scheduledEvents } =
     scheduledEventIds.length > 0
-      ? await createServiceRoleClient().from("pastoral_calendar_events").select("id, title, starts_at, ends_at").in("id", scheduledEventIds).in("counsel_request_id", (myRequests ?? []).map(r => r.id))
+      ? await createServiceRoleClient().from("pastoral_calendar_events").select("id, title, starts_at, ends_at").throwOnError().in("id", scheduledEventIds).in("counsel_request_id", (myRequests ?? []).map(r => r.id))
       : { data: [] };
   const scheduledEventById = new Map((scheduledEvents ?? []).map((e) => [e.id, e]));
 

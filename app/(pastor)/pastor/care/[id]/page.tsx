@@ -10,7 +10,7 @@ export default async function CareCaseDetailPage({ params }: { params: Promise<{
   const supabase = await createClient();
   // RLS restricts this to the case owner or an explicitly granted user —
   // a non-authorized pastor gets no row back at all, not an error.
-  const { data: careCase } = await supabase.from("care_cases").select("*").eq("id", id).maybeSingle();
+  const { data: careCase } = await supabase.from("care_cases").select("*").throwOnError().eq("id", id).maybeSingle();
   if (!careCase) notFound();
 
   return (

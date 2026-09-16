@@ -12,11 +12,11 @@ export default async function HouseholdPage() {
   let householdName = "";
   let members: { id: string; first_name: string | null; last_name: string | null }[] = [];
   if (profile?.household_id) {
-    const { data: household } = await supabase.from("households").select("name").eq("id", profile.household_id).single();
+    const { data: household } = await supabase.from("households").select("name").throwOnError().eq("id", profile.household_id).single();
     householdName = household?.name ?? "";
     const { data: memberRows } = await supabase
       .from("profiles")
-      .select("id, first_name, last_name")
+      .select("id, first_name, last_name").throwOnError()
       .eq("household_id", profile.household_id);
     members = memberRows ?? [];
   }

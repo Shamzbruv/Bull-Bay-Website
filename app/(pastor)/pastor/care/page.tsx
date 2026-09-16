@@ -18,18 +18,18 @@ export default async function PastoralCarePage() {
   const [{ data: cases }, { data: prayers }, { data: counselRequests }, pastoralTeam] = await Promise.all([
     supabase
       .from("care_cases")
-      .select("id, category, status, summary, created_at")
+      .select("id, category, status, summary, created_at").throwOnError()
       .eq("organization_id", organizationId ?? "")
       .order("created_at", { ascending: false }),
     supabase
       .from("prayer_requests")
-      .select("id, submitter_name, request_body, visibility, status, assigned_to, created_at, completion_note")
+      .select("id, submitter_name, request_body, visibility, status, assigned_to, created_at, completion_note").throwOnError()
       .eq("organization_id", organizationId ?? "")
       .order("created_at", { ascending: false })
       .limit(20),
     supabase
       .from("counsel_requests")
-      .select("id, reason, details, is_urgent, status, preferred_date, preferred_time, created_at, profiles:requester_profile_id(first_name, last_name)")
+      .select("id, reason, details, is_urgent, status, preferred_date, preferred_time, created_at, profiles:requester_profile_id(first_name, last_name)").throwOnError()
       .order("is_urgent", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(30),

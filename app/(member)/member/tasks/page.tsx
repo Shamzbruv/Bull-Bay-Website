@@ -10,12 +10,12 @@ export default async function TasksPage() {
  const permissions=await getUserPermissions(profile.organization_id);
  const canAssign=permissions.has("tasks.assign"), canReview=permissions.has("prayer.review");
  const [{data:tasks,error},{data:prayers},people]=await Promise.all([
-  supabase.from("office_tasks").select("*").eq("organization_id",profile.organization_id).order("created_at",{ascending:false}).limit(100),
-  supabase.from("prayer_requests").select("id,submitter_name,request_body,status,completion_note").eq("organization_id",profile.organization_id).eq("assigned_to",user.id).in("status",["in_progress","awaiting_review","prayed"]).order("created_at",{ascending:false}),
+  supabase.from("office_tasks").select("*").throwOnError().eq("organization_id",profile.organization_id).order("created_at",{ascending:false}).limit(100),
+  supabase.from("prayer_requests").select("id,submitter_name,request_body,status,completion_note").throwOnError().eq("organization_id",profile.organization_id).eq("assigned_to",user.id).in("status",["in_progress","awaiting_review","prayed"]).order("created_at",{ascending:false}),
   canAssign?roleMembers(profile.organization_id,canReview?["pastor","church_executive","secretary","pastoral_care_team","student_pastor"]:["secretary"]):Promise.resolve([])
  ]);
  const ids=[...new Set((tasks??[]).flatMap(t=>[t.assigned_to,t.assigned_by]))];
- const {data:names}=ids.length?await supabase.from("profiles").select("auth_user_id,first_name,last_name").in("auth_user_id",ids):{data:[]};
+ const {data:names}=ids.length?await supabase.from("profiles").select("auth_user_id,first_name,last_name").throwOnError().in("auth_user_id",ids):{data:[]};
  const name=(id:string)=>{const p=names?.find(n=>n.auth_user_id===id);return p?[p.first_name,p.last_name].filter(Boolean).join(" "):"Church team member";};
  return <><div className="dashboard-header"><div><p className="section-kicker">Working together</p><h1>Tasks & prayer assignments</h1><p>Follow each assignment through to review and completion.</p></div></div>
  {error && <p role="alert">Tasks could not be loaded. Please retry.</p>}

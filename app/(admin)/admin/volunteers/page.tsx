@@ -13,11 +13,13 @@ export default async function AdminVolunteersPage() {
   if (!permissions.has("volunteers.manage")) return <AccessDenied />;
 
   const supabase = await createClient();
-  const { data: opportunities } = await supabase
+  const { data: opportunities, error } = await supabase
     .from("volunteer_opportunities")
-    .select("id, title, description, volunteer_shifts(id, starts_at, slots, volunteer_assignments(id))")
+    .select("id, title, description, volunteer_shifts(id, starts_at, slots, volunteer_assignments(profile_id))").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("title");
+
+  if (error) throw new Error("Volunteer opportunities could not be loaded.", { cause: error });
 
   return (
     <>

@@ -9,7 +9,7 @@ export default async function MyServingPage() {
   const supabase = await createClient();
   const { data: assignments } = await supabase
     .from("volunteer_assignments")
-    .select("shift_id, status, volunteer_shifts(starts_at, volunteer_opportunities(title))")
+    .select("shift_id, status, volunteer_shifts(starts_at, volunteer_opportunities(title))").throwOnError()
     .eq("profile_id", profile?.id ?? "");
 
   return (

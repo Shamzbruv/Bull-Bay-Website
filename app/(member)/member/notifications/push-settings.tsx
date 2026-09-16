@@ -22,6 +22,7 @@ function usePushSupported() {
 
 export function PushSettings() {
   const supported = usePushSupported();
+  const [configured, setConfigured] = useState<boolean | null>(null);
   const [enabled, setEnabled] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -29,13 +30,14 @@ export function PushSettings() {
   useEffect(() => {
     if (!supported) return;
     let active = true;
-    navigator.serviceWorker
-      .getRegistration("/")
-      .then((registration) => registration?.pushManager.getSubscription())
-      .then((subscription) => {
-        if (active) setEnabled(Boolean(subscription));
-      })
-      .catch(() => {});
+    Promise.all([
+      navigator.serviceWorker.getRegistration("/").then(r => r?.pushManager.getSubscription()),
+      fetch("/api/push").then(async r => { if (!r.ok) throw new Error("Notification settings could not be loaded. Refresh and try again."); return r.json(); }),
+    ]).then(([subscription, config]) => {
+      if (!active) return;
+      setConfigured(Boolean(config.publicKey));
+      setEnabled(Boolean(subscription && config.endpoints.includes(subscription.endpoint)));
+    }).catch(e => { if (active) setMessage(e.message); });
     return () => {
       active = false;
     };
@@ -53,12 +55,12 @@ export function PushSettings() {
       const { publicKey } = await response.json();
       if (!publicKey) throw new Error("The Super Administrator needs to enable phone notifications first.");
 
-      const registration = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-      await navigator.serviceWorker.ready;
+      await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+      const ready = await navigator.serviceWorker.ready;
       const key = Uint8Array.from(atob(publicKey.replaceAll("-", "+").replaceAll("_", "/")), (c) => c.charCodeAt(0));
       const subscription =
-        (await registration.pushManager.getSubscription()) ||
-        (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }));
+        (await ready.pushManager.getSubscription()) ||
+        (await ready.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key }));
 
       const saved = await fetch("/api/push", {
         method: "POST",
@@ -98,12 +100,25 @@ export function PushSettings() {
     }
   }
 
+  async function testNotification() {
+    setBusy(true);
+    try {
+      const registration = await navigator.serviceWorker.getRegistration("/");
+      const subscription = await registration?.pushManager.getSubscription();
+      if (!subscription) throw new Error("Enable notifications on this device first.");
+      const response = await fetch("/api/push/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: subscription.endpoint }) });
+      if (!response.ok) throw new Error(await response.text());
+      setMessage("Test sent. Check your phone’s notifications. If it is quiet, check Focus/Do Not Disturb and notification settings.");
+    } catch (e) { setMessage(e instanceof Error ? e.message : "Test could not be sent."); }
+    finally { setBusy(false); }
+  }
+
   return (
     <section className="panel">
       <h2>Phone &amp; browser notifications</h2>
       <p>Receive church updates and assignment alerts even when this page is closed.</p>
       {supported ? (
-        <button className="primary-button" disabled={busy} onClick={enabled ? disable : enable}>
+        <button className="primary-button" disabled={busy || (!enabled && configured !== true)} onClick={enabled ? disable : enable}>
           {busy ? "Updating…" : enabled ? "Disable on this device" : "Enable notifications on this device"}
         </button>
       ) : (
@@ -112,6 +127,13 @@ export function PushSettings() {
           church app to enable notifications. iOS 16.4 or later is required.
         </p>
       )}
+      {supported && configured === false && <p role="status">Phone notifications need to be enabled by the church administrator in Calendar &amp; phone setup.</p>}
+      {supported && enabled && <button className="secondary-button" disabled={busy} onClick={testNotification}>Send a test notification</button>}
+      <details><summary>How to connect your phone</summary>
+        <p><strong>iPhone / iPad:</strong> Open this website in Safari → Share → Add to Home Screen. Open the church app from your Home Screen, sign in, then go to Phone &amp; notifications and tap Enable. Requires iOS/iPadOS 16.4 or later.</p>
+        <p><strong>Android:</strong> Open this website in Chrome, sign in, and tap Enable above. Allow notifications when prompted. You can also choose Add to Home Screen from Chrome’s menu.</p>
+        <p>If you previously blocked notifications, allow them in the phone’s app/browser notification settings, then return here.</p>
+      </details>
       <p className="form-note">
         Notifications are enabled separately on each phone or browser. On shared devices, disable them before signing
         out.

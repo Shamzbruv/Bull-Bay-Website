@@ -10,7 +10,7 @@ export default async function MyGroupsPage() {
   const supabase = await createClient();
   const { data: memberships } = await supabase
     .from("group_members")
-    .select("id, role, status, groups(name, slug)")
+    .select("id, role, status, groups(name, slug)").throwOnError()
     .eq("profile_id", profile?.id ?? "");
 
   return (

@@ -79,7 +79,7 @@ async function requireProfileId(supabase: Awaited<ReturnType<typeof createClient
   if (!user) return null;
   const { data } = await supabase
     .from("profiles")
-    .select("id, household_id, organization_id")
+    .select("*")
     .eq("auth_user_id", user.id)
     .maybeSingle();
   return data ? { ...data, authUserId: user.id } : null;
@@ -89,6 +89,14 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
   const supabase = await createClient();
   const profile = await requireProfileId(supabase);
   if (!profile) return { status: "error", message: "Please sign in again." };
+
+  // During a rolling deployment, old databases may not yet expose the
+  // privacy column. Keep normal profile edits working without claiming that
+  // a sharing preference was saved when the database cannot store it.
+  const supportsGroupSharing = Object.hasOwn(profile, "share_profile_with_group_leaders");
+  if (!supportsGroupSharing && formData.get("share_profile_with_group_leaders") === "on") {
+    return { status: "error", message: "Group-sharing preferences are not available yet. Leave that option unchecked to save your other profile details." };
+  }
 
   const firstName = textField(formData, "first_name", "First name", 80, true);
   const lastName = textField(formData, "last_name", "Last name", 80, true);
@@ -198,7 +206,7 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
       occupation: occupation.value,
       professional_bio: professionalBio.value,
       open_to_professional_requests: openToProfessionalRequests,
-      share_profile_with_group_leaders: formData.get("share_profile_with_group_leaders") === "on",
+      ...(supportsGroupSharing ? { share_profile_with_group_leaders: formData.get("share_profile_with_group_leaders") === "on" } : {}),
     })
     .eq("id", profile.id)
     .eq("auth_user_id", profile.authUserId)
@@ -231,7 +239,7 @@ const AVATAR_EXT_BY_TYPE: Record<string, string> = {
  * ("member-avatars own read/write") lets them touch — then points
  * profiles.avatar_path at it. Old files aren't left behind: each upload
  * reuses the same fixed filename per type and any previous file under a
- * different extension is removed first.
+ * different extension is removed after the new photo is saved.
  */
 export async function uploadAvatar(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const supabase = await createClient();
@@ -251,10 +259,9 @@ export async function uploadAvatar(_prev: ActionState, formData: FormData): Prom
   const folder = profile.authUserId;
   const path = `${folder}/avatar.${ext}`;
 
-  // Clean up a previous photo saved under a different extension, so
+  // Clean up the previous format only after the replacement is saved, so
   // switching from a .png to a .jpg doesn't leave the old file behind.
   const otherExts = Object.values(AVATAR_EXT_BY_TYPE).filter((e) => e !== ext);
-  await supabase.storage.from("member-avatars").remove(otherExts.map((e) => `${folder}/avatar.${e}`));
 
   const { error: uploadError } = await supabase.storage
     .from("member-avatars")
@@ -263,6 +270,7 @@ export async function uploadAvatar(_prev: ActionState, formData: FormData): Prom
 
   const { error: profileError } = await supabase.from("profiles").update({ avatar_path: path }).eq("id", profile.id);
   if (profileError) return { status: "error", message: "The photo uploaded, but we couldn't save it to your profile." };
+  await supabase.storage.from("member-avatars").remove(otherExts.map((e) => `${folder}/avatar.${e}`));
 
   revalidatePath("/member/profile");
   revalidatePath("/member");
@@ -279,8 +287,9 @@ export async function removeAvatar(): Promise<ActionState> {
   if (!profile) return { status: "error", message: "Please sign in again." };
 
   const allExts = Object.values(AVATAR_EXT_BY_TYPE);
+  const { error } = await supabase.from("profiles").update({ avatar_path: null }).eq("id", profile.id);
+  if (error) return { status: "error", message: "Your profile photo could not be removed. Please retry." };
   await supabase.storage.from("member-avatars").remove(allExts.map((e) => `${profile.authUserId}/avatar.${e}`));
-  await supabase.from("profiles").update({ avatar_path: null }).eq("id", profile.id);
 
   revalidatePath("/member/profile");
   revalidatePath("/member");
@@ -300,8 +309,8 @@ export async function saveHousehold(_prev: ActionState, formData: FormData): Pro
   if (!name) return { status: "error", message: "Please enter a household name." };
 
   if (profile.household_id) {
-    const { error } = await supabase.from("households").update({ name }).eq("id", profile.household_id);
-    if (error) return { status: "error", message: "We couldn't save your household." };
+    const { data, error } = await supabase.from("households").update({ name }).eq("id", profile.household_id).select("id").maybeSingle();
+    if (error || !data) return { status: "error", message: "We couldn't save your household." };
   } else {
     const { data: household, error } = await supabase
       .from("households")
@@ -309,7 +318,8 @@ export async function saveHousehold(_prev: ActionState, formData: FormData): Pro
       .select("id")
       .single();
     if (error || !household) return { status: "error", message: "We couldn't create your household." };
-    await supabase.from("profiles").update({ household_id: household.id }).eq("id", profile.id);
+    const { error: linkError } = await supabase.from("profiles").update({ household_id: household.id }).eq("id", profile.id);
+    if (linkError) return { status: "error", message: "The household was created, but could not be linked to your profile. Please contact the church office." };
   }
 
   revalidatePath("/member/household");
@@ -325,7 +335,6 @@ export async function updateNotificationPreferences(_prev: ActionState, formData
     profile_id: profile.id,
     email_enabled: formData.get("email_enabled") === "on",
     sms_enabled: formData.get("sms_enabled") === "on",
-    push_enabled: false,
   });
 
   if (error) return { status: "error", message: "We couldn't save your preferences." };

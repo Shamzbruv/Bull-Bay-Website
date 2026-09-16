@@ -12,12 +12,12 @@ export default async function MyOrdersPage() {
   const [{ data: orders }, { data: entitlements }] = await Promise.all([
     supabase
       .from("orders")
-      .select("id, order_number, status, total_minor, created_at")
+      .select("id, order_number, status, total_minor, created_at").throwOnError()
       .eq("customer_profile_id", profile?.id ?? "")
       .order("created_at", { ascending: false }),
     supabase
       .from("digital_entitlements")
-      .select("id, revoked_at, expires_at, products(name)")
+      .select("id, revoked_at, expires_at, products(name)").throwOnError()
       .eq("profile_id", profile?.id ?? ""),
   ]);
 

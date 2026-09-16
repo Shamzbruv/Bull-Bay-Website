@@ -16,7 +16,7 @@ export default async function AdminEventsPage() {
   const supabase = await createClient();
   const { data: events } = await supabase
     .from("events")
-    .select("id, title, category, description, location_name, starts_at, status, visibility, event_registrations(id)")
+    .select("id, title, category, description, location_name, starts_at, status, visibility, event_registrations(id)").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("starts_at", { ascending: false })
     .limit(100);

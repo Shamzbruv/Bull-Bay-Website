@@ -12,17 +12,17 @@ export default async function PastorDirectionPage() {
   if (!permissions.has("direction.manage")) return <AccessDenied />;
 
   const supabase = await createClient();
-  const { data: churchYear } = await supabase.from("church_years").select("*").eq("status", "active").maybeSingle();
+  const { data: churchYear } = await supabase.from("church_years").select("*").throwOnError().eq("status", "active").maybeSingle();
 
   const [{ data: movements }, { data: planItems }] = await Promise.all([
     supabase
       .from("strategic_movements")
-      .select("*, strategic_goals(*)")
+      .select("*, strategic_goals(*)").throwOnError()
       .eq("church_year_id", churchYear?.id ?? "")
       .order("sort_order", { ascending: true }),
     supabase
       .from("annual_plan_items")
-      .select("*")
+      .select("*").throwOnError()
       .eq("church_year_id", churchYear?.id ?? "")
       .in("status", ["planned", "ready_to_publish"])
       .order("month", { ascending: true })

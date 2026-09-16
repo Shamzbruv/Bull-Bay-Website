@@ -11,7 +11,7 @@ export default async function MyGivingPage() {
   const supabase = await createClient();
   const { data: donations } = await supabase
     .from("donations")
-    .select("id, amount_minor, status, receipt_number, created_at, donation_allocations(amount_minor, funds(name))")
+    .select("id, amount_minor, status, receipt_number, created_at, donation_allocations(amount_minor, funds(name))").throwOnError()
     .eq("donor_profile_id", profile?.id ?? "")
     .order("created_at", { ascending: false });
 

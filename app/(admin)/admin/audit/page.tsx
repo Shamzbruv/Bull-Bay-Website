@@ -30,7 +30,7 @@ export default async function AdminAuditPage() {
   const supabase = await createClient();
   const { data: logs } = await supabase
     .from("audit_logs")
-    .select("id, actor_id, action, entity_type, entity_id, metadata, created_at")
+    .select("id, actor_id, action, entity_type, entity_id, metadata, created_at").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("created_at", { ascending: false })
     .limit(200);
@@ -40,7 +40,7 @@ export default async function AdminAuditPage() {
   const actorIds = Array.from(new Set((logs ?? []).map((l) => l.actor_id).filter((id): id is string => Boolean(id))));
   const { data: actors } =
     actorIds.length > 0
-      ? await supabase.from("profiles").select("auth_user_id, first_name, last_name, email").in("auth_user_id", actorIds)
+      ? await supabase.from("profiles").select("auth_user_id, first_name, last_name, email").throwOnError().in("auth_user_id", actorIds)
       : { data: [] };
   const actorNames = new Map(
     (actors ?? []).map((a) => [a.auth_user_id, [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email || "Unknown"]),

@@ -18,13 +18,13 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
 
   const supabase = await createClient();
   const [{ data: allTemplates }, { data: requests }, { data: emails }] = await Promise.all([
-    supabase.from("document_templates").select("*").order("name"),
+    supabase.from("document_templates").select("*").throwOnError().order("name"),
     supabase
       .from("document_requests")
-      .select("id, title, purpose, status, created_at, profiles:requester_profile_id(first_name, last_name)")
+      .select("id, title, purpose, status, created_at, profiles:requester_profile_id(first_name, last_name)").throwOnError()
       .in("status", ["submitted", "in_review", "prepared", "pending_pastor", "completed"])
       .order("created_at", { ascending: false }).limit(100),
-    supabase.from("email_templates").select("*").eq("organization_id",organizationId ?? "").order("name"),
+    supabase.from("email_templates").select("*").throwOnError().eq("organization_id",organizationId ?? "").order("name"),
   ]);
 
   const templates = allTemplates?.filter(t => type === "certificates" ? t.layout === "certificate" : t.layout !== "certificate");

@@ -13,7 +13,7 @@ export default async function PastorSermonsPage() {
   const supabase = await createClient();
   const { data: sermons } = await supabase
     .from("sermons")
-    .select("id, title, status, preached_at, slug")
+    .select("id, title, status, preached_at, slug").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("preached_at", { ascending: false });
 

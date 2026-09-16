@@ -11,7 +11,7 @@ export default async function MemberPrayerPage() {
   const { data: myRequests } = profile
     ? await supabase
         .from("prayer_requests")
-        .select("id, request_body, visibility, status, created_at")
+        .select("id, request_body, visibility, status, created_at").throwOnError()
         .eq("submitter_profile_id", profile.id)
         .order("created_at", { ascending: false })
         .limit(20)

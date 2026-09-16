@@ -19,12 +19,12 @@ export default async function AdminShopPage() {
   const [{ data: products }, { data: orders }] = await Promise.all([
     supabase
       .from("products")
-      .select("id, name, description, kind, status, price_minor, image_urls")
+      .select("id, name, description, kind, status, price_minor, image_urls").throwOnError()
       .eq("organization_id", organizationId ?? "")
       .order("name"),
     supabase
       .from("orders")
-      .select("id, order_number, customer_name, customer_email, total_minor, status, created_at")
+      .select("id, order_number, customer_name, customer_email, total_minor, status, created_at").throwOnError()
       .eq("organization_id", organizationId ?? "")
       .order("created_at", { ascending: false })
       .limit(50),

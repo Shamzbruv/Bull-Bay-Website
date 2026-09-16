@@ -18,7 +18,7 @@ export default async function PrepareDocumentPage({ params }: { params: Promise<
   const supabase = await createClient();
   const { data: request } = await supabase
     .from("document_requests")
-    .select("*, profiles:requester_profile_id(first_name, last_name, joined_at), document_templates(body)")
+    .select("*, profiles:requester_profile_id(first_name, last_name, joined_at), document_templates(body)").throwOnError()
     .eq("id", id)
     .maybeSingle();
   if (!request) notFound();

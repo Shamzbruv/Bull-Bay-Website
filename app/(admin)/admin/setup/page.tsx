@@ -34,14 +34,14 @@ export default async function SetupCenterPage() {
     announcementsResult,
     fundsResult,
   ] = await Promise.all([
-    supabase.from("profiles").select("id", { count: "exact", head: true }).eq("organization_id", organizationId ?? "").not("auth_user_id", "is", null),
-    supabase.from("pastoral_team_members").select("id", { count: "exact", head: true }).eq("organization_id", organizationId ?? "").eq("is_pastor", true).eq("is_active", true),
-    supabase.from("service_schedules").select("id", { count: "exact", head: true }).eq("organization_id", organizationId ?? "").eq("is_active", true),
-    supabase.from("document_templates").select("id", { count: "exact", head: true }).eq("organization_id", organizationId ?? "").eq("is_active", true),
-    supabase.from("campuses").select("livestream_url").eq("organization_id", organizationId ?? "").eq("is_primary", true).maybeSingle(),
-    supabase.from("gallery_images").select("id", { count: "exact", head: true }).eq("organization_id", organizationId ?? "").eq("is_published", true),
-    supabase.from("announcements").select("id", { count: "exact", head: true }).eq("organization_id", organizationId ?? "").eq("status", "published"),
-    supabase.from("funds").select("id", { count: "exact", head: true }).eq("organization_id", organizationId ?? "").eq("is_active", true),
+    supabase.from("profiles").select("id", { count: "exact", head: true }).throwOnError().eq("organization_id", organizationId ?? "").not("auth_user_id", "is", null),
+    supabase.from("pastoral_team_members").select("id", { count: "exact", head: true }).throwOnError().eq("organization_id", organizationId ?? "").eq("is_pastor", true).eq("is_active", true),
+    supabase.from("service_schedules").select("id", { count: "exact", head: true }).throwOnError().eq("organization_id", organizationId ?? "").eq("is_active", true),
+    supabase.from("document_templates").select("id", { count: "exact", head: true }).throwOnError().eq("organization_id", organizationId ?? "").eq("is_active", true),
+    supabase.from("campuses").select("livestream_url").throwOnError().eq("organization_id", organizationId ?? "").eq("is_primary", true).maybeSingle(),
+    supabase.from("gallery_images").select("id", { count: "exact", head: true }).throwOnError().eq("organization_id", organizationId ?? "").eq("is_published", true),
+    supabase.from("announcements").select("id", { count: "exact", head: true }).throwOnError().eq("organization_id", organizationId ?? "").eq("status", "published"),
+    supabase.from("funds").select("id", { count: "exact", head: true }).throwOnError().eq("organization_id", organizationId ?? "").eq("is_active", true),
   ]);
 
   const steps: SetupStep[] = [

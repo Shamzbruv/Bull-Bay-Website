@@ -1,8 +1,15 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
-import { deliverOfficeEmail } from "@/lib/office/email";
-import { dispatchPush } from "@/lib/push/server";
-import { syncGoogleCalendar } from "@/lib/calendar/integrations";
-export const maxDuration=60;
-export async function POST(request:Request){const db=createServiceRoleClient();const {data:config}=await db.from('integration_settings').select('value').eq('key','office_worker').maybeSingle();const expected=(config?.value as {secret?:string}|undefined)?.secret;const supplied=request.headers.get('authorization')?.replace(/^Bearer /,'')??'';if(!expected||supplied.length!==expected.length||!timingSafeEqual(Buffer.from(supplied),Buffer.from(expected)))return new Response('Unauthorized',{status:401});const {data:claimed}=await db.rpc('claim_office_worker',{});if(!claimed)return NextResponse.json({busy:true});const [{data:emails},{data:connections}]=await Promise.all([db.from('email_deliveries').select('id').in('status',['pending','failed']).lt('attempts',5).order('created_at').limit(10),db.from('calendar_connections').select('*').or(`last_synced_at.is.null,last_synced_at.lt.${new Date(Date.now()-5*60000).toISOString()}`).order('last_synced_at',{nullsFirst:true}).limit(3)]);const results=await Promise.allSettled([dispatchPush(),...(emails??[]).map(e=>deliverOfficeEmail(e.id)),...(connections??[]).map(c=>syncGoogleCalendar(c))]);return NextResponse.json({processed:results.length,failed:results.filter(r=>r.status==='rejected').length});}
+import { runOfficeWorker } from "@/lib/office/worker";
+export const maxDuration = 60;
+export async function POST(request: Request) {
+  const { data: config, error } = await createServiceRoleClient().from("integration_settings").select("value").eq("key", "office_worker").maybeSingle();
+  if (error) return new Response("Scheduler configuration unavailable", { status: 503 });
+  const expected = (config?.value as { secret?: string } | undefined)?.secret;
+  const supplied = request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
+  if (!expected || Buffer.byteLength(supplied) !== Buffer.byteLength(expected) || !timingSafeEqual(Buffer.from(supplied), Buffer.from(expected))) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+  return NextResponse.json(await runOfficeWorker());
+}
