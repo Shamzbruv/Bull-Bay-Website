@@ -2,14 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { JsonLd } from "@/components/json-ld";
 import { getPrimaryCampus } from "@/lib/data/public";
-import {
-  CHURCH_ADDRESS,
-  CHURCH_CONTACTS,
-  CHURCH_EMAIL,
-  CHURCH_MAP_LINKS,
-  SITE_NAME,
-  SITE_URL,
-} from "@/lib/org";
+import { CHURCH_ADDRESS, CHURCH_CONTACTS, CHURCH_EMAIL, CHURCH_MAP_LINKS, SITE_NAME } from "@/lib/org";
+import { breadcrumbStructuredData, churchStructuredData } from "@/lib/seo";
 import { ContactForm } from "./contact-form";
 
 export const revalidate = 120;
@@ -28,30 +22,14 @@ export default async function ContactPage() {
 
   return (
     <section aria-labelledby="contact-title">
+      {/* Same builder and the same @id as the homepage, so search engines
+          read one church rather than two similarly-named ones. */}
+      <JsonLd data={churchStructuredData(schedule)} />
       <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "Church",
-          name: SITE_NAME,
-          url: `${SITE_URL}/contact`,
-          email: CHURCH_EMAIL,
-          telephone: CHURCH_CONTACTS[0]?.dial,
-          address: {
-            "@type": "PostalAddress",
-            streetAddress: CHURCH_ADDRESS.street,
-            postOfficeBoxNumber: CHURCH_ADDRESS.postal,
-            addressLocality: CHURCH_ADDRESS.town,
-            addressRegion: CHURCH_ADDRESS.parish,
-            addressCountry: CHURCH_ADDRESS.countryCode,
-          },
-          contactPoint: CHURCH_CONTACTS.map((contact) => ({
-            "@type": "ContactPoint",
-            name: contact.title,
-            contactType: contact.role,
-            telephone: contact.dial,
-            areaServed: "JM",
-          })),
-        }}
+        data={breadcrumbStructuredData([
+          { name: "Home", path: "/" },
+          { name: "Contact Us", path: "/contact" },
+        ])}
       />
 
       <div className="contact-hero">

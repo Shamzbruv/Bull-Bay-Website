@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { getPublicGroups } from "@/lib/data/public";
 
@@ -23,7 +24,12 @@ export default async function GroupsPage() {
 
       <div className="church-photo-hero" style={{ minHeight: 300, marginTop: 24 }}>
         <picture className="church-photo-hero-media">
-          <img src="/images/church/sanctuary-side.jpg" alt="Bull Bay members gathered together at church" />
+          <Image
+              src="/images/church/sanctuary-side.jpg"
+              alt="Bull Bay members gathered together at church"
+              fill
+              sizes="(max-width: 900px) 100vw, 1280px"
+            />
         </picture>
         <div className="church-photo-hero-overlay" />
         <div className="church-photo-hero-copy" style={{ padding: "30px 34px", width: "min(400px, 100%)" }}>

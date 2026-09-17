@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { getMinistries } from "@/lib/data/public";
 
@@ -28,7 +29,12 @@ export default async function MinistriesPage() {
       <div className="section" style={{ paddingBottom: 0 }}>
         <div className="church-photo-hero" style={{ minHeight: 300 }}>
           <picture className="church-photo-hero-media">
-            <img src="/images/church/worship-hands-raised.jpg" alt="The Bull Bay congregation in worship" />
+            <Image
+              src="/images/church/worship-hands-raised.jpg"
+              alt="The Bull Bay congregation in worship"
+              fill
+              sizes="(max-width: 900px) 100vw, 1280px"
+            />
           </picture>
           <div className="church-photo-hero-overlay" />
           <div className="church-photo-hero-copy" style={{ padding: "30px 34px", width: "min(400px, 100%)" }}>

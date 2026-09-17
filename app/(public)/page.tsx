@@ -6,7 +6,8 @@ import { JsonLd } from "@/components/json-ld";
 import { getPrimaryCampus, getPublishedSermons, getStrategicMovements, getUpcomingEvents } from "@/lib/data/public";
 import { getSermonVideoSource } from "@/lib/data/sermon-video";
 import { SermonVideoLightbox } from "@/components/sermon-video-lightbox";
-import { CHURCH_ADDRESS, CHURCH_CONTACTS, CHURCH_COORDINATES, CHURCH_EMAIL, SITE_NAME, SITE_URL } from "@/lib/org";
+import { churchStructuredData, websiteStructuredData } from "@/lib/seo";
+import { heroSrcSet } from "@/lib/images";
 
 export const revalidate = 60;
 
@@ -117,38 +118,31 @@ export default async function HomePage() {
 
   return (
     <>
-      <JsonLd
-        data={{
-          "@context": "https://schema.org",
-          "@type": "Church",
-          name: SITE_NAME,
-          url: SITE_URL,
-          email: CHURCH_EMAIL,
-          telephone: CHURCH_CONTACTS[0]?.dial,
-          address: {
-            "@type": "PostalAddress",
-            streetAddress: CHURCH_ADDRESS.street,
-            postOfficeBoxNumber: CHURCH_ADDRESS.postal,
-            addressLocality: CHURCH_ADDRESS.town,
-            addressRegion: CHURCH_ADDRESS.parish,
-            addressCountry: CHURCH_ADDRESS.countryCode,
-          },
-          geo: {
-            "@type": "GeoCoordinates",
-            latitude: CHURCH_COORDINATES.lat,
-            longitude: CHURCH_COORDINATES.lon,
-          },
-        }}
-      />
+      <JsonLd data={churchStructuredData(schedule)} />
+      <JsonLd data={websiteStructuredData()} />
 
       <div className="home-page">
         <section className="home-hero" aria-labelledby="hero-heading">
+          {/* Two crops, both compressed. See lib/images.ts for why these URLs
+              are written out rather than using <Image>: the phone gets a
+              portrait crop of the entrance and the desktop a wide shot, and
+              art direction is the one thing next/image cannot express. */}
           <picture className="home-hero-picture">
-            <source media="(max-width: 768px)" srcSet="/images/church/church-exterior-mobile.jpg" />
+            <source
+              media="(max-width: 768px)"
+              srcSet={heroSrcSet("/images/church/church-exterior-mobile.jpg", [640, 750, 828, 1080])}
+              sizes="100vw"
+            />
+            <source
+              srcSet={heroSrcSet("/images/church/church-exterior.jpg", [1080, 1200, 1920, 2048])}
+              sizes="100vw"
+            />
             <img
               className="home-hero-image"
               src="/images/church/church-exterior.jpg"
               alt="The entrance to New Testament Church of God, Bull Bay"
+              width={1672}
+              height={941}
               fetchPriority="high"
             />
           </picture>

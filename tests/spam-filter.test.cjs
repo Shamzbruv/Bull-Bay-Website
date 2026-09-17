@@ -3,10 +3,20 @@ const assert = require('node:assert/strict');
 const ts = require('typescript');
 const fs = require('node:fs');
 const path = require('node:path');
+// Resolves the project's "@/..." alias by transpiling and caching the real
+// file, so a module under test runs against its actual dependencies rather
+// than a stub that can drift away from them.
+const cache = new Map();
 function load(file) {
-  const output = ts.transpileModule(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  if (cache.has(file)) return cache.get(file);
+  const full = path.join(__dirname, '..', file);
+  const source = fs.readFileSync(fs.existsSync(full) ? full : `${full}.ts`, 'utf8');
+  const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.React } }).outputText;
   const mod = { exports: {} };
-  new Function('require', 'module', 'exports', output)(require, mod, mod.exports);
+  cache.set(file, mod.exports);
+  const localRequire = (name) => (name.startsWith('@/') ? load(name.slice(2)) : require(name));
+  new Function('require', 'module', 'exports', output)(localRequire, mod, mod.exports);
+  cache.set(file, mod.exports);
   return mod.exports;
 }
 const { scoreSubmission, checkFormShield, HONEYPOT_FIELD, TIMESTAMP_FIELD } = load('lib/spam.ts');
@@ -76,4 +86,31 @@ test('a form filled faster than a human can type is blocked, a missing stamp is 
 
   // Someone browsing with JavaScript disabled still gets through.
   assert.equal(checkFormShield(new FormData()).blocked, false);
+});
+
+const { toIsoTime, openingHours } = load('lib/seo.ts');
+
+test('service times convert to 24-hour schema times, or are dropped', () => {
+  assert.equal(toIsoTime('9:50 AM'), '09:50');
+  assert.equal(toIsoTime('4:30 PM'), '16:30');
+  assert.equal(toIsoTime('12:00 AM'), '00:00');
+  assert.equal(toIsoTime('12:15 PM'), '12:15');
+  assert.equal(toIsoTime('11:05 pm'), '23:05');
+  // Anything unexpected is dropped rather than guessed — publishing a wrong
+  // service time to Google is worse than publishing none.
+  for (const bad of ['', 'Sunday', '25:00 AM', '9:50', 'noon', '0:30 PM']) assert.equal(toIsoTime(bad), null, bad);
+});
+
+test('opening hours close after the service and skip unparseable rows', () => {
+  const hours = openingHours([
+    { day: 'Sunday', time: '9:50 AM', label: 'Sunday Worship Service' },
+    { day: 'Friday', time: '4:30 PM', label: 'Teens Fellowship' },
+    { day: 'Someday', time: '9:00 AM', label: 'Not a real day' },
+    { day: 'Wednesday', time: 'whenever', label: 'Unparseable time' },
+  ]);
+  assert.equal(hours.length, 2);
+  assert.equal(hours[0].dayOfWeek, 'https://schema.org/Sunday');
+  assert.equal(hours[0].opens, '09:50');
+  assert.equal(hours[0].closes, '11:20');
+  assert.equal(hours[1].closes, '18:00');
 });

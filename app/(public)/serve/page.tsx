@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { getVolunteerOpportunities } from "@/lib/data/public";
 import { getSessionUser } from "@/lib/auth/session";
@@ -36,7 +37,12 @@ export default async function ServePage() {
 
       <div className="church-photo-hero" style={{ minHeight: 300, marginTop: 30 }}>
         <picture className="church-photo-hero-media">
-          <img src="/images/church/garden-ministry.jpg" alt="A Bull Bay member serving through a community garden ministry" />
+          <Image
+              src="/images/church/garden-ministry.jpg"
+              alt="A Bull Bay member serving through a community garden ministry"
+              fill
+              sizes="(max-width: 900px) 100vw, 1280px"
+            />
         </picture>
         <div className="church-photo-hero-overlay" />
         <div className="church-photo-hero-copy" style={{ padding: "30px 34px", width: "min(400px, 100%)" }}>

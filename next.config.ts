@@ -23,6 +23,27 @@ const siteHostname = (() => {
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  /**
+   * Send www to the apex. Both hostnames served the whole site with a 200
+   * and no redirect, so every page existed at two addresses — search
+   * engines split a site's standing across duplicates like that, and the
+   * canonical tag only asks them not to, it cannot stop the duplicate
+   * being crawled or linked to. One address, permanently.
+   *
+   * Scoped by host, so it cannot fire on the apex and loop. Railway's own
+   * *.up.railway.app hostname is left alone: it is what deploy previews
+   * and health checks use.
+   */
+  async redirects() {
+    return [
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "www.bullbayntcog.org" }],
+        destination: "https://bullbayntcog.org/:path*",
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [{ source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] }];
   },

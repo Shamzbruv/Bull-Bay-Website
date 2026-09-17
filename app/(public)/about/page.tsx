@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { JsonLd } from "@/components/json-ld";
 import { SITE_NAME } from "@/lib/org";
@@ -59,7 +60,12 @@ export default function AboutPage() {
       <div className="section" style={{ paddingBottom: 0 }}>
         <div className="church-photo-hero" style={{ minHeight: 340 }}>
           <picture className="church-photo-hero-media">
-            <img src="/images/church/bull-bay-pulpit.png" alt="The Bull Bay church pulpit framed by palms and blue and gold curtains" />
+            <Image
+              src="/images/church/bull-bay-pulpit.png"
+              alt="The Bull Bay church pulpit framed by palms and blue and gold curtains"
+              fill
+              sizes="(max-width: 900px) 100vw, 1280px"
+            />
           </picture>
           <div className="church-photo-hero-overlay" />
           <div className="church-photo-hero-copy" style={{ padding: "34px 36px", width: "min(420px, 100%)" }}>

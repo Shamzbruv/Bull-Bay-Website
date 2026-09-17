@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { CHURCH_ADDRESS, CHURCH_MAP_LINKS } from "@/lib/org";
+import { JsonLd } from "@/components/json-ld";
+import { breadcrumbStructuredData, faqStructuredData } from "@/lib/seo";
 import Link from "next/link";
 import { getPrimaryCampus, getStrategicMovementBySlug } from "@/lib/data/public";
 
@@ -10,6 +12,28 @@ export const metadata: Metadata = {
   alternates: { canonical: "/visit" },
 };
 
+
+/**
+ * The same three answers the page shows. Google requires the structured
+ * data to match the visible text, so these live next to the markup they
+ * mirror — if one is edited the other is right there.
+ */
+const VISIT_FAQ = [
+  {
+    question: "What should I wear?",
+    answer:
+      "Come comfortably. You will see people dressed in different styles, and you will be welcomed exactly as you are.",
+  },
+  {
+    question: "Can I bring my children?",
+    answer: "Absolutely. Families are a treasured part of our church community.",
+  },
+  {
+    question: "How do I get there?",
+    answer: `We're at ${CHURCH_ADDRESS.oneLine}. Open the address in Google Maps, Apple Maps or Waze from our contact page to navigate door to door.`,
+  },
+];
+
 export default async function VisitPage() {
   const [campus, welcome] = await Promise.all([getPrimaryCampus(), getStrategicMovementBySlug("welcome")]);
   const schedule = Array.isArray(campus?.service_schedule)
@@ -19,6 +43,13 @@ export default async function VisitPage() {
 
   return (
     <section aria-labelledby="visit-title">
+      <JsonLd data={faqStructuredData(VISIT_FAQ)} />
+      <JsonLd
+        data={breadcrumbStructuredData([
+          { name: "Home", path: "/" },
+          { name: "Plan Your Visit", path: "/visit" },
+        ])}
+      />
       <div className="page-hero visit-hero">
         <p className="eyebrow">
           <span /> WELCOME: BELONGING
