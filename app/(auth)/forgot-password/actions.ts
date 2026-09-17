@@ -4,6 +4,7 @@ import { sendMail } from "@/lib/email/resend";
 import { renderRecoveryEmail } from "@/lib/email/templates";
 import { generateAuthLink } from "@/lib/supabase/generate-link";
 import { SITE_URL } from "@/lib/org";
+import { callerIp, rateLimit } from "@/lib/rate-limit";
 import type { ActionState } from "@/app/(public)/actions";
 
 const GENERIC_MESSAGE = "If that email has an account with us, a password reset link is on its way. Check your inbox (and spam folder).";
@@ -26,6 +27,28 @@ const GENERIC_MESSAGE = "If that email has an account with us, a password reset 
 export async function requestPasswordReset(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const email = String(formData.get("email") || "").trim().toLowerCase();
   if (!email) return { status: "error", message: "Please enter your email address." };
+
+  // Minting the link ourselves (see above) means GoTrue's own per-address
+  // send limit never applies, so without this anyone could point a loop at
+  // this form and bury a member's inbox — or burn the church's whole
+  // Resend quota, which would take every other email down with it.
+  // Throttled by address and by source, and a throttled caller still gets
+  // GENERIC_MESSAGE: telling them they were throttled would confirm the
+  // address exists, which is exactly what this form refuses to reveal.
+  const ip = await callerIp();
+  // Both counters are advanced before they are combined — with `&&` the
+  // second call would be short-circuited away whenever the first already
+  // said no, so a flood aimed at one address would never register against
+  // its source.
+  // The per-address limit is the one that matters — it is what stops a
+  // member's inbox being buried. The per-IP limit is deliberately loose
+  // for the carrier-NAT reason described in the public form actions.
+  const perEmail = rateLimit(`password-reset:email:${email}`, 3, 60 * 60 * 1000).allowed;
+  const perIp = rateLimit(`password-reset:ip:${ip}`, 20, 60 * 60 * 1000).allowed;
+  if (!perEmail || !perIp) {
+    console.warn(`[auth] password reset throttled for ${ip}`);
+    return { status: "success", message: GENERIC_MESSAGE };
+  }
 
   const redirectTo = `${SITE_URL}/auth/callback?next=${encodeURIComponent("/auth/update-password")}`;
   const { actionLink } = await generateAuthLink({ type: "recovery", email, redirectTo });

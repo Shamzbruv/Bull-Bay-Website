@@ -5,6 +5,7 @@ import { submitMembershipRequest } from "@/app/(public)/actions";
 import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
+import { FormShield } from "@/components/form-shield";
 
 export function JoinForm() {
   const [state, formAction] = useActionState(submitMembershipRequest, initialActionState);
@@ -15,6 +16,7 @@ export function JoinForm() {
 
   return (
     <form className="clay-form" action={formAction}>
+      <FormShield />
       <div className="form-row">
         <label>
           First name

@@ -9,6 +9,8 @@ import { notifyOffice } from "@/lib/notify";
 import { renderStaffNotificationEmail } from "@/lib/email/templates";
 import { SITE_URL } from "@/lib/org";
 import { MEMBERSHIP_REQUEST_MARKER } from "@/lib/members/membership-request";
+import { checkFormShield, scoreSubmission, type ScorableSubmission } from "@/lib/spam";
+import { callerIp, rateLimit } from "@/lib/rate-limit";
 
 // initialActionState moved to lib/action-state.ts — this file has "use
 // server" and Next.js requires every export here to be an async function;
@@ -31,6 +33,58 @@ async function currentProfileId() {
   return { user, profileId: profile?.id ?? null, profile };
 }
 
+
+/**
+ * One gate in front of every public form. Returns null to let a submission
+ * through, or a decision about why it should not be stored.
+ *
+ * A caught bot is told the same thing a real visitor is told. Showing it
+ * "blocked as spam" would just tell whoever runs it which wording to
+ * change, and these senders do iterate. Someone who has genuinely sent
+ * several messages in an hour gets the truth instead, because they are a
+ * person waiting on a reply.
+ */
+type Screening = { outcome: "allow" } | { outcome: "drop"; reason: string } | { outcome: "throttle" };
+
+async function screenPublicSubmission(
+  formData: FormData,
+  submission: ScorableSubmission,
+  form: string,
+): Promise<Screening> {
+  const shield = checkFormShield(formData);
+  if (shield.blocked) {
+    console.warn(`[spam] ${form}: dropped (${shield.reason})`);
+    return { outcome: "drop", reason: shield.reason ?? "shield" };
+  }
+
+  // Set high on purpose. Jamaican mobile carriers put large numbers of
+  // subscribers behind one address, so a whole congregation can share an
+  // IP — a tight per-IP limit would lock out real visitors long before it
+  // inconvenienced a spammer. This is a flood guard only; the honeypot,
+  // the timing check and the content score are what actually stop spam.
+  const ip = await callerIp();
+  if (!rateLimit(`public-form:${ip}`, 12, 60 * 60 * 1000).allowed) {
+    console.warn(`[spam] ${form}: rate limited ${ip}`);
+    return { outcome: "throttle" };
+  }
+
+  const assessment = scoreSubmission(submission);
+  if (assessment.verdict === "spam") {
+    console.warn(`[spam] ${form}: dropped (score ${assessment.score}) ${assessment.reasons.join("; ")}`);
+    return { outcome: "drop", reason: assessment.reasons.join("; ") };
+  }
+
+  return { outcome: "allow" };
+}
+
+const PRAYER_RECEIVED_MESSAGE =
+  "Your prayer request has been received. Our prayer team will be standing with you.";
+const CONNECTION_CARD_MESSAGE = "Thanks for reaching out! A member of our team will be in touch soon.";
+const JOIN_REQUEST_MESSAGE =
+  "Thank you! Your request has been sent to our pastor and team — we'll be in touch soon to welcome you in.";
+const THROTTLED_MESSAGE =
+  "You've already sent us a few messages — we have them, and someone will reply. Please try again a little later if you need to send another.";
+
 export async function submitPrayerRequest(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
   if (!organizationId) return { status: "error", message: "Something went wrong. Please try again." };
@@ -44,6 +98,16 @@ export async function submitPrayerRequest(_prev: ActionState, formData: FormData
 
   const supabase = await createClient();
   const { user, profileId } = await currentProfileId();
+
+  // Signed-in members are never screened. This same action backs the
+  // member prayer form, and a member's request is not a spam vector —
+  // silently dropping one because it happened to contain a link would be
+  // far worse than letting a rare bad one through to the prayer team.
+  if (!user) {
+    const screening = await screenPublicSubmission(formData, { firstName: name, email: contact, message: request }, "prayer");
+    if (screening.outcome === "throttle") return { status: "error", message: THROTTLED_MESSAGE };
+    if (screening.outcome === "drop") return { status: "success", message: PRAYER_RECEIVED_MESSAGE };
+  }
   const { error } = await supabase.from("prayer_requests").insert({
     organization_id: organizationId,
     submitter_profile_id: profileId,
@@ -76,10 +140,7 @@ export async function submitPrayerRequest(_prev: ActionState, formData: FormData
     }),
   }).catch(() => {});
 
-  return {
-    status: "success",
-    message: "Your prayer request has been received. Our prayer team will be standing with you.",
-  };
+  return { status: "success", message: PRAYER_RECEIVED_MESSAGE };
 }
 
 export async function submitConnectionCard(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -96,6 +157,10 @@ export async function submitConnectionCard(_prev: ActionState, formData: FormDat
   if (!firstName || !lastName || !email) {
     return { status: "error", message: "Please fill in your name and email." };
   }
+
+  const screening = await screenPublicSubmission(formData, { firstName, lastName, email, phone, interest, message }, "connection-card");
+  if (screening.outcome === "throttle") return { status: "error", message: THROTTLED_MESSAGE };
+  if (screening.outcome === "drop") return { status: "success", message: CONNECTION_CARD_MESSAGE };
 
   const supabase = await createClient();
   const { error } = await supabase.from("contact_submissions").insert({
@@ -128,7 +193,7 @@ export async function submitConnectionCard(_prev: ActionState, formData: FormDat
     }),
   }).catch(() => {});
 
-  return { status: "success", message: "Thanks for reaching out! A member of our team will be in touch soon." };
+  return { status: "success", message: CONNECTION_CARD_MESSAGE };
 }
 
 /**
@@ -151,6 +216,10 @@ export async function submitMembershipRequest(_prev: ActionState, formData: Form
   if (!firstName || !lastName || !email) {
     return { status: "error", message: "Please fill in your name and email." };
   }
+
+  const screening = await screenPublicSubmission(formData, { firstName, lastName, email, phone, message }, "join-request");
+  if (screening.outcome === "throttle") return { status: "error", message: THROTTLED_MESSAGE };
+  if (screening.outcome === "drop") return { status: "success", message: JOIN_REQUEST_MESSAGE };
 
   const supabase = await createClient();
   const { error } = await supabase.from("contact_submissions").insert({
@@ -182,10 +251,7 @@ export async function submitMembershipRequest(_prev: ActionState, formData: Form
     }),
   }).catch(() => {});
 
-  return {
-    status: "success",
-    message: "Thank you! Your request has been sent to our pastor and team — we'll be in touch soon to welcome you in.",
-  };
+  return { status: "success", message: JOIN_REQUEST_MESSAGE };
 }
 
 export async function registerForEvent(

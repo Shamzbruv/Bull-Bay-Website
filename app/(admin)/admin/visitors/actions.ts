@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { createInvitedMember } from "@/lib/members/invite";
 import { isMembershipRequest } from "@/lib/members/membership-request";
+import { scoreSubmission } from "@/lib/spam";
 import type { ActionState } from "@/app/(public)/actions";
 
 /**
@@ -80,4 +81,88 @@ export async function declineMembershipRequest(submissionId: string): Promise<vo
     .eq("organization_id", organizationId)
     .eq("id", submissionId);
   revalidatePath("/admin/visitors");
+}
+
+/**
+ * Permanently remove a single submission. Spam is the reason this exists,
+ * but it is a plain delete — staff may also want to clear a duplicate or a
+ * message someone asked to have removed. Scoped by organization as well as
+ * id so a stray id from another church's row can never match, and the
+ * table's own "staff delete" RLS policy (people.write) is the real gate.
+ */
+export async function deleteSubmission(submissionId: string): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("people.write")) {
+    return { status: "error", message: "You don't have permission to delete submissions." };
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("contact_submissions")
+    .delete()
+    .eq("organization_id", organizationId)
+    .eq("id", submissionId);
+
+  if (error) return { status: "error", message: "We couldn't delete that. Please try again." };
+
+  revalidatePath("/admin/visitors");
+  return { status: "success", message: "Deleted." };
+}
+
+/**
+ * Clear out everything currently flagged as spam in one action.
+ *
+ * The scoring is re-run here on the server rather than trusting a list of
+ * ids sent by the browser — that way what gets deleted is exactly what the
+ * same rule flags, and a tampered-with request cannot turn "delete the
+ * spam" into "delete the connection cards". A pending request to join is
+ * never deleted regardless of score: approving those creates someone's
+ * membership, so they only ever leave this screen by a human decision.
+ */
+export async function deleteFlaggedSpam(): Promise<ActionState> {
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("people.write")) {
+    return { status: "error", message: "You don't have permission to delete submissions." };
+  }
+
+  const supabase = await createClient();
+  const { data: rows, error: readError } = await supabase
+    .from("contact_submissions")
+    .select("id, first_name, last_name, email, phone, interest, message")
+    .eq("organization_id", organizationId);
+
+  if (readError) return { status: "error", message: "We couldn't load the submissions. Please try again." };
+
+  const spamIds = (rows ?? [])
+    .filter((row) => !isMembershipRequest(row.interest))
+    .filter(
+      (row) =>
+        scoreSubmission({
+          firstName: row.first_name,
+          lastName: row.last_name,
+          email: row.email,
+          phone: row.phone,
+          interest: row.interest,
+          message: row.message,
+        }).verdict === "spam",
+    )
+    .map((row) => row.id);
+
+  if (spamIds.length === 0) return { status: "success", message: "There was no spam to delete." };
+
+  const { error } = await supabase
+    .from("contact_submissions")
+    .delete()
+    .eq("organization_id", organizationId)
+    .in("id", spamIds);
+
+  if (error) return { status: "error", message: "We couldn't delete those. Please try again." };
+
+  revalidatePath("/admin/visitors");
+  return {
+    status: "success",
+    message: `Deleted ${spamIds.length} spam ${spamIds.length === 1 ? "submission" : "submissions"}.`,
+  };
 }

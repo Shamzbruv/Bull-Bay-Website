@@ -1,9 +1,8 @@
 "use client";
 
-import { safeNextPath } from "@/lib/auth/roles";
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
@@ -15,15 +14,36 @@ const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
   auth_failed: "That link didn't work or has expired. Please request a new one.",
 };
 
-export function LoginForm() {
+/** `next` arrives already sanitised by safeNextPath() in the page. */
+/**
+ * Supabase's own error strings are written for developers — "Email not
+ * confirmed", "over_request_rate_limit" — and members were being shown
+ * them verbatim. Matched on `code` where there is one, since the message
+ * text is not stable across releases and is not translated.
+ */
+function signInMessage(error: { code?: string; message: string }) {
+  const code = error.code ?? "";
+  if (code === "invalid_credentials" || error.message.toLowerCase().includes("invalid")) {
+    return "That email and password don't match an account. If you're new here, check with the church office — accounts are set up by invitation.";
+  }
+  if (code === "email_not_confirmed") {
+    return "Your email address hasn't been confirmed yet. Check your inbox for the invitation we sent, or ask the church office to resend it.";
+  }
+  if (code === "over_request_rate_limit" || code === "over_email_send_rate_limit") {
+    return "Too many attempts just now. Please wait a few minutes and try again.";
+  }
+  if (code === "user_banned") {
+    return "This account isn't active. Please contact the church office.";
+  }
+  return "We couldn't sign you in just now. Please try again — if it keeps happening, let the church office know.";
+}
+
+export function LoginForm({ next, callbackError }: { next: string; callbackError: string | null }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
   const [error, setError] = useState("");
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const next = safeNextPath(searchParams.get("next"));
-  const callbackError = searchParams.get("error");
   const callbackErrorMessage = callbackError ? CALLBACK_ERROR_MESSAGES[callbackError] ?? "Something went wrong with that link. Please try again." : null;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -41,11 +61,7 @@ export function LoginForm() {
       const { error } = await Promise.race([supabase.auth.signInWithPassword({ email, password }), timeout]);
       if (error) {
         setStatus("error");
-        setError(
-          error.message.toLowerCase().includes("invalid")
-            ? "That email and password don't match an account. If you're new here, check with the church office — accounts are set up by invitation."
-            : error.message,
-        );
+        setError(signInMessage(error));
         return;
       }
       router.push(next);
@@ -58,7 +74,7 @@ export function LoginForm() {
 
   return (
     <form onSubmit={handleSubmit} className="clay-form" style={{ padding: 0, background: "transparent", boxShadow: "none" }}>
-      {callbackErrorMessage && <div className="alert warn">{callbackErrorMessage}</div>}
+      {callbackErrorMessage && <div className="alert warn" role="alert">{callbackErrorMessage}</div>}
       <label>
         Email address
         <input
@@ -80,7 +96,7 @@ export function LoginForm() {
           autoComplete="current-password"
         />
       </label>
-      {status === "error" && <div className="alert warn">{error}</div>}
+      {status === "error" && <div className="alert warn" role="alert">{error}</div>}
       <button type="submit" className="primary-button" disabled={status === "submitting"} style={{ width: "100%", justifyContent: "center" }}>
         {status === "submitting" ? "Signing in…" : "Sign in"}
       </button>

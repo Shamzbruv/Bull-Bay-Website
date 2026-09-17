@@ -2596,3 +2596,12 @@ table.data-table tr:last-child td { border-bottom: 0; }
   .events-photo-hero-copy { padding: 40px 24px; }
   .events-photo-hero-image { min-height: 280px; }
 }
+
+/* Destructive actions on the Visitor Follow-up screen. Deliberately not a
+   filled red button: deleting spam is routine housekeeping, and a wall of
+   loud red buttons down a table makes the one genuinely consequential
+   action harder to notice, not easier. */
+.secondary-button.danger { color: #9c3c26; }
+.secondary-button.danger:hover:not(:disabled) { color: #7d2e1c; box-shadow: var(--shadow-inset-sm); }
+.data-table tr.row-muted td { opacity: .55; }
+.data-table tr.row-muted:hover td { opacity: 1; }

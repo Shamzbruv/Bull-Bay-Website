@@ -5,12 +5,14 @@ import { submitPrayerRequest } from "@/app/(public)/actions";
 import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
+import { FormShield } from "@/components/form-shield";
 
 export function PrayerForm() {
   const [state, formAction] = useActionState(submitPrayerRequest, initialActionState);
 
   return (
     <form className="clay-form" action={formAction}>
+      <FormShield />
       <label>
         Your name (optional)
         <input name="name" autoComplete="name" placeholder="Your name" />

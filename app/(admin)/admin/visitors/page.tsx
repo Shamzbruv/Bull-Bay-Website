@@ -5,6 +5,9 @@ import { AccessDenied } from "@/components/access-denied";
 import { isMembershipRequest } from "@/lib/members/membership-request";
 import { StatusButtons } from "./status-buttons";
 import { MembershipRequestButtons } from "./membership-request-buttons";
+import { DeleteSubmissionButton } from "./delete-button";
+import { SpamCleanupButton } from "./spam-cleanup";
+import { scoreSubmission } from "@/lib/spam";
 
 export const metadata: Metadata = { title: "Visitor Follow-up" };
 
@@ -28,6 +31,27 @@ export default async function AdminVisitorsPage() {
 
   const pendingJoinRequests = (submissions ?? []).filter((s) => isMembershipRequest(s.interest) && s.status !== "closed").length;
 
+  // Scored here rather than stored on the row: the rule can be tightened
+  // and every existing submission is re-judged on the next page load, with
+  // no migration and no backfill. Requests to join are never scored —
+  // those are decided by a person, not a filter.
+  const assessments = new Map(
+    (submissions ?? []).map((s) => [
+      s.id,
+      isMembershipRequest(s.interest)
+        ? null
+        : scoreSubmission({
+            firstName: s.first_name,
+            lastName: s.last_name,
+            email: s.email,
+            phone: s.phone,
+            interest: s.interest,
+            message: s.message,
+          }),
+    ]),
+  );
+  const spamCount = [...assessments.values()].filter((a) => a?.verdict === "spam").length;
+
   return (
     <>
       <div className="dashboard-header">
@@ -35,6 +59,7 @@ export default async function AdminVisitorsPage() {
           <h1>Visitor Follow-up</h1>
           <p>Connection cards, contact form messages, and requests to join the church.</p>
         </div>
+        <SpamCleanupButton count={spamCount} />
       </div>
       {pendingJoinRequests > 0 && (
         <div className="alert warn" style={{ marginBottom: 16 }}>
@@ -57,12 +82,23 @@ export default async function AdminVisitorsPage() {
           <tbody>
             {submissions?.map((s) => {
               const joinRequest = isMembershipRequest(s.interest);
+              const assessment = assessments.get(s.id) ?? null;
+              const flagged = assessment?.verdict === "spam" || assessment?.verdict === "suspect";
               return (
-                <tr key={s.id}>
+                <tr key={s.id} className={assessment?.verdict === "spam" ? "row-muted" : undefined}>
                   <td>
                     <span className={joinRequest ? "badge gold" : "badge gray"}>
                       {joinRequest ? "Request to join" : (KIND_LABELS[s.kind] ?? s.kind)}
                     </span>
+                    {flagged && (
+                      <span
+                        className="badge red"
+                        title={assessment?.reasons.join(" • ")}
+                        style={{ display: "block", marginTop: 6 }}
+                      >
+                        {assessment?.verdict === "spam" ? "Spam" : "Possible spam"}
+                      </span>
+                    )}
                   </td>
                   <td>
                     {s.first_name} {s.last_name}
@@ -79,11 +115,17 @@ export default async function AdminVisitorsPage() {
                     </span>
                   </td>
                   <td>
-                    {joinRequest ? (
-                      <MembershipRequestButtons id={s.id} status={s.status} approved={Boolean(s.assigned_to)} />
-                    ) : (
-                      <StatusButtons id={s.id} status={s.status} />
-                    )}
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      {joinRequest ? (
+                        <MembershipRequestButtons id={s.id} status={s.status} approved={Boolean(s.assigned_to)} />
+                      ) : (
+                        <StatusButtons id={s.id} status={s.status} />
+                      )}
+                      <DeleteSubmissionButton
+                        id={s.id}
+                        label={[s.first_name, s.last_name].filter(Boolean).join(" ").trim() || s.email || "this sender"}
+                      />
+                    </div>
                   </td>
                 </tr>
               );

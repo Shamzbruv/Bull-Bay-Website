@@ -68,8 +68,21 @@ export async function updateSession(request: NextRequest) {
   }
 
   if (user && (isProtected || request.method !== "GET")) {
-    const { data: grants, error } = await supabase.from("user_roles").select("roles(code)").eq("user_id", user.id);
-    if (error) return NextResponse.json({ error: "Access could not be verified. Please retry." }, { status: 503 });
+    // One retry, then carry on. This lookup is defence in depth, not the
+    // gate: every protected route group re-checks access in its layout and
+    // RLS enforces it again in the database. Returning 503 from here on a
+    // single transient error took the whole site down for one blip — and
+    // because this branch also covers every non-GET request, what a member
+    // actually saw was a Server Action failing with "an unexpected
+    // response was received from the server".
+    let { data: grants, error } = await supabase.from("user_roles").select("roles(code)").eq("user_id", user.id);
+    if (error) {
+      ({ data: grants, error } = await supabase.from("user_roles").select("roles(code)").eq("user_id", user.id));
+    }
+    if (error) {
+      console.error("[middleware] role lookup failed, deferring to layout checks", error.code);
+      return response;
+    }
     const roles = new Set((grants ?? []).flatMap(g => {
       const role = g.roles as unknown as { code: string } | null;
       return role ? [role.code] : [];
