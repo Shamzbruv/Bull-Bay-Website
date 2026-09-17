@@ -2754,3 +2754,34 @@ table.data-table tr:last-child td { border-bottom: 0; }
   .contact-map-layout { grid-template-columns: 1fr; }
   .contact-times li { grid-template-columns: 64px 1fr auto; }
 }
+
+/* Between the burger-menu breakpoint (850px) and a comfortable desktop, the
+   seven tabs, the brand block and the Give button have to share one
+   non-wrapping row. Tightening the tab padding here keeps them on it rather
+   than letting the header squash the logo or push Give off the edge. */
+@media (min-width: 851px) and (max-width: 1100px) {
+  .public-site .main-nav > a,
+  .public-site .main-nav .nav-link,
+  .public-site .nav-dropdown summary,
+  .public-site .nav-dropdown-trigger {
+    padding: 0 8px;
+    font-size: .8rem;
+  }
+  .public-site .site-header { padding: 0 14px; }
+}
+
+/* A Plus Code is the one thing a visitor can type that lands on the gate
+   rather than somewhere along the road, so it is shown plainly rather than
+   hidden behind the map buttons. */
+.contact-plus-code {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-inset-sm);
+}
+.contact-plus-code span { font-size: .64rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--color-olive-600); }
+.contact-plus-code b { font-size: 1.05rem; color: var(--color-blue-700); letter-spacing: .02em; }
+.contact-plus-code small { font-size: .76rem; color: var(--color-muted); }

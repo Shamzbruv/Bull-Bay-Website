@@ -133,6 +133,20 @@ export function MainNav() {
             ))}
           </div>
         </details>
+        {/* Deliberately a top-level tab rather than another entry inside the
+            About menu. Someone who wants the church's phone number or address
+            is usually trying to reach a person today, and burying that behind
+            a hover is the one place on a church site where a click costs
+            something real. It sits last, next to Give online, where visitors
+            expect to find it. */}
+        <Link
+          href="/contact"
+          className={`nav-link${pathname.startsWith("/contact") ? " is-active" : ""}`}
+          aria-current={pathname.startsWith("/contact") ? "page" : undefined}
+          onClick={closeNavigation}
+        >
+          Contact
+        </Link>
         <Link className="nav-mobile-give" href={PAYMENT_URL} onClick={closeNavigation}>
           Give online
         </Link>

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { JsonLd } from "@/components/json-ld";
 import { getPrimaryCampus } from "@/lib/data/public";
-import { CHURCH_ADDRESS, CHURCH_CONTACTS, CHURCH_EMAIL, CHURCH_MAP_LINKS, SITE_NAME } from "@/lib/org";
+import { CHURCH_ADDRESS, CHURCH_CONTACTS, CHURCH_EMAIL, CHURCH_MAP_LINKS, CHURCH_PLUS_CODE, SITE_NAME } from "@/lib/org";
 import { breadcrumbStructuredData, churchStructuredData } from "@/lib/seo";
 import { ContactForm } from "./contact-form";
 
@@ -116,6 +116,11 @@ export default async function ContactPage() {
               <br />
               {CHURCH_ADDRESS.country}
             </address>
+            <p className="contact-plus-code">
+              <span>Plus Code</span>
+              <b>{CHURCH_PLUS_CODE}</b>
+              <small>Type this into Google Maps to land on the church gate exactly.</small>
+            </p>
             <p className="contact-map-help">
               Open the address in your map app and it will navigate you door to door from wherever you are.
             </p>

@@ -29,13 +29,19 @@ export const CHURCH_ADDRESS = {
 } as const;
 
 /**
- * Weise Road as OpenStreetMap places it — a real geocoded match for the
- * street, not a guess at the building. The embedded map is centred here,
- * but every "get directions" link below sends the *address text* rather
- * than these numbers, so the mapping app does its own routing and a
- * visitor is never navigated to a pin that is merely close.
+ * The church's Plus Code, supplied by the church. This is the authoritative
+ * location — a Plus Code addresses a ~3m square, and unlike a street name it
+ * points at the building rather than at the road.
+ *
+ * It replaced a coordinate geocoded from "Weise Road": that put the pin 195m
+ * along the road from the actual church. Reverse-geocoding this point
+ * returns "Weise Road, Bull Bay, Saint Andrew", so the postal address below
+ * was right all along — only the map position was wrong.
  */
-export const CHURCH_COORDINATES = { lat: 17.9461898, lon: -76.6665966 } as const;
+export const CHURCH_PLUS_CODE = "W8VM+R2X";
+/** The globally unambiguous form, which needs no nearby-locality hint. */
+export const CHURCH_PLUS_CODE_FULL = "7795W8VM+R2X";
+export const CHURCH_COORDINATES = { lat: 17.9446125, lon: -76.6673906 } as const;
 
 export const CHURCH_EMAIL = "ntcog_bullbay@yahoo.com";
 
@@ -86,23 +92,29 @@ export const CHURCH_CONTACTS: readonly ChurchContact[] = [
   },
 ] as const;
 
-const MAP_QUERY = encodeURIComponent(CHURCH_ADDRESS.oneLine);
-
 /** One corner of the map's bounding box, ~1km either side of the marker. */
 const box = (value: number, direction: 1 | -1) => (value + direction * 0.01).toFixed(6);
 
+const PIN = `${CHURCH_COORDINATES.lat},${CHURCH_COORDINATES.lon}`;
+const MAP_LABEL = encodeURIComponent(SITE_NAME);
+
 /**
- * Directions links for the three apps people here actually use, plus the
- * OpenStreetMap embed the page frames. Each app is handed the address as
- * text so it geocodes and routes itself.
+ * Directions links for the three apps people here actually use.
+ *
+ * These deliberately send the exact coordinates, not the address text. The
+ * earlier version sent the text so each app could geocode it itself, on the
+ * reasoning that an app's own routing beats a coordinate that is merely
+ * close. That reasoning was sound but the premise was wrong: geocoding
+ * "Weise Road" lands on the middle of the road, 195m from the building,
+ * while the church's Plus Code is accurate to about three metres. When you
+ * hold the better position, hand it over.
  */
 export const CHURCH_MAP_LINKS = {
-  google: `https://www.google.com/maps/search/?api=1&query=${MAP_QUERY}`,
-  apple: `https://maps.apple.com/?q=${MAP_QUERY}`,
-  waze: `https://waze.com/ul?q=${MAP_QUERY}&navigate=yes`,
-  openStreetMap: `https://www.openstreetmap.org/?mlat=${CHURCH_COORDINATES.lat}&mlon=${CHURCH_COORDINATES.lon}#map=16/${CHURCH_COORDINATES.lat}/${CHURCH_COORDINATES.lon}`,
-  /** Keyless and licence-clean, so the map needs no billing account to keep
-   *  working. Rounded because floating-point subtraction otherwise puts
-   *  "-76.67659660000001" in the URL. */
+  google: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(CHURCH_PLUS_CODE_FULL)}`,
+  googleDirections: `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(PIN)}`,
+  apple: `https://maps.apple.com/?ll=${encodeURIComponent(PIN)}&q=${MAP_LABEL}`,
+  waze: `https://waze.com/ul?ll=${encodeURIComponent(PIN)}&navigate=yes`,
+  openStreetMap: `https://www.openstreetmap.org/?mlat=${CHURCH_COORDINATES.lat}&mlon=${CHURCH_COORDINATES.lon}#map=18/${CHURCH_COORDINATES.lat}/${CHURCH_COORDINATES.lon}`,
+  /** Keyless and licence-clean, so the map needs no billing account to keep working. */
   embed: `https://www.openstreetmap.org/export/embed.html?bbox=${box(CHURCH_COORDINATES.lon, -1)}%2C${box(CHURCH_COORDINATES.lat, -1)}%2C${box(CHURCH_COORDINATES.lon, 1)}%2C${box(CHURCH_COORDINATES.lat, 1)}&layer=mapnik&marker=${CHURCH_COORDINATES.lat}%2C${CHURCH_COORDINATES.lon}`,
 } as const;
