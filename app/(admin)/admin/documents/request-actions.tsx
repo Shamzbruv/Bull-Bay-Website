@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { claimRequest, denyRequest } from "./actions";
+import { usePrompt } from "@/components/dialog-provider";
 
 export function ClaimButton({ requestId }: { requestId: string }) {
   const [pending, startTransition] = useTransition();
@@ -24,14 +25,20 @@ export function ClaimButton({ requestId }: { requestId: string }) {
 export function DenyButton({ requestId }: { requestId: string }) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const prompt = usePrompt();
   return (
     <span className="inline-action">
       <button
         type="button"
         className="secondary-button compact"
         disabled={pending}
-        onClick={() => {
-          const reason = prompt("Reason for not approving this request?");
+        onClick={async () => {
+          const reason = await prompt({
+            title: "Deny this request",
+            message: "Let the member know why, so they can put in a corrected request.",
+            placeholder: "Reason for not approving this request",
+            confirmLabel: "Deny request",
+          });
           if (!reason) return;
           startTransition(async () => setMessage((await denyRequest(requestId, reason)).message));
         }}

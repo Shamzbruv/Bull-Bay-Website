@@ -5,6 +5,7 @@ import { declineCounselRequest, scheduleCounselRequest, finishCounselRequest } f
 import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
+import { useConfirm } from "@/components/dialog-provider";
 
 type Props = {
   id: string;
@@ -23,6 +24,7 @@ export function CounselRequestRow({ id, reason, requesterName, details, isUrgent
   const [responding, setResponding] = useState(false);
   const [scheduleState, scheduleAction] = useActionState(scheduleCounselRequest.bind(null, id), initialActionState);
   const [declineState, declineAction] = useActionState(declineCounselRequest.bind(null, id), initialActionState);
+  const confirm = useConfirm();
 
   return (
     <div style={{ padding: "12px 0", borderBottom: "1px solid var(--color-border)" }}>
@@ -46,7 +48,7 @@ export function CounselRequestRow({ id, reason, requesterName, details, isUrgent
 
       {status === "scheduled" && <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
         <button type="button" className="secondary-button compact" disabled={pending} onClick={() => startTransition(async () => setResult((await finishCounselRequest(id, "completed")).message))}>Mark completed</button>
-        <button type="button" className="secondary-button compact" disabled={pending} onClick={() => { if (window.confirm("Cancel this meeting and free the calendar time?")) startTransition(async () => setResult((await finishCounselRequest(id, "cancelled")).message)); }}>Cancel meeting</button>
+        <button type="button" className="secondary-button compact" disabled={pending} onClick={async () => { if (await confirm({ message: "Cancel this meeting and free the calendar time?", confirmLabel: "Cancel meeting", danger: true })) startTransition(async () => setResult((await finishCounselRequest(id, "cancelled")).message)); }}>Cancel meeting</button>
       </div>}
       {result && <p role="status">{result}</p>}
 

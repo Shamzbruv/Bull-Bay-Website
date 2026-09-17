@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { deleteSubmission } from "./actions";
+import { useConfirm } from "@/components/dialog-provider";
 
 /**
  * Deleting is permanent and there is no undo, so it always asks first and
@@ -12,9 +13,10 @@ import { deleteSubmission } from "./actions";
 export function DeleteSubmissionButton({ id, label }: { id: string; label: string }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState("");
+  const confirm = useConfirm();
 
-  function onDelete() {
-    if (!window.confirm(`Permanently delete the submission from ${label}? This cannot be undone.`)) return;
+  async function onDelete() {
+    if (!(await confirm({ message: `Permanently delete the submission from ${label}? This cannot be undone.`, confirmLabel: "Delete", danger: true }))) return;
     setError("");
     startTransition(async () => {
       const result = await deleteSubmission(id);

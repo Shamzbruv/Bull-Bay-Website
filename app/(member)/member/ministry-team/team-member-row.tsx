@@ -1,6 +1,7 @@
 "use client";
 
 import { toggleTeamMemberVisible, removeTeamMember } from "./actions";
+import { useConfirm } from "@/components/dialog-provider";
 
 export function TeamMemberRow({
   id,
@@ -17,6 +18,7 @@ export function TeamMemberRow({
   positionTitle: string;
   publicVisible: boolean;
 }) {
+  const confirm = useConfirm();
   return (
     <tr>
       <td>
@@ -37,7 +39,9 @@ export function TeamMemberRow({
         <button
           type="button"
           className="link-button"
-          onClick={() => confirm(`Remove ${name} from this team?`) && removeTeamMember(id, ministryId)}
+          onClick={async () => {
+            if (await confirm({ message: `Remove ${name} from this team?`, confirmLabel: "Remove", danger: true })) removeTeamMember(id, ministryId);
+          }}
         >
           Remove
         </button>

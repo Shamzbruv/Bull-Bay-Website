@@ -5,6 +5,7 @@ import { deleteGalleryImage, toggleGalleryImagePublished, updateLivestreamUrl, u
 import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
+import { useConfirm } from "@/components/dialog-provider";
 
 export function UploadForm() {
   const [state, formAction] = useActionState(uploadGalleryImage, initialActionState);
@@ -43,6 +44,7 @@ export function LivestreamForm({ currentUrl }: { currentUrl: string | null }) {
 }
 
 export function GalleryImageCard({ id, url, caption, isPublished }: { id: string; url: string; caption: string | null; isPublished: boolean }) {
+  const confirm = useConfirm();
   return (
     <div className="panel" style={{ padding: 12 }}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -53,7 +55,13 @@ export function GalleryImageCard({ id, url, caption, isPublished }: { id: string
           <input type="checkbox" defaultChecked={isPublished} onChange={(e) => toggleGalleryImagePublished(id, e.target.checked)} />
           Published
         </label>
-        <button type="button" className="link-button" onClick={() => confirm("Remove this photo permanently?") && deleteGalleryImage(id)}>
+        <button
+          type="button"
+          className="link-button"
+          onClick={async () => {
+            if (await confirm({ message: "Remove this photo permanently?", confirmLabel: "Remove", danger: true })) deleteGalleryImage(id);
+          }}
+        >
           delete
         </button>
       </div>

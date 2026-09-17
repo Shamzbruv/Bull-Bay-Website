@@ -2840,3 +2840,74 @@ table.data-table tr:last-child td { border-bottom: 0; }
 }
 .copy-field-row .secondary-button { flex: 0 0 auto; }
 .copy-field small { display: block; margin-top: 7px; font-size: .76rem; color: var(--color-muted); }
+
+/* ---- App-wide dialog (replaces window.confirm / window.prompt) -------- */
+.app-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 35, 64, .5);
+  backdrop-filter: blur(2px);
+  animation: app-dialog-fade .15s ease;
+}
+.app-dialog {
+  width: min(420px, 100%);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised-lg);
+  padding: 30px 28px 26px;
+  text-align: center;
+  animation: app-dialog-pop .18s cubic-bezier(.2, .9, .3, 1.2);
+}
+.app-dialog-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: var(--color-blue-tint);
+  color: var(--color-blue-600);
+  font-size: 1.15rem;
+  font-weight: 800;
+  box-shadow: var(--shadow-inset-sm);
+}
+.app-dialog-icon.danger { background: rgba(156, 60, 38, .12); color: #9c3c26; }
+.app-dialog h2 { margin: 0 0 8px; font-family: var(--font-display); font-size: 1.28rem; color: var(--color-blue-700); }
+.app-dialog p { margin: 0; font-size: .92rem; line-height: 1.55; color: var(--color-muted-2); }
+.app-dialog-input {
+  width: 100%;
+  margin-top: 16px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  background: var(--color-surface);
+  color: var(--color-blue-700);
+  box-shadow: var(--shadow-inset);
+  font-family: inherit;
+  font-size: .88rem;
+  resize: vertical;
+}
+.app-dialog-actions { display: flex; gap: 10px; justify-content: center; margin-top: 22px; }
+.app-dialog-actions .secondary-button,
+.app-dialog-actions .primary-button { flex: 1; justify-content: center; }
+.primary-button.danger { background: #9c3c26; box-shadow: 0 6px 14px rgba(156, 60, 38, .28); }
+.primary-button.danger:hover:not(:disabled) { background: #7d2e1c; }
+
+@keyframes app-dialog-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes app-dialog-pop {
+  from { opacity: 0; transform: scale(.94) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-dialog-overlay, .app-dialog { animation: none; }
+}
+
+/* WhatsApp's own brand green, used only for this one button — recognisable
+   at a glance in a table full of neutral church-blue actions. */
+.whatsapp-button { display: inline-flex; align-items: center; gap: 6px; color: #25d366; }
+.whatsapp-button:hover { color: #1da851; box-shadow: var(--shadow-inset-sm); }

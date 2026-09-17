@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { deleteFlaggedSpam } from "./actions";
+import { useConfirm } from "@/components/dialog-provider";
 
 /**
  * Bulk clear-out for everything the filter flags. The count comes from the
@@ -12,11 +13,12 @@ import { deleteFlaggedSpam } from "./actions";
 export function SpamCleanupButton({ count }: { count: number }) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState("");
+  const confirm = useConfirm();
 
   if (count === 0) return null;
 
-  function onCleanup() {
-    if (!window.confirm(`Permanently delete ${count} submission${count === 1 ? "" : "s"} flagged as spam? This cannot be undone.`)) return;
+  async function onCleanup() {
+    if (!(await confirm({ message: `Permanently delete ${count} submission${count === 1 ? "" : "s"} flagged as spam? This cannot be undone.`, confirmLabel: "Delete", danger: true }))) return;
     startTransition(async () => {
       setResult((await deleteFlaggedSpam()).message);
     });

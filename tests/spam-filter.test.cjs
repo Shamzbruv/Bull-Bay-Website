@@ -151,3 +151,22 @@ test('a template merge fills an empty-string field rather than leaving the place
   // that empty string can no longer occur.
   assert.equal(fillText('Dear {{recipient_name}},', { recipient_name: greetingName(null) }), 'Dear Church family,');
 });
+
+const { whatsAppLink } = load('lib/members/whatsapp.ts');
+
+test('WhatsApp link normalizes every real phone format found in this church\'s data', () => {
+  // Verbatim from the live profiles table.
+  assert.equal(whatsAppLink('+18765286029'), 'https://wa.me/18765286029');
+  assert.equal(whatsAppLink('+1 (876) 567-8471'), 'https://wa.me/18765678471');
+  assert.equal(whatsAppLink('8763817085'), 'https://wa.me/18763817085');
+  assert.equal(whatsAppLink('876 442 9427'), 'https://wa.me/18764429427');
+  assert.equal(whatsAppLink('+1 (876) 832-6062'), 'https://wa.me/18768326062');
+  // A bare 7-digit number gets Jamaica's own area code completed.
+  assert.equal(whatsAppLink('832-6062'), 'https://wa.me/18768326062');
+});
+
+test('WhatsApp link refuses to guess at anything that does not confidently fit', () => {
+  for (const bad of [null, undefined, '', '123', '12345', '123456789012', 'not a phone', '+44 20 7946 0958']) {
+    assert.equal(whatsAppLink(bad), null, String(bad));
+  }
+});

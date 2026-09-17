@@ -2,10 +2,12 @@
 
 import { useState, useTransition } from "react";
 import { certifyDocument } from "./actions";
+import { useConfirm } from "@/components/dialog-provider";
 
 export function CertifyButton({ requestId, canCertify = true }: { requestId: string; canCertify?: boolean }) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const confirm = useConfirm();
 
   if (!canCertify) {
     return (
@@ -21,8 +23,15 @@ export function CertifyButton({ requestId, canCertify = true }: { requestId: str
         type="button"
         className="primary-button compact"
         disabled={pending}
-        onClick={() => {
-          if (!confirm("Certify this document? Your signature and stamp will be applied and it will be sent to the member as a completed PDF.")) return;
+        onClick={async () => {
+          if (
+            !(await confirm({
+              title: "Certify this document?",
+              message: "Your signature and the church stamp will be applied, and it will be sent to the member as a completed PDF.",
+              confirmLabel: "Certify",
+            }))
+          )
+            return;
           startTransition(async () => {
             const result = await certifyDocument(requestId);
             setMessage(result.message);

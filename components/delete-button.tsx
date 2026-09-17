@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import type { ActionState } from "@/app/(public)/actions";
+import { useConfirm } from "@/components/dialog-provider";
 
 /** Generic confirm-then-delete button for admin list rows. `action` must
  * already check the caller's permission — this component adds no access
@@ -19,6 +20,7 @@ export function DeleteButton({
 }) {
   const [pending, startTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   return (
     <span className="inline-action">
@@ -26,8 +28,8 @@ export function DeleteButton({
         type="button"
         className="link-button"
         disabled={pending}
-        onClick={() => {
-          if (!confirm(confirmText)) return;
+        onClick={async () => {
+          if (!(await confirm({ message: confirmText, confirmLabel: label, danger: true }))) return;
           startTransition(async () => setMessage((await action(id)).message));
         }}
       >

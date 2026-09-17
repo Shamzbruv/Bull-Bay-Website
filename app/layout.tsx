@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { DM_Sans, Fraunces } from "next/font/google";
 import "@/styles/globals.css";
 import { SITE_NAME, SITE_URL } from "@/lib/org";
+import { DialogProvider } from "@/components/dialog-provider";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -86,7 +87,9 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${dmSans.variable} ${fraunces.variable}`}>
-      <body>{children}</body>
+      <body>
+        <DialogProvider>{children}</DialogProvider>
+      </body>
     </html>
   );
 }
