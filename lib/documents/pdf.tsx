@@ -2,6 +2,7 @@
    primitive with no `alt` prop, not an HTML <img>; the a11y rule doesn't apply here. */
 import { Document, Page, Text, View, Image, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import { cleanDesign, type DocumentDesign } from "@/lib/documents/design";
+import { CHURCH_ADDRESS as ORG_ADDRESS, CHURCH_CONTACTS as ORG_CONTACTS, CHURCH_EMAIL as ORG_EMAIL } from "@/lib/org";
 
 /** The church's own palette, matching styles/globals.css and the email
  * templates so a printed certificate, the website and an emailed letter all
@@ -14,8 +15,11 @@ const CREAM = "#fffdf8";
 
 const CHURCH_NAME = "New Testament Church of God";
 const CHURCH_CAMPUS = "Bull Bay · Jamaica";
-const CHURCH_ADDRESS = "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica";
-const CHURCH_CONTACT = "(876) 833-5566 / (876) 596-3890 · ntcog_bullbay@yahoo.com";
+const CHURCH_ADDRESS = ORG_ADDRESS.oneLine;
+// The church office line only. The pastor's personal number was printed on
+// every letter and certificate the church issues; enquiries for him go
+// through the Executive Assistant, so it must not be reinstated here.
+const CHURCH_CONTACT = `${ORG_CONTACTS[0]?.display} · ${ORG_EMAIL}`;
 
 export type CertifyingSigner = {
   name: string;

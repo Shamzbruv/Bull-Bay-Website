@@ -253,7 +253,7 @@ insert into public.document_templates(organization_id,slug,name,description,cate
 
 In the presence of family, friends, and the congregation, they declared their faith and commitment to Jesus Christ.
 
-Officiating minister: {{minister_name}}','certificate','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 833-5566 / (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com", "banner": "BAPTIZED IN CHRIST", "subtitle": "One Family \u00b7 One Faith \u00b7 One Mission"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='certificate-ready' on conflict(organization_id,slug) do nothing;
+Officiating minister: {{minister_name}}','certificate','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com", "banner": "BAPTIZED IN CHRIST", "subtitle": "One Family \u00b7 One Faith \u00b7 One Mission"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='certificate-ready' on conflict(organization_id,slug) do nothing;
 insert into public.document_templates(organization_id,slug,name,description,category,body,layout,design,email_template_id) select o.id,'baby-dedication-certificate','Baby Dedication Certificate','Editable church master template with signature and stamp areas.','Baby dedication','This certifies that {{child_name}}, born on {{birth_date}} at {{birth_place}}, was presented to the Lord in dedication on {{dedication_date}} at {{dedication_place}}.
 
 Parents: {{parent_names}}
@@ -261,12 +261,12 @@ Godparents: {{godparent_names}}
 
 The family and congregation commit to nurturing this child in faith and love, according to God’s Word.
 
-Officiating minister: {{minister_name}}','certificate','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 833-5566 / (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com", "banner": "DEDICATED TO THE LORD", "subtitle": "\u201cSuffer the little children to come unto me\u2026\u201d \u2014 Mark 10:14", "orientation": "portrait"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='certificate-ready' on conflict(organization_id,slug) do nothing;
+Officiating minister: {{minister_name}}','certificate','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com", "banner": "DEDICATED TO THE LORD", "subtitle": "\u201cSuffer the little children to come unto me\u2026\u201d \u2014 Mark 10:14", "orientation": "portrait"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='certificate-ready' on conflict(organization_id,slug) do nothing;
 insert into public.document_templates(organization_id,slug,name,description,category,body,layout,design,email_template_id) select o.id,'membership-fellowship-certificate','Certificate of Membership','Editable church master template with signature and stamp areas.','Membership','This certifies that {{member_name}}, having publicly confessed faith in Jesus Christ and having received the Right Hand of Fellowship, is welcomed as a member of {{church_name}} on {{fellowship_date}}.
 
 May you continue to grow in the grace and knowledge of our Lord and Saviour Jesus Christ, faithfully serve Him, and walk in fellowship with His people.
 
-“Now ye are the body of Christ, and members in particular.” — 1 Corinthians 12:27','certificate','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 833-5566 / (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com", "banner": "RIGHT HAND OF FELLOWSHIP", "subtitle": "Together in Christ"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='certificate-ready' on conflict(organization_id,slug) do nothing;
+“Now ye are the body of Christ, and members in particular.” — 1 Corinthians 12:27','certificate','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com", "banner": "RIGHT HAND OF FELLOWSHIP", "subtitle": "Together in Christ"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='certificate-ready' on conflict(organization_id,slug) do nothing;
 insert into public.document_templates(organization_id,slug,name,description,category,body,layout,design,email_template_id) select o.id,'church-letterhead','Church Letterhead','Editable church master template with signature and stamp areas.','Correspondence','{{date_today}}
 
 {{recipient_name}}
@@ -277,7 +277,7 @@ Dear {{salutation}},
 {{letter_body}}
 
 Sincerely,
-Bull Bay New Testament Church of God','letter','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 833-5566 / (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='document-ready' on conflict(organization_id,slug) do nothing;
+Bull Bay New Testament Church of God','letter','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='document-ready' on conflict(organization_id,slug) do nothing;
 insert into public.document_templates(organization_id,slug,name,description,category,body,layout,design,email_template_id) select o.id,'good-standing-letter','Letter of Good Standing','Editable church master template with signature and stamp areas.','Membership','{{date_today}}
 
 {{recipient_name}}
@@ -290,12 +290,12 @@ This letter confirms that {{member_name}} has been a member of {{church_name}} s
 This letter is issued for the following purpose: {{purpose}}.
 
 Sincerely,
-Bull Bay New Testament Church of God','letter','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 833-5566 / (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='document-ready' on conflict(organization_id,slug) do nothing;
+Bull Bay New Testament Church of God','letter','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='document-ready' on conflict(organization_id,slug) do nothing;
 insert into public.document_templates(organization_id,slug,name,description,category,body,layout,design,email_template_id) select o.id,'appreciation-certificate','Certificate of Appreciation','Editable church master template with signature and stamp areas.','Recognition','Presented to {{member_name}} in grateful recognition of {{contribution}}.
 
 Your dedication, generosity, and faithful service have blessed our church family.
 
-Presented on {{presentation_date}}.','certificate','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 833-5566 / (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com", "banner": "WITH HEARTFELT APPRECIATION"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='certificate-ready' on conflict(organization_id,slug) do nothing;
+Presented on {{presentation_date}}.','certificate','{"accent": "#ba963c", "signer_name": "Rev. Dr. Kevin Page", "footer": "Weise Road, 9 Miles, Bull Bay, P.O. Box 119, St. Andrew, Jamaica \u00b7 (876) 596-3890 \u00b7 ntcog_bullbay@yahoo.com", "banner": "WITH HEARTFELT APPRECIATION"}'::jsonb,e.id from public.organizations o join public.email_templates e on e.organization_id=o.id and e.slug='certificate-ready' on conflict(organization_id,slug) do nothing;
 -- Administrative assistants may respond to the Pastor's meeting requests.
 do $$ declare definition text; begin
  select pg_get_functiondef('private.respond_counsel_request(uuid,text,timestamptz,timestamptz,text)'::regprocedure) into definition;

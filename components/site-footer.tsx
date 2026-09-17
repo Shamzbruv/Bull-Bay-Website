@@ -2,6 +2,7 @@ import { PAYMENT_URL } from "@/lib/payments/external";
 import Link from "next/link";
 import Image from "next/image";
 import { getPrimaryCampus } from "@/lib/data/public";
+import { CHURCH_ADDRESS, CHURCH_CONTACTS } from "@/lib/org";
 
 function ArrowRightIcon() {
   return (
@@ -55,11 +56,17 @@ export async function SiteFooter() {
               </span>
             </Link>
             <p className="footer-summary">A church family helping people worship, grow, serve, and belong.</p>
+            {/* Read from lib/org.ts, not from the campus row: the address has to
+                match the letters, certificates and contact page exactly, and a
+                database field that nobody remembers to update would drift. */}
             <address className="footer-address">
-              {campus?.address_line1 && <span>{campus.address_line1}<br /></span>}
-              {campus?.city ?? "Bull Bay"}, {campus?.parish ?? "St. Andrew"}
+              {CHURCH_ADDRESS.street}
               <br />
-              {campus?.country ?? "Jamaica"}
+              {CHURCH_ADDRESS.town}, {CHURCH_ADDRESS.parish}
+              <br />
+              {CHURCH_ADDRESS.postal} &middot; {CHURCH_ADDRESS.country}
+              <br />
+              <a href={`tel:${CHURCH_CONTACTS[0]?.dial}`}>{CHURCH_CONTACTS[0]?.display}</a>
             </address>
             <p className="footer-service-note">
               Sunday worship <time>{sundayService?.time ?? "9:50 AM"}</time>

@@ -6,7 +6,7 @@ import { JsonLd } from "@/components/json-ld";
 import { getPrimaryCampus, getPublishedSermons, getStrategicMovements, getUpcomingEvents } from "@/lib/data/public";
 import { getSermonVideoSource } from "@/lib/data/sermon-video";
 import { SermonVideoLightbox } from "@/components/sermon-video-lightbox";
-import { SITE_NAME, SITE_URL } from "@/lib/org";
+import { CHURCH_ADDRESS, CHURCH_CONTACTS, CHURCH_COORDINATES, CHURCH_EMAIL, SITE_NAME, SITE_URL } from "@/lib/org";
 
 export const revalidate = 60;
 
@@ -123,14 +123,21 @@ export default async function HomePage() {
           "@type": "Church",
           name: SITE_NAME,
           url: SITE_URL,
-          address: campus
-            ? {
-                "@type": "PostalAddress",
-                addressLocality: campus.city,
-                addressRegion: campus.parish,
-                addressCountry: "JM",
-              }
-            : undefined,
+          email: CHURCH_EMAIL,
+          telephone: CHURCH_CONTACTS[0]?.dial,
+          address: {
+            "@type": "PostalAddress",
+            streetAddress: CHURCH_ADDRESS.street,
+            postOfficeBoxNumber: CHURCH_ADDRESS.postal,
+            addressLocality: CHURCH_ADDRESS.town,
+            addressRegion: CHURCH_ADDRESS.parish,
+            addressCountry: CHURCH_ADDRESS.countryCode,
+          },
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: CHURCH_COORDINATES.lat,
+            longitude: CHURCH_COORDINATES.lon,
+          },
         }}
       />
 

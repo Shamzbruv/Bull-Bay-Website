@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CHURCH_ADDRESS, CHURCH_MAP_LINKS } from "@/lib/org";
 import Link from "next/link";
 import { getPrimaryCampus, getStrategicMovementBySlug } from "@/lib/data/public";
 
@@ -138,8 +139,13 @@ export default async function VisitPage() {
               How do I get there?<b>+</b>
             </summary>
             <p>
-              We&apos;re located in {campus?.city ?? "Bull Bay"}, {campus?.parish ?? "St. Andrew"}, Jamaica. Contact us for
-              exact directions ahead of your visit.
+              We&apos;re at {CHURCH_ADDRESS.street}, {CHURCH_ADDRESS.town}, {CHURCH_ADDRESS.parish},{" "}
+              {CHURCH_ADDRESS.country}.{" "}
+              <a href={CHURCH_MAP_LINKS.google} target="_blank" rel="noopener noreferrer">
+                Open it in Google Maps
+              </a>{" "}
+              or see the map on our{" "}
+              <Link href="/contact#find-us">contact page</Link> to navigate door to door.
             </p>
           </details>
         </div>
