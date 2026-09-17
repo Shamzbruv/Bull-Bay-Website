@@ -9,6 +9,7 @@ import { queueOfficeEmail } from "@/lib/office/email";
 import { officeContext, recordOfficeAction, roleMembers } from "@/lib/office/context";
 import { officeAction } from "@/lib/office/action";
 import { notifyUsers } from "@/lib/notifications";
+import { fullName } from "@/lib/members/name";
 import { cleanDesign } from "@/lib/documents/design";
 import { SITE_URL } from "@/lib/org";
 import type { ActionState } from "@/app/(public)/actions";
@@ -92,6 +93,14 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
    roleMembers(org,["pastor"])
   ]);
   if (!recipient?.email) throw new Error("The recipient needs an email address so the PDF can be delivered.");
+  // Printed on the certificate itself ("This certificate is presented to
+  // ___") and used as the pastor's own signature name below — a document
+  // bearing the church stamp and the pastor's signature must not go out
+  // with a blank or placeholder name in either spot, so this is checked
+  // and refused here rather than papered over with a generic fallback the
+  // way an ordinary email greeting can be.
+  const recipientName = fullName(recipient);
+  if (!recipientName) throw new Error("This member has no name on file. Add their first and last name in People before certifying this document.");
   const assetConfig = authority?.value as { signature_path?:string; stamp_path?:string; signer_name?:string } | undefined;
   const signerId = pastors.find(p=>p.auth_user_id===user.id)?.id ?? pastors[0]?.id;
   const {data:signerProfile} = signerId ? await db.from("profiles").select("signature_path,stamp_path,first_name,last_name").eq("id",signerId).maybeSingle() : {data:null};
@@ -99,12 +108,12 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
   if(!signatureImage || !stampImage) throw new Error("The authorized Pastor signature and church stamp must both be configured.");
   const snapshot = (request.template_snapshot ?? {}) as {layout?:string;design?:unknown;email_template_id?:string};
   const design=cleanDesign(snapshot.design);
-  const signerName=assetConfig?.signer_name || design.signer_name || [signerProfile?.first_name,signerProfile?.last_name].filter(Boolean).join(" ") || "Pastor";
+  const signerName=assetConfig?.signer_name || design.signer_name || fullName(signerProfile) || "Pastor";
   const {data:numbered,error:lockError}=await db.from("document_requests").update({status:"stamped",certified_by:user.id,certified_at:new Date().toISOString(),signer_profile_id:signerId ?? null}).eq("organization_id",org).eq("id",requestId).eq("status","pending_pastor").select("document_number").maybeSingle();
   if(lockError || !numbered?.document_number) throw new Error("This document is already being certified. Refresh before trying again.");
   const path=`documents/${requestId}/${numbered.document_number}.pdf`;
   try {
-   const pdf=await generateDocumentPdf({documentNumber:numbered.document_number,title:request.title,bodyParagraphs:request.prepared_body.split(/\n\s*\n/).filter(Boolean),recipientName:[recipient.first_name,recipient.last_name].filter(Boolean).join(" "),issuedDate:new Date().toLocaleDateString("en-JM",{dateStyle:"long",timeZone:"America/Jamaica"}),logoImage:logo,layout:snapshot.layout,design,signer:{name:signerName,title:"Pastor, New Testament Church of God, Bull Bay",signatureImage,stampImage}});
+   const pdf=await generateDocumentPdf({documentNumber:numbered.document_number,title:request.title,bodyParagraphs:request.prepared_body.split(/\n\s*\n/).filter(Boolean),recipientName,issuedDate:new Date().toLocaleDateString("en-JM",{dateStyle:"long",timeZone:"America/Jamaica"}),logoImage:logo,layout:snapshot.layout,design,signer:{name:signerName,title:"Pastor, New Testament Church of God, Bull Bay",signatureImage,stampImage}});
    const {error:uploadError}=await db.storage.from("member-resources").upload(path,pdf,{contentType:"application/pdf",upsert:true});if(uploadError)throw new Error("The PDF could not be saved.");
    await recordOfficeAction(org,user.id,"document.signature_stamp_applied","document_requests",requestId,{signer_name:signerName,document_number:numbered.document_number,authority:permissions.has("documents.sign_delegate")?"executive_delegation":"pastor_approval"});
    await notifyUsers(org,pastors.flatMap(p=>p.auth_user_id && p.auth_user_id!==user.id?[p.auth_user_id]:[]),{title:"Your signature and the church stamp were used",body:`${profile.first_name ?? ""} ${profile.last_name ?? ""} certified ${request.title} (${numbered.document_number}).`,url:`/pastor/documents?request=${requestId}`,type:"document_signature"});
@@ -112,7 +121,7 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
   } catch(error) {
    await db.from("document_requests").update({status:"pending_pastor",certified_by:null,certified_at:null,pdf_path:null}).eq("id",requestId).eq("status","stamped");throw error;
   }
-  const result=await queueOfficeEmail({org,recipient:recipient.email,template:snapshot.email_template_id || (snapshot.layout==="certificate"?"certificate-ready":"document-ready"),fields:{recipient_name:[recipient.first_name,recipient.last_name].filter(Boolean).join(" "),document_title:request.title,certificate_title:request.title,document_number:numbered.document_number,action_url:`${SITE_URL}/member/documents`},attachmentPath:path,attachmentName:`${numbered.document_number}.pdf`,dedupeKey:`document-${requestId}`,actor:user.id});
+  const result=await queueOfficeEmail({org,recipient:recipient.email,template:snapshot.email_template_id || (snapshot.layout==="certificate"?"certificate-ready":"document-ready"),fields:{recipient_name:recipientName,document_title:request.title,certificate_title:request.title,document_number:numbered.document_number,action_url:`${SITE_URL}/member/documents`},attachmentPath:path,attachmentName:`${numbered.document_number}.pdf`,dedupeKey:`document-${requestId}`,actor:user.id});
   return result.sent?`Certified as ${numbered.document_number}. The PDF was emailed to the recipient.`:`Certified as ${numbered.document_number}. PDF email is queued for retry; check Email delivery.`;
  });
 }

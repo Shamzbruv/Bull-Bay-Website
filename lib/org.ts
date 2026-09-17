@@ -64,7 +64,7 @@ export type ChurchContact = {
  */
 export const CHURCH_CONTACTS: readonly ChurchContact[] = [
   {
-    title: "The Welcome Line",
+    title: "Admin Assistant",
     role: "Church office",
     description:
       "Service times, visiting, weddings and funerals, certificates and letters, or anything you are not sure who to ask for.",

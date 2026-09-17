@@ -114,3 +114,40 @@ test('opening hours close after the service and skip unparseable rows', () => {
   assert.equal(hours[0].closes, '11:20');
   assert.equal(hours[1].closes, '18:00');
 });
+
+const { fullName, greetingName, UNKNOWN_NAME_GREETING } = load('lib/members/name.ts');
+
+test('fullName joins first and last name, and is empty (not a placeholder) when both are missing', () => {
+  assert.equal(fullName({ first_name: 'Kevin', last_name: 'Page' }), 'Kevin Page');
+  assert.equal(fullName({ first_name: 'Kevin', last_name: null }), 'Kevin');
+  assert.equal(fullName({ first_name: null, last_name: null }), '');
+  assert.equal(fullName(null), '');
+  assert.equal(fullName(undefined), '');
+});
+
+test('greetingName never renders blank or the literal placeholder "there"', () => {
+  // The exact shape of a brand-new invite: no existing profile at all —
+  // this was the "Dear there," bug, since it always hit the `?? "there"`
+  // fallback that used to sit at every one of these call sites.
+  assert.equal(greetingName(null), UNKNOWN_NAME_GREETING);
+  assert.equal(greetingName(undefined), UNKNOWN_NAME_GREETING);
+  // A profile that exists but has no name on file — the empty-string case
+  // that `fields[key] ?? fallback` could never catch, because an empty
+  // string is a value, not a missing one.
+  assert.equal(greetingName({ first_name: '', last_name: '' }), UNKNOWN_NAME_GREETING);
+  assert.equal(greetingName({ first_name: null, last_name: null }), UNKNOWN_NAME_GREETING);
+  // The ordinary case: first name only, informal.
+  assert.equal(greetingName({ first_name: 'Kevin', last_name: 'Page' }), 'Kevin');
+  assert.equal(greetingName({ first_name: '  ', last_name: 'Page' }), 'Page');
+});
+
+test('a template merge fills an empty-string field rather than leaving the placeholder, which is exactly how "Dear ," reached an inbox', () => {
+  // Reproduces the underlying mechanism in lib/office/email.ts: fillText's
+  // `fields[key] ?? fallback` treats an empty string as present, so a
+  // blank name was substituted silently instead of failing loudly.
+  const fillText = (text, fields) => text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => fields[key] ?? `{{${key}}}`);
+  assert.equal(fillText('Dear {{recipient_name}},', { recipient_name: '' }), 'Dear ,');
+  // With greetingName's fallback applied before the field is ever built,
+  // that empty string can no longer occur.
+  assert.equal(fillText('Dear {{recipient_name}},', { recipient_name: greetingName(null) }), 'Dear Church family,');
+});

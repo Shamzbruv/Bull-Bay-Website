@@ -12,6 +12,7 @@ import { generateAuthLink } from "@/lib/supabase/generate-link";
 import { officeContext, recordOfficeAction } from "@/lib/office/context";
 import { officeAction } from "@/lib/office/action";
 import { notifyUser } from "@/lib/notifications";
+import { fullName, greetingName } from "@/lib/members/name";
 import type { ActionState } from "@/app/(public)/actions";
 
 function slugify(input: string) {
@@ -474,7 +475,7 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
     const result = await sendMail({
       to: email,
       subject: `You're invited as ${selectedRole.name} — Bull Bay church`,
-      html: renderInviteEmail({ recipientName: existingProfile?.first_name ?? "there", actionUrl: actionLink, roleName: selectedRole.name }),
+      html: renderInviteEmail({ recipientName: greetingName(existingProfile), actionUrl: actionLink, roleName: selectedRole.name }),
     });
     if (!result.sent) {
       revalidatePath("/admin/roles");
@@ -484,11 +485,11 @@ export async function inviteStaffMember(_prev: ActionState, formData: FormData):
     // Existing member, role added straight away — let them know, the same
     // way any other role change does (see setPersonRole in this file).
     const actorProfile = await getCurrentProfile();
-    const actorName = [actorProfile?.first_name, actorProfile?.last_name].filter(Boolean).join(" ").trim() || null;
+    const actorName = fullName(actorProfile) || null;
     await sendMail({
       to: email,
       subject: "Your role on the Bull Bay church platform has changed",
-      html: renderRoleChangedEmail({ recipientName: existingProfile?.first_name ?? "there", roleName: selectedRole.name, changedByName: actorName }),
+      html: renderRoleChangedEmail({ recipientName: greetingName(existingProfile), roleName: selectedRole.name, changedByName: actorName }),
     }).catch(() => {});
     await notifyUser({
       organizationId,
@@ -574,12 +575,12 @@ export async function setPersonRole(profileId: string, roleId: string): Promise<
   if (error) return { status: "error", message: error.message };
 
   const actorProfile = await getCurrentProfile();
-  const actorName = [actorProfile?.first_name, actorProfile?.last_name].filter(Boolean).join(" ").trim() || null;
+  const actorName = fullName(actorProfile) || null;
   if (profile.email) {
     await sendMail({
       to: profile.email,
       subject: "Your role on the Bull Bay church platform has changed",
-      html: renderRoleChangedEmail({ recipientName: profile.first_name ?? "there", roleName: newRole?.name ?? null, changedByName: actorName }),
+      html: renderRoleChangedEmail({ recipientName: greetingName(profile), roleName: newRole?.name ?? null, changedByName: actorName }),
     }).catch(() => {});
   }
   await notifyUser({

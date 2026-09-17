@@ -3,6 +3,7 @@ import { z } from "zod";
 import { officeContext,recordOfficeAction } from "@/lib/office/context";
 import { officeAction,formText } from "@/lib/office/action";
 import { deliverOfficeEmail,queueOfficeEmail } from "@/lib/office/email";
+import { greetingName } from "@/lib/members/name";
 import type { ActionState } from "@/app/(public)/actions";
 export async function saveEmailTemplate(_:ActionState,form:FormData){return officeAction(async()=>{
  const {db,org,user}=await officeContext("emails.manage");const id=formText(form,"id",40),name=formText(form,"name",200),subject=formText(form,"subject",250),body=formText(form,"body",20000),reply=formText(form,"reply_to",254);
@@ -16,6 +17,6 @@ export async function retryEmail(_:ActionState,form:FormData){return officeActio
 });}
 export async function sendTemplateEmail(_:ActionState,form:FormData){return officeAction(async()=>{
  const {db,org,user}=await officeContext("emails.manage");const {data:p}=await db.from("profiles").select("id,email,first_name,last_name").eq("organization_id",org).eq("id",formText(form,"recipient_id",40)).maybeSingle();if(!p?.email)throw new Error("Choose a member with an email address.");
- const fields:Record<string,string>={recipient_name:[p.first_name,p.last_name].filter(Boolean).join(" ")};for(const [key,value]of form.entries())if(key.startsWith("field_"))fields[key.slice(6)]=String(value).slice(0,10000);
+ const fields:Record<string,string>={recipient_name:greetingName(p)};for(const [key,value]of form.entries())if(key.startsWith("field_"))fields[key.slice(6)]=String(value).slice(0,10000);
  const result=await queueOfficeEmail({org,recipient:p.email,template:formText(form,"template_id",40),fields,dedupeKey:`composed-${crypto.randomUUID()}`,actor:user.id});return result.sent?"Email sent.":"Email saved for retry. Check delivery status.";
 });}
