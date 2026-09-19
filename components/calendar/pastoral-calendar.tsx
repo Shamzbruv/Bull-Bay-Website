@@ -11,8 +11,10 @@ export type CalendarEntry = {
   createdBy?: string;
   startsAt: string;
   endsAt: string;
-  kind: "day_off" | "busy" | "appointment";
+  kind: "day_off" | "busy" | "appointment" | "meeting";
   visibility: "public" | "private";
+  location?: string | null;
+  meetingUrl?: string | null;
 };
 type OpenSlot = { starts_at: string; ends_at: string };
 type CalendarView = "month" | "week" | "day";
@@ -69,11 +71,12 @@ function formatSlotTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("en-US", { timeZone: "America/Jamaica", hour: "numeric", minute: "2-digit" });
 }
 
-const ENTRY_LABEL: Record<CalendarEntry["kind"], string> = { day_off: "☀ Day off", busy: "◆ Busy", appointment: "◷ Appointment" };
+const ENTRY_LABEL: Record<CalendarEntry["kind"], string> = { day_off: "☀ Day off", busy: "◆ Busy", appointment: "◷ Appointment", meeting: "⚇ Meeting" };
 const ENTRY_CLASS: Record<CalendarEntry["kind"], string> = {
   day_off: "pcal-chip-dayoff",
   busy: "pcal-chip-busy",
   appointment: "pcal-chip-appointment",
+  meeting: "pcal-chip-meeting",
 };
 
 /**
@@ -424,15 +427,31 @@ function DayAgenda({
         <h4>Entries on this date</h4>
         {dayEvents.length === 0 && <p className="pcal-empty">Nothing on the calendar for this date.</p>}
         {dayEvents.map((e) => (
-          <div key={e.id} className="pcal-agenda-row">
-            <span>
-              <span className={`badge ${e.kind === "appointment" ? "gold" : e.kind === "day_off" ? "" : "gray"}`}>{ENTRY_LABEL[e.kind]}</span>{" "}
-              {e.title}
-            </span>
-            {onRemoveEvent && e.kind !== "appointment" && (
-              <button type="button" className="link-button" onClick={() => onRemoveEvent(e.id)}>
-                remove
-              </button>
+          <div key={e.id} className="pcal-agenda-row pcal-agenda-row-detailed">
+            <div className="pcal-agenda-main">
+              <span>
+                <span className={`badge ${e.kind === "appointment" || e.kind === "meeting" ? "gold" : e.kind === "day_off" ? "" : "gray"}`}>{ENTRY_LABEL[e.kind]}</span>{" "}
+                {formatSlotTime(e.startsAt)}–{formatSlotTime(e.endsAt)} · {e.title}
+              </span>
+              {onRemoveEvent && e.kind !== "appointment" && (
+                <button type="button" className="link-button" onClick={() => onRemoveEvent(e.id)}>
+                  remove
+                </button>
+              )}
+            </div>
+            {(e.location || e.meetingUrl) && (
+              <div className="pcal-agenda-details">
+                {e.location && (
+                  <span className="pcal-location">
+                    <span aria-hidden="true">📍</span> {e.location}
+                  </span>
+                )}
+                {e.meetingUrl && (
+                  <a className="pcal-join-link" href={e.meetingUrl} target="_blank" rel="noopener noreferrer">
+                    🎥 Join video call →
+                  </a>
+                )}
+              </div>
             )}
           </div>
         ))}
@@ -443,8 +462,9 @@ function DayAgenda({
 
 function EventChip({ entry, onRemove }: { entry: CalendarEntry; onRemove?: (id: string) => void }) {
   return (
-    <span className={`pcal-chip ${ENTRY_CLASS[entry.kind]}`}>
+    <span className={`pcal-chip ${ENTRY_CLASS[entry.kind]}`} title={entry.location ?? undefined}>
       {ENTRY_LABEL[entry.kind]}: {entry.title}
+      {entry.meetingUrl && <span aria-hidden="true"> 🎥</span>}
       {onRemove && entry.kind !== "appointment" && (
         <button type="button" className="pcal-chip-remove" aria-label={`Remove ${entry.title}`} onClick={() => onRemove(entry.id)}>
           ×

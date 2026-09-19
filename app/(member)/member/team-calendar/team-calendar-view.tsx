@@ -45,7 +45,7 @@ export async function TeamCalendarView() {
 
   const [{ data: availability }, { data: events }, { data: counselRequests }, { data: assignedPrayers }] = await Promise.all([
     supabase.from("pastoral_calendar_availability").select("id, day_of_week, start_time, end_time, label").eq("profile_id", profile.id).order("day_of_week"),
-    supabase.from("pastoral_calendar_events").select("id, title, starts_at, ends_at, kind, visibility, created_by, updated_by").eq("profile_id", profile.id).gte("ends_at", new Date().toISOString()).order("starts_at").limit(100),
+    supabase.from("pastoral_calendar_events").select("id, title, starts_at, ends_at, kind, visibility, location, meeting_url, created_by, updated_by").eq("profile_id", profile.id).gte("ends_at", new Date().toISOString()).order("starts_at").limit(100),
     supabase
       .from("counsel_requests")
       .select("id, reason, details, is_urgent, status, preferred_date, preferred_time, profiles:requester_profile_id(first_name, last_name)")
@@ -157,6 +157,8 @@ export async function TeamCalendarView() {
             createdBy: actorName(e.created_by),
             kind: e.kind as CalendarEntry["kind"],
             visibility: e.visibility as CalendarEntry["visibility"],
+            location: e.location,
+            meetingUrl: e.meeting_url,
           }))}
         />
       </div>

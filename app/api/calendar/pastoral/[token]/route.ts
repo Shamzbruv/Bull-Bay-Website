@@ -30,7 +30,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
       .eq("profile_id", profileId),
     admin
       .from("pastoral_calendar_events")
-      .select("id, title, starts_at, ends_at, kind")
+      .select("id, title, starts_at, ends_at, kind, location, meeting_url")
       .eq("profile_id", profileId)
       .gte("ends_at", new Date(Date.now() - 90 * 86400000).toISOString())
       .order("starts_at", { ascending: true })
@@ -64,7 +64,16 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
     startsAt: event.starts_at,
     endsAt: event.ends_at,
     summary: event.title,
-    description: event.kind ? `Type: ${event.kind.replace("_", " ")}` : null,
+    // The video-call link goes in both fields deliberately: LOCATION is
+    // what most phone calendar apps show right under the event title
+    // (which is the "vivid, at a glance" spot), while DESCRIPTION is what
+    // the type still needs to say — and a link that appears in only one
+    // of the two is the kind of thing that's invisible on exactly the app
+    // someone happens to be checking from.
+    description: [event.kind ? `Type: ${event.kind.replace("_", " ")}` : null, event.meeting_url ? `Video call: ${event.meeting_url}` : null]
+      .filter(Boolean)
+      .join("\n") || null,
+    location: event.location || event.meeting_url || null,
   }));
 
   const { data: meetings, error: meetingError } = await admin.from("counsel_requests")

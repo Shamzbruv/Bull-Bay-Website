@@ -2038,6 +2038,8 @@ export type Database = {
           ends_at: string
           id: string
           kind: string
+          location: string | null
+          meeting_url: string | null
           profile_id: string
           starts_at: string
           title: string
@@ -2052,6 +2054,8 @@ export type Database = {
           ends_at: string
           id?: string
           kind?: string
+          location?: string | null
+          meeting_url?: string | null
           profile_id: string
           starts_at: string
           title: string
@@ -2066,6 +2070,8 @@ export type Database = {
           ends_at?: string
           id?: string
           kind?: string
+          location?: string | null
+          meeting_url?: string | null
           profile_id?: string
           starts_at?: string
           title?: string

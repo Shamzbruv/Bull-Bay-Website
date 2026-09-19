@@ -65,11 +65,12 @@ export function EventForm({ profileId }: { profileId?: string }) {
       <input type="hidden" name="profile_id" value={profileId ?? ""} />
       <label style={{ gridColumn: "1 / -1" }}>
         Title
-        <input type="text" name="title" required placeholder="Day off, conference, appointment…" />
+        <input type="text" name="title" required placeholder="Meeting with Deacon Board, day off, conference…" />
       </label>
       <label>
         Type
-        <select name="kind" defaultValue="day_off">
+        <select name="kind" defaultValue="meeting">
+          <option value="meeting">Meeting</option>
           <option value="day_off">Day off</option>
           <option value="busy">Busy / unavailable</option>
         </select>
@@ -88,6 +89,14 @@ export function EventForm({ profileId }: { profileId?: string }) {
       <label>
         Ends
         <input type="datetime-local" name="ends_at" required />
+      </label>
+      <label>
+        Location
+        <input type="text" name="location" maxLength={200} placeholder="Pastor's office, church sanctuary, member's home…" />
+      </label>
+      <label style={{ gridColumn: "1 / -1" }}>
+        Video call link (optional)
+        <input type="url" name="meeting_url" placeholder="https://meet.google.com/… (Google Meet, Zoom, or any video link)" />
       </label>
       <div style={{ gridColumn: "1 / -1" }}>
         <FormStatus state={state} />
