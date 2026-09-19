@@ -36,10 +36,21 @@ export async function saveAnnouncement(_prev: ActionState, formData: FormData): 
 }
 
 export async function toggleAnnouncementPublished(id: string, publish: boolean): Promise<void> {
+  // A Server Action is a public endpoint the moment it's exported — the
+  // checkbox that calls this is hidden from anyone without content.manage,
+  // but hiding a button doesn't stop a signed-in member from calling the
+  // action directly. saveAnnouncement above already checks this; this one
+  // didn't, so any member could publish or archive a church-wide
+  // announcement without it.
+  const organizationId = await getOrganizationId();
+  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
+  if (!organizationId || !permissions.has("content.manage")) return;
+
   const supabase = await createClient();
   await supabase
     .from("announcements")
     .update({ status: publish ? "published" : "archived", published_at: publish ? new Date().toISOString() : null })
+    .eq("organization_id", organizationId)
     .eq("id", id);
   revalidatePath("/admin/bulletin");
   revalidatePath("/member");

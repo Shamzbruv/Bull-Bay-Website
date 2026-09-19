@@ -26,7 +26,8 @@ export default async function AdminPastoralTeamPage() {
           <h1>Pastoral Team</h1>
           <p>
             Who appears on the pastor &amp; calendar page — able to publish their own working hours, and to be
-            requested for counsel. Mark exactly one person as the Senior Pastor.
+            requested for counsel. Checking &ldquo;Senior Pastor&rdquo; for someone automatically unmarks whoever had
+            it before, so there is always exactly one.
           </p>
         </div>
       </div>
