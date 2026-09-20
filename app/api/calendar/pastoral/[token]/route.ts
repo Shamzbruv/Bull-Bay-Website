@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { createHash } from "node:crypto";
-import { canSubscribe } from "@/lib/calendar/integrations";
+import { canSubscribe, selectWithColumnFallback } from "@/lib/calendar/integrations";
 import { buildIcsCalendar, type IcsEvent } from "@/lib/calendar/ics";
 
 
@@ -28,13 +28,29 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
       .from("pastoral_calendar_availability")
       .select("id, day_of_week, start_time, end_time, label")
       .eq("profile_id", profileId),
-    admin
-      .from("pastoral_calendar_events")
-      .select("id, title, starts_at, ends_at, kind, location, meeting_url")
-      .eq("profile_id", profileId)
-      .gte("ends_at", new Date(Date.now() - 90 * 86400000).toISOString())
-      .order("starts_at", { ascending: true })
-      .limit(1000),
+    selectWithColumnFallback(
+      () =>
+        admin
+          .from("pastoral_calendar_events")
+          .select("id, title, starts_at, ends_at, kind, location, meeting_url")
+          .eq("profile_id", profileId)
+          .gte("ends_at", new Date(Date.now() - 90 * 86400000).toISOString())
+          .order("starts_at", { ascending: true })
+          .limit(1000),
+      async () => {
+        // Same rows, shaped to match the primary query's columns — so
+        // whichever one actually ran, the caller always sees the same
+        // fields and doesn't need to know which happened.
+        const result = await admin
+          .from("pastoral_calendar_events")
+          .select("id, title, starts_at, ends_at, kind")
+          .eq("profile_id", profileId)
+          .gte("ends_at", new Date(Date.now() - 90 * 86400000).toISOString())
+          .order("starts_at", { ascending: true })
+          .limit(1000);
+        return { ...result, data: result.data?.map((row) => ({ ...row, location: null, meeting_url: null })) ?? null };
+      },
+    ),
   ]);
 
   if (profileResult.error || availabilityResult.error || eventsResult.error) return NextResponse.json({ error: "Calendar temporarily unavailable." }, { status: 503 });

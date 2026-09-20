@@ -5,6 +5,7 @@ import { CounselRequestRow } from "@/app/(pastor)/pastor/care/counsel-request-ro
 import { PrayerRequestRow } from "@/app/(pastor)/pastor/care/prayer-request-row";
 import { ManageCalendarPanel } from "@/components/calendar/manage-calendar-panel";
 import type { CalendarEntry } from "@/components/calendar/pastoral-calendar";
+import { selectWithColumnFallback } from "@/lib/calendar/integrations";
 
 /**
  * Shared body for the pastoral-team calendar — rendered at /member/team-calendar
@@ -45,7 +46,26 @@ export async function TeamCalendarView() {
 
   const [{ data: availability }, { data: events }, { data: counselRequests }, { data: assignedPrayers }] = await Promise.all([
     supabase.from("pastoral_calendar_availability").select("id, day_of_week, start_time, end_time, label").eq("profile_id", profile.id).order("day_of_week"),
-    supabase.from("pastoral_calendar_events").select("id, title, starts_at, ends_at, kind, visibility, location, meeting_url, created_by, updated_by").eq("profile_id", profile.id).gte("ends_at", new Date().toISOString()).order("starts_at").limit(100),
+    selectWithColumnFallback(
+      () =>
+        supabase
+          .from("pastoral_calendar_events")
+          .select("id, title, starts_at, ends_at, kind, visibility, location, meeting_url, created_by, updated_by")
+          .eq("profile_id", profile.id)
+          .gte("ends_at", new Date().toISOString())
+          .order("starts_at")
+          .limit(100),
+      async () => {
+        const result = await supabase
+          .from("pastoral_calendar_events")
+          .select("id, title, starts_at, ends_at, kind, visibility, created_by, updated_by")
+          .eq("profile_id", profile.id)
+          .gte("ends_at", new Date().toISOString())
+          .order("starts_at")
+          .limit(100);
+        return { ...result, data: result.data?.map((row) => ({ ...row, location: null, meeting_url: null })) ?? null };
+      },
+    ),
     supabase
       .from("counsel_requests")
       .select("id, reason, details, is_urgent, status, preferred_date, preferred_time, profiles:requester_profile_id(first_name, last_name)")
