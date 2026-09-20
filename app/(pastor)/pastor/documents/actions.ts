@@ -17,7 +17,14 @@ import type { ActionState } from "@/app/(public)/actions";
 export async function uploadSignatureAsset(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
   const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
-  if (!organizationId || !permissions.has("documents.certify")) {
+  // documents.certify (Pastor) manages the church stamp and the signature
+  // that certifies a document. documents.manage (also the Executive
+  // Assistant and Admin Assistant, who prepare documents but don't
+  // certify them) can add their own signature only — the church stamp is
+  // the certifying authority's mark, not something whoever typed the
+  // letter should be able to attach to it themselves.
+  const canUploadSignature = permissions.has("documents.certify") || permissions.has("documents.manage");
+  if (!organizationId || !canUploadSignature) {
     return { status: "error", message: "You don't have permission to manage certification assets." };
   }
 
@@ -58,6 +65,9 @@ export async function uploadSignatureAsset(_prev: ActionState, formData: FormDat
 
   const stampFile = formData.get("stamp");
   if (stampFile instanceof File && stampFile.size > 0) {
+    if (!permissions.has("documents.certify")) {
+      return { status: "error", message: "Only the Pastor manages the church stamp." };
+    }
     const validationError = validateImage(stampFile);
     if (validationError) return { status: "error", message: `Stamp: ${validationError}` };
     stampPath = `stamps/${profile.id}-${Date.now()}.${imageExtension(stampFile)}`;
@@ -78,7 +88,13 @@ export async function uploadSignatureAsset(_prev: ActionState, formData: FormDat
     .eq("id", profile.id);
   if (profileError) return { status: "error", message: "The files uploaded, but the profile could not be updated." };
   revalidatePath("/pastor/documents");
-  return { status: "success", message: "Saved. Your signature/stamp will now appear on certified documents." };
+  revalidatePath("/admin/documents");
+  return {
+    status: "success",
+    message: stampPath
+      ? "Saved. Your signature/stamp will now appear on certified documents."
+      : "Saved. Your signature will now appear on documents you prepare.",
+  };
 }
 
 export async function certifyDocument(requestId: string): Promise<ActionState> {
@@ -87,10 +103,11 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
   if (!permissions.has("documents.certify") && !permissions.has("documents.sign_delegate")) throw new Error("Only the Pastor or Executive Assistant may apply the signature and church stamp.");
   const { data: request } = await db.from("document_requests").select("*").eq("organization_id",org).eq("id",requestId).maybeSingle();
   if (!request?.prepared_body || request.status !== "pending_pastor") throw new Error("Prepare the document and submit it for certification first.");
-  const [{data:recipient},{data:authority},pastors] = await Promise.all([
+  const [{data:recipient},{data:authority},pastors,{data:preparerProfile}] = await Promise.all([
    db.from("profiles").select("id,first_name,last_name,email").eq("organization_id",org).eq("id",request.requester_profile_id ?? "").maybeSingle(),
    db.from("integration_settings").select("value").eq("key",`document_authority:${org}`).maybeSingle(),
-   roleMembers(org,["pastor"])
+   roleMembers(org,["pastor"]),
+   request.prepared_by ? db.from("profiles").select("auth_user_id,first_name,last_name,signature_path").eq("organization_id",org).eq("auth_user_id",request.prepared_by).maybeSingle() : Promise.resolve({data:null}),
   ]);
   if (!recipient?.email) throw new Error("The recipient needs an email address so the PDF can be delivered.");
   // Printed on the certificate itself ("This certificate is presented to
@@ -103,7 +120,25 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
   if (!recipientName) throw new Error("This member has no name on file. Add their first and last name in People before certifying this document.");
   const assetConfig = authority?.value as { signature_path?:string; stamp_path?:string; signer_name?:string } | undefined;
   const signerId = pastors.find(p=>p.auth_user_id===user.id)?.id ?? pastors[0]?.id;
-  const {data:signerProfile} = signerId ? await db.from("profiles").select("signature_path,stamp_path,first_name,last_name").eq("id",signerId).maybeSingle() : {data:null};
+  const {data:signerProfile} = signerId ? await db.from("profiles").select("auth_user_id,signature_path,stamp_path,first_name,last_name").eq("id",signerId).maybeSingle() : {data:null};
+
+  // A signature line for whoever actually typed up the letter, distinct
+  // from the pastor's own "Certified by" signature below it — but only
+  // when they're different people. The pastor preparing and certifying
+  // his own letter doesn't need his own signature printed on it twice.
+  let preparer: { name: string; title?: string; signatureImage?: Buffer | null } | undefined;
+  if (preparerProfile?.auth_user_id && preparerProfile.auth_user_id !== signerProfile?.auth_user_id) {
+    const preparerName = fullName(preparerProfile);
+    if (preparerName) {
+      const { data: preparerRole } = await db.from("user_roles").select("roles(name)").eq("organization_id", org).eq("user_id", preparerProfile.auth_user_id).limit(1).maybeSingle();
+      preparer = {
+        name: preparerName,
+        title: (preparerRole?.roles as unknown as { name: string } | null)?.name,
+        signatureImage: await getStaffAssetBuffer(preparerProfile.signature_path),
+      };
+    }
+  }
+
   const [logo,signatureImage,stampImage] = await Promise.all([getLogoBuffer(),getStaffAssetBuffer(signerProfile?.signature_path || assetConfig?.signature_path || null),getStaffAssetBuffer(signerProfile?.stamp_path || assetConfig?.stamp_path || null)]);
   if(!signatureImage || !stampImage) throw new Error("The authorized Pastor signature and church stamp must both be configured.");
   const snapshot = (request.template_snapshot ?? {}) as {layout?:string;design?:unknown;email_template_id?:string};
@@ -113,7 +148,7 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
   if(lockError || !numbered?.document_number) throw new Error("This document is already being certified. Refresh before trying again.");
   const path=`documents/${requestId}/${numbered.document_number}.pdf`;
   try {
-   const pdf=await generateDocumentPdf({documentNumber:numbered.document_number,title:request.title,bodyParagraphs:request.prepared_body.split(/\n\s*\n/).filter(Boolean),recipientName,issuedDate:new Date().toLocaleDateString("en-JM",{dateStyle:"long",timeZone:"America/Jamaica"}),logoImage:logo,layout:snapshot.layout,design,signer:{name:signerName,title:"Pastor, New Testament Church of God, Bull Bay",signatureImage,stampImage}});
+   const pdf=await generateDocumentPdf({documentNumber:numbered.document_number,title:request.title,bodyParagraphs:request.prepared_body.split(/\n\s*\n/).filter(Boolean),recipientName,issuedDate:new Date().toLocaleDateString("en-JM",{dateStyle:"long",timeZone:"America/Jamaica"}),logoImage:logo,layout:snapshot.layout,design,signer:{name:signerName,title:"Pastor, New Testament Church of God, Bull Bay",signatureImage,stampImage},preparer});
    const {error:uploadError}=await db.storage.from("member-resources").upload(path,pdf,{contentType:"application/pdf",upsert:true});if(uploadError)throw new Error("The PDF could not be saved.");
    await recordOfficeAction(org,user.id,"document.signature_stamp_applied","document_requests",requestId,{signer_name:signerName,document_number:numbered.document_number,authority:permissions.has("documents.sign_delegate")?"executive_delegation":"pastor_approval"});
    await notifyUsers(org,pastors.flatMap(p=>p.auth_user_id && p.auth_user_id!==user.id?[p.auth_user_id]:[]),{title:"Your signature and the church stamp were used",body:`${profile.first_name ?? ""} ${profile.last_name ?? ""} certified ${request.title} (${numbered.document_number}).`,url:`/pastor/documents?request=${requestId}`,type:"document_signature"});

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { TemplateForm } from "./template-form";
 import { ClaimButton, DenyButton } from "./request-actions";
 import { CertifyButton } from "@/app/(pastor)/pastor/documents/certify-button";
+import { SignatureForm } from "@/app/(pastor)/pastor/documents/signature-form";
 import { TemplateStatusButton } from "./template-status-button";
 
 export const metadata: Metadata = { title: "Documents" };
@@ -17,7 +18,12 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
   if (!permissions.has("documents.manage")) return <AccessDenied />;
 
   const supabase = await createClient();
-  const [{ data: allTemplates }, { data: requests }, { data: emails }] = await Promise.all([
+  // Only for whoever prepares documents without also certifying them (the
+  // Executive Assistant, the Admin Assistant) — anyone with documents.certify
+  // already has their own signature-and-stamp panel on /pastor/documents,
+  // and showing this a second time there would just be a duplicate.
+  const showOwnSignaturePanel = !permissions.has("documents.certify");
+  const [{ data: allTemplates }, { data: requests }, { data: emails }, ownProfile] = await Promise.all([
     supabase.from("document_templates").select("*").throwOnError().order("name"),
     supabase
       .from("document_requests")
@@ -25,6 +31,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
       .in("status", ["submitted", "in_review", "prepared", "pending_pastor", "completed"])
       .order("created_at", { ascending: false }).limit(100),
     supabase.from("email_templates").select("*").throwOnError().eq("organization_id",organizationId ?? "").order("name"),
+    showOwnSignaturePanel ? getCurrentProfile() : Promise.resolve(null),
   ]);
 
   const templates = allTemplates?.filter(t => type === "certificates" ? t.layout === "certificate" : t.layout !== "certificate");
@@ -56,6 +63,19 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
           Email templates &amp; delivery
         </Link>
       </nav>
+
+      {showOwnSignaturePanel && (
+        <div className="panel">
+          <h2>Your signature</h2>
+          <p className="form-note">
+            Prepare a document from a template below, and this signature is added next to the Pastor&apos;s own
+            signature and the church stamp once it&apos;s certified — so the finished PDF shows who actually put it
+            together, not only who signed off on it.
+          </p>
+          <SignatureForm hasSignature={Boolean(ownProfile?.signature_path)} hasStamp={false} showStamp={false} />
+        </div>
+      )}
+
       <div className="panel">
         <details className="dashboard-disclosure">
           <summary>+ Create a custom {type === "certificates" ? "certificate" : "document"} template</summary>

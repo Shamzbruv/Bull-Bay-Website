@@ -28,6 +28,17 @@ export type CertifyingSigner = {
   stampImage?: Buffer | null;
 };
 
+/** Whoever actually typed up the letter — the third signature-row column
+ * used to be a static "Church Office" label with nobody's name attached
+ * to it. Left undefined, that old text-only behaviour is exactly what
+ * still renders, so a document from before this existed looks the same
+ * as it always did. */
+export type PreparingSigner = {
+  name: string;
+  title?: string;
+  signatureImage?: Buffer | null;
+};
+
 export type DocumentPdfInput = {
   layout?: string;
   design?: DocumentDesign;
@@ -38,6 +49,7 @@ export type DocumentPdfInput = {
   recipientName: string;
   issuedDate: string;
   signer?: CertifyingSigner | null;
+  preparer?: PreparingSigner | null;
   logoImage: Buffer;
 };
 
@@ -129,10 +141,14 @@ function SignatureRow({ input, design, accent }: { input: DocumentPdfInput; desi
       </View>
 
       <View style={{ width: "36%" }}>
-        <View style={{ height: 46 }} />
+        {input.preparer?.signatureImage ? (
+          <Image src={input.preparer.signatureImage} style={{ width: 128, height: 44, objectFit: "contain", marginBottom: 2 }} />
+        ) : (
+          <View style={{ height: 46 }} />
+        )}
         <View style={{ borderTop: `0.8 solid ${INK}`, paddingTop: 4 }}>
-          <Text style={{ fontFamily: "Times-Bold", fontSize: 10 }}>{design.secretary_name || "Church Office"}</Text>
-          <Text style={{ fontSize: 8.5, color: MUTED }}>Issued {input.issuedDate}</Text>
+          <Text style={{ fontFamily: "Times-Bold", fontSize: 10 }}>{input.preparer?.name || design.secretary_name || "Church Office"}</Text>
+          <Text style={{ fontSize: 8.5, color: MUTED }}>{input.preparer ? input.preparer.title || "Prepared by" : `Issued ${input.issuedDate}`}</Text>
         </View>
       </View>
     </View>
