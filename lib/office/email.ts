@@ -6,7 +6,51 @@ import { SITE_URL } from "@/lib/org";
 export function fillText(text: string, fields: Record<string, string>) {
   return text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => fields[key] ?? `{{${key}}}`);
 }
-export async function queueOfficeEmail(input: { org: string; recipient: string; template: string; fields: Record<string, string>; dedupeKey: string; actor?: string; attachmentPath?: string; attachmentName?: string }) {
+
+/**
+ * The part of sending an office email that has nothing to do with where
+ * the subject/body came from: log it, queue it, let the background worker
+ * (or an immediate inline delivery, same code either way) actually send
+ * it. queueOfficeEmail below is the template-driven version of this —
+ * Communications' ad-hoc letter sends call this one directly, with
+ * already-rendered content and no email_templates row backing them.
+ */
+export async function queueRawOfficeEmail(input: {
+  org: string;
+  recipient: string;
+  subject: string;
+  html: string;
+  replyTo?: string | null;
+  dedupeKey: string;
+  actor?: string;
+  attachmentPath?: string;
+  attachmentName?: string;
+}) {
+  const db = createServiceRoleClient();
+  const { data: delivery, error: insertError } = await db
+    .from("email_deliveries")
+    .upsert(
+      {
+        organization_id: input.org,
+        recipient: input.recipient,
+        subject: input.subject,
+        html: input.html,
+        reply_to: input.replyTo ?? null,
+        attachment_path: input.attachmentPath ?? null,
+        attachment_name: input.attachmentName ?? null,
+        dedupe_key: input.dedupeKey,
+        created_by: input.actor ?? null,
+      },
+      { onConflict: "dedupe_key", ignoreDuplicates: true },
+    )
+    .select("id")
+    .maybeSingle();
+  if (insertError) throw insertError;
+  if (delivery) return deliverOfficeEmail(delivery.id);
+  return { sent: true };
+}
+
+export async function queueOfficeEmail(input: { org: string; recipient: string; template: string; fields: Record<string, string>; dedupeKey: string; actor?: string; attachmentPath?: string; attachmentName?: string; replyTo?: string }) {
   const db = createServiceRoleClient();
   const { data: template, error } = await db.from("email_templates").select("*").eq("organization_id", input.org).or(`id.eq.${/^[0-9a-f-]{36}$/i.test(input.template) ? input.template : '00000000-0000-0000-0000-000000000000'},slug.eq.${input.template.replace(/[^a-zA-Z0-9_-]/g, '')}`).maybeSingle();
   if (error || !template) throw new Error("Choose an available email template before sending.");
@@ -14,10 +58,17 @@ export async function queueOfficeEmail(input: { org: string; recipient: string; 
   const subject = fillText(template.subject, fields);
   const body = fillText(template.body, fields);
   if (/\{\{[^}]+\}\}/.test(subject + body)) throw new Error("The selected email template has unfilled fields.");
-  const { data: delivery, error: insertError } = await db.from("email_deliveries").upsert({ organization_id: input.org, template_id: template.id, recipient: input.recipient, subject, html: renderComposedEmail({ heading: subject, bodyText: body }), reply_to: template.reply_to, attachment_path: input.attachmentPath ?? null, attachment_name: input.attachmentName ?? null, dedupe_key: input.dedupeKey, created_by: input.actor ?? null }, { onConflict: "dedupe_key", ignoreDuplicates: true }).select("id").maybeSingle();
-  if (insertError) throw insertError;
-  if (delivery) return deliverOfficeEmail(delivery.id);
-  return { sent: true };
+  return queueRawOfficeEmail({
+    org: input.org,
+    recipient: input.recipient,
+    subject,
+    html: renderComposedEmail({ heading: subject, bodyText: body }),
+    replyTo: input.replyTo ?? template.reply_to,
+    dedupeKey: input.dedupeKey,
+    actor: input.actor,
+    attachmentPath: input.attachmentPath,
+    attachmentName: input.attachmentName,
+  });
 }
 export async function deliverOfficeEmail(id: string) {
   const db = createServiceRoleClient();

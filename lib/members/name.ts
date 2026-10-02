@@ -44,6 +44,31 @@ export function greetingName(
 ): string {
   // First name alone for a personal, informal greeting ("Hi Sarah,"); the
   // rest of fullName() only comes into play for the unusual case of a
-  // last name on file with no first name.
+  // last name on file with no last name.
   return person?.first_name?.trim() || fullName(person) || fallback;
+}
+
+/**
+ * The title printed under someone's name on a document or letter — "Admin
+ * Assistant", "Executive Assistant" — rather than a raw permission list. A
+ * person can hold more than one role; this one query, reused everywhere a
+ * signature block needs a title, is the single place that decides which
+ * one wins when they do (whichever role row sorts first).
+ */
+export async function primaryRoleName(
+  // Accepts either the RLS-bound or the service-role Supabase client — both
+  // share this shape but aren't the same generated type, hence `any` here
+  // rather than importing one specific client type the other doesn't match.
+  db: { from: (table: string) => any },
+  organizationId: string,
+  authUserId: string,
+): Promise<string | undefined> {
+  const { data } = await db
+    .from("user_roles")
+    .select("roles(name)")
+    .eq("organization_id", organizationId)
+    .eq("user_id", authUserId)
+    .limit(1)
+    .maybeSingle();
+  return (data?.roles as unknown as { name: string } | null)?.name;
 }

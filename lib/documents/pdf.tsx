@@ -39,17 +39,44 @@ export type PreparingSigner = {
   signatureImage?: Buffer | null;
 };
 
+/**
+ * A letter sent straight from Communications, without going through
+ * pastoral certification — the point of that feature being that staff can
+ * send one without waiting on the pastor's desk. `signer` on this same
+ * input means "certified, with the church stamp"; this means "sent by a
+ * real person, plainly labelled as such." The two are mutually exclusive
+ * in practice — see the closing-block logic below — because a document
+ * that is both certified and casually sent is a contradiction this
+ * platform shouldn't be able to produce.
+ */
+export type CasualSender = {
+  name: string;
+  title?: string;
+  signatureImage?: Buffer | null;
+};
+
 export type DocumentPdfInput = {
   layout?: string;
   design?: DocumentDesign;
+  /** "correspondence" prints the body as a plain business letter: the
+   *  template already supplies its own date, address block, salutation and
+   *  closing, so the document-style title, rule and "Issued" line (which
+   *  would repeat them) are left out. Certified documents never set this. */
+  format?: "document" | "correspondence";
+  /** Correspondence only: the date, flush left above the body, for a
+   *  template whose own text doesn't include one. */
+  dateLine?: string;
   draft?: boolean;
-  documentNumber: string;
+  /** Absent for a letter sent from Communications — there is no official
+   *  document number for correspondence nobody certified. */
+  documentNumber?: string;
   title: string;
   bodyParagraphs: string[];
   recipientName: string;
   issuedDate: string;
   signer?: CertifyingSigner | null;
   preparer?: PreparingSigner | null;
+  sentBy?: CasualSender | null;
   logoImage: Buffer;
 };
 
@@ -155,24 +182,56 @@ function SignatureRow({ input, design, accent }: { input: DocumentPdfInput; desi
   );
 }
 
+/**
+ * The signatory for a letter nobody certified — sent straight from
+ * Communications by a secretary, exec assistant, or anyone else with the
+ * permission to, without the pastor's review. Deliberately plain: a single
+ * left-aligned block, no stamp, no "CERTIFIED BY" banner, no three-column
+ * signature row that would otherwise show an empty "Pastor" placeholder
+ * nobody actually signed. It prints no closing word of its own ("Sincerely,"
+ * and the like) because every letter template already ends with one — a
+ * second would read as a typo. If the sender has their own signature on file
+ * (the same upload used for documents they prepare), it appears here.
+ */
+function SentByClosing({ sentBy }: { sentBy: CasualSender }) {
+  return (
+    <View style={{ marginTop: 14 }}>
+      {sentBy.signatureImage ? (
+        <Image src={sentBy.signatureImage} style={{ width: 120, height: 42, objectFit: "contain", marginBottom: 2 }} />
+      ) : (
+        <View style={{ height: 22 }} />
+      )}
+      <Text style={{ fontFamily: "Times-Bold", fontSize: 10.5 }}>{sentBy.name}</Text>
+      {sentBy.title ? <Text style={{ fontSize: 9, color: MUTED }}>{sentBy.title}</Text> : null}
+    </View>
+  );
+}
+
+const PAGE_MARGIN_TOP = 40;
+const PAGE_MARGIN_BOTTOM = 72;
+
 const letterStyles = StyleSheet.create({
-  page: { padding: 0, fontSize: 11, color: INK, fontFamily: "Times-Roman", lineHeight: 1.55, backgroundColor: CREAM },
-  band: { backgroundColor: NAVY, paddingTop: 15, paddingBottom: 13, paddingHorizontal: 40 },
-  content: { paddingHorizontal: 62, paddingTop: 26, paddingBottom: 96 },
+  // The vertical padding is every page's margin — it is what keeps the second
+  // page of a long letter off the top edge and the text clear of the footer
+  // band. The masthead pulls itself back up into the top padding so it stays
+  // full-bleed on the first page.
+  page: { paddingTop: PAGE_MARGIN_TOP, paddingBottom: PAGE_MARGIN_BOTTOM, fontSize: 11, color: INK, fontFamily: "Times-Roman", lineHeight: 1.55, backgroundColor: CREAM },
+  band: { backgroundColor: NAVY, paddingTop: 15, paddingBottom: 13, paddingHorizontal: 40, marginTop: -PAGE_MARGIN_TOP },
+  content: { paddingHorizontal: 62, paddingTop: 26 },
   metaRow: { flexDirection: "row", justifyContent: "space-between", fontSize: 9, color: MUTED, marginBottom: 18, fontFamily: "Helvetica" },
   title: { fontSize: 17, fontFamily: "Times-Bold", color: NAVY, marginBottom: 14, textAlign: "center", letterSpacing: 0.3 },
   paragraph: { fontSize: 11.5, marginBottom: 11, textAlign: "justify" },
 });
 
-/* Deliberately uses no `fixed` elements. A masthead/footer marked `fixed`
- * (so it repeats on later pages) made @react-pdf resolve the absolutely
- * positioned footer to the full page height, which painted the entire
- * sheet navy — a letter nobody could read. The certificate layout below
- * never used `fixed` and always rendered correctly, so this matches it:
- * a plain flow masthead and a bottom-pinned footer with a fixed height.
- * Church letters are single-page in practice; a very long one simply
- * carries its letterhead on the first page. */
+/* The masthead is plain flow content, so it appears once, on the first page.
+ * The footer band and the side rules are `fixed` so a long letter carries
+ * them on every page — without that, react-pdf drops a non-fixed absolute
+ * element onto the *last* page only, leaving page one with no footer and
+ * its text running to the bottom edge. A `fixed` footer once painted the
+ * whole sheet navy, because its box had no explicit height and resolved to
+ * the full page; the footer below has one, so keep it. */
 function LetterDocument({ input, design, accent }: { input: DocumentPdfInput; design: DocumentDesign; accent: string }) {
+  const correspondence = input.format === "correspondence";
   return (
     <Document title={input.title}>
       <Page size="A4" style={letterStyles.page}>
@@ -186,51 +245,63 @@ function LetterDocument({ input, design, accent }: { input: DocumentPdfInput; de
         <View style={{ height: 4, backgroundColor: accent }} />
 
         {/* Slim gold rules down both margins. */}
-        <View style={{ position: "absolute", top: 150, bottom: 96, left: 34, width: 0.8, backgroundColor: accent, opacity: 0.55 }} />
-        <View style={{ position: "absolute", top: 150, bottom: 96, right: 34, width: 0.8, backgroundColor: accent, opacity: 0.55 }} />
+        <View fixed style={{ position: "absolute", top: 150, bottom: 96, left: 34, width: 0.8, backgroundColor: accent, opacity: 0.55 }} />
+        <View fixed style={{ position: "absolute", top: 150, bottom: 96, right: 34, width: 0.8, backgroundColor: accent, opacity: 0.55 }} />
 
         <View style={letterStyles.content}>
-          <View style={letterStyles.metaRow}>
-            <Text>Document No. {input.documentNumber}</Text>
-            <Text>Issued {input.issuedDate}</Text>
-          </View>
+          {correspondence ? (
+            input.dateLine ? <Text style={{ fontSize: 11.5, marginBottom: 14 }}>{input.dateLine}</Text> : null
+          ) : (
+            <>
+              <View style={letterStyles.metaRow}>
+                <Text>{input.documentNumber ? `Document No. ${input.documentNumber}` : ""}</Text>
+                <Text>Issued {input.issuedDate}</Text>
+              </View>
 
-          {design.banner ? (
-            <Text style={{ backgroundColor: accent, color: "#ffffff", paddingVertical: 6, paddingHorizontal: 10, textAlign: "center", marginBottom: 14, fontSize: 10, letterSpacing: 1.4, fontFamily: "Helvetica-Bold" }}>
-              {design.banner.toUpperCase()}
-            </Text>
-          ) : null}
+              {design.banner ? (
+                <Text style={{ backgroundColor: accent, color: "#ffffff", paddingVertical: 6, paddingHorizontal: 10, textAlign: "center", marginBottom: 14, fontSize: 10, letterSpacing: 1.4, fontFamily: "Helvetica-Bold" }}>
+                  {design.banner.toUpperCase()}
+                </Text>
+              ) : null}
 
-          <Text style={letterStyles.title}>{input.title}</Text>
-          <RuleWithDiamond accent={accent} width={80} />
+              <Text style={letterStyles.title}>{input.title}</Text>
+              <RuleWithDiamond accent={accent} width={80} />
+            </>
+          )}
 
-          <View style={{ marginTop: 10 }}>
+          <View style={{ marginTop: correspondence ? 0 : 10 }}>
             {input.bodyParagraphs.map((paragraph, index) => (
-              <Text key={index} style={letterStyles.paragraph}>
+              <Text key={index} style={correspondence ? [letterStyles.paragraph, { textAlign: "left" }] : letterStyles.paragraph}>
                 {paragraph}
               </Text>
             ))}
           </View>
 
-          {input.signer ? (
-            <Text style={{ marginTop: 16, alignSelf: "flex-start", backgroundColor: "#eef2f7", color: NAVY, borderRadius: 4, paddingVertical: 5, paddingHorizontal: 11, fontSize: 8.5, fontFamily: "Helvetica-Bold", letterSpacing: 0.8 }}>
-              CERTIFIED BY THE PASTOR&apos;S OFFICE
-            </Text>
-          ) : null}
+          {input.sentBy && !input.signer ? (
+            <SentByClosing sentBy={input.sentBy} />
+          ) : (
+            <>
+              {input.signer ? (
+                <Text style={{ marginTop: 16, alignSelf: "flex-start", backgroundColor: "#eef2f7", color: NAVY, borderRadius: 4, paddingVertical: 5, paddingHorizontal: 11, fontSize: 8.5, fontFamily: "Helvetica-Bold", letterSpacing: 0.8 }}>
+                  CERTIFIED BY THE PASTOR&apos;S OFFICE
+                </Text>
+              ) : null}
 
-          <SignatureRow input={input} design={design} accent={accent} />
+              <SignatureRow input={input} design={design} accent={accent} />
+            </>
+          )}
         </View>
 
         {/* Footer band mirrors the masthead, pinned to the bottom with an
             explicit height so its box can never resolve to the full page. */}
-        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 52 }}>
+        <View fixed style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 52 }}>
           <View style={{ height: 3, backgroundColor: accent }} />
           <View style={{ backgroundColor: NAVY_DEEP, paddingVertical: 10, paddingHorizontal: 42, flexGrow: 1 }}>
             <Text style={{ textAlign: "center", fontSize: 7.5, color: "#c9d6e8", fontFamily: "Helvetica" }}>
               {input.draft ? "DRAFT · Awaiting authorization" : design.footer || `${CHURCH_ADDRESS} · ${CHURCH_CONTACT}`}
             </Text>
             <Text style={{ textAlign: "center", fontSize: 7, color: "#93a8c4", marginTop: 3, fontFamily: "Helvetica" }}>
-              {CHURCH_NAME}, Bull Bay · Document No. {input.documentNumber}
+              {CHURCH_NAME}, Bull Bay{input.documentNumber ? ` · Document No. ${input.documentNumber}` : ""}
             </Text>
           </View>
         </View>

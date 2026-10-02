@@ -9,7 +9,7 @@ import { queueOfficeEmail } from "@/lib/office/email";
 import { officeContext, recordOfficeAction, roleMembers } from "@/lib/office/context";
 import { officeAction } from "@/lib/office/action";
 import { notifyUsers } from "@/lib/notifications";
-import { fullName } from "@/lib/members/name";
+import { fullName, primaryRoleName } from "@/lib/members/name";
 import { cleanDesign } from "@/lib/documents/design";
 import { SITE_URL } from "@/lib/org";
 import type { ActionState } from "@/app/(public)/actions";
@@ -130,10 +130,9 @@ export async function certifyDocument(requestId: string): Promise<ActionState> {
   if (preparerProfile?.auth_user_id && preparerProfile.auth_user_id !== signerProfile?.auth_user_id) {
     const preparerName = fullName(preparerProfile);
     if (preparerName) {
-      const { data: preparerRole } = await db.from("user_roles").select("roles(name)").eq("organization_id", org).eq("user_id", preparerProfile.auth_user_id).limit(1).maybeSingle();
       preparer = {
         name: preparerName,
-        title: (preparerRole?.roles as unknown as { name: string } | null)?.name,
+        title: await primaryRoleName(db, org, preparerProfile.auth_user_id),
         signatureImage: await getStaffAssetBuffer(preparerProfile.signature_path),
       };
     }

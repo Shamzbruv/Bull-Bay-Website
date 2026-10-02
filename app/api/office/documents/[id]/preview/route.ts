@@ -3,7 +3,7 @@ import { createClient,createServiceRoleClient } from "@/lib/supabase/server";
 import { generateDocumentPdf } from "@/lib/documents/pdf";
 import { getLogoBuffer,getStaffAssetBuffer } from "@/lib/documents/assets";
 import { cleanDesign } from "@/lib/documents/design";
-import { fullName } from "@/lib/members/name";
+import { fullName, primaryRoleName } from "@/lib/members/name";
 export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
  const profile=await getCurrentProfile();if(!profile)return new Response("Sign in required",{status:401});const permissions=await getUserPermissions(profile.organization_id);if(!permissions.has("documents.manage")&&!permissions.has("documents.certify"))return new Response("Forbidden",{status:403});
  const {id}=await params;const db=await createClient();const {data:r}=await db.from("document_requests").select("*").eq("organization_id",profile.organization_id).eq("id",id).maybeSingle();if(!r)return new Response("Not found",{status:404});
@@ -21,8 +21,7 @@ export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
   if(preparerProfile?.auth_user_id){
    const preparerName=fullName(preparerProfile);
    if(preparerName){
-    const {data:preparerRole}=await db.from("user_roles").select("roles(name)").eq("organization_id",profile.organization_id).eq("user_id",preparerProfile.auth_user_id).limit(1).maybeSingle();
-    preparer={name:preparerName,title:(preparerRole?.roles as unknown as {name:string}|null)?.name,signatureImage:await getStaffAssetBuffer(preparerProfile.signature_path)};
+    preparer={name:preparerName,title:await primaryRoleName(db,profile.organization_id,preparerProfile.auth_user_id),signatureImage:await getStaffAssetBuffer(preparerProfile.signature_path)};
    }
   }
   const snapshot=(r.template_snapshot??{}) as {layout?:string;design?:unknown};bytes=await generateDocumentPdf({title:r.title,documentNumber:r.document_number||"DRAFT",recipientName:[p?.first_name,p?.last_name].filter(Boolean).join(" ")||'(no name on file — this will block certification)',bodyParagraphs:(r.prepared_body||"Document text has not yet been prepared.").split(/\n\s*\n/),issuedDate:new Date().toLocaleDateString("en-JM",{timeZone:"America/Jamaica"}),logoImage:await getLogoBuffer(),draft:true,layout:snapshot.layout,design:cleanDesign(snapshot.design),preparer});
