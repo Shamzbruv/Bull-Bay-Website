@@ -6,7 +6,11 @@ export type EmailTemplate = Base & { name: string; slug: string; subject: string
 export type EmailDelivery = Base & { template_id: string | null; recipient: string; subject: string; html: string; reply_to: string | null; attachment_path: string | null; attachment_name: string | null; status: string; attempts: number; last_error: string | null; dedupe_key: string | null; created_by: string | null; sent_at: string | null; locked_at: string | null };
 export type OfficeForm = Base & { title: string; description: string; fields: Json; is_active: boolean; created_by: string | null; updated_at: string };
 export type FormAssignment = Base & { form_id: string; recipient_profile_id: string; token_hash: string; form_snapshot: Json; expires_at: string; sent_by: string | null; answers: Json; submitted_at: string | null };
-export type CalendarConnection = Base & { user_id: string; calendar_profile_id: string | null; google_email: string; refresh_token: string; google_calendar_id: string; last_synced_at: string | null; last_error: string | null };
+export type CalendarConnection = Base & { user_id: string; calendar_profile_id: string | null; google_email: string; refresh_token: string; google_calendar_id: string; last_synced_at: string | null; last_error: string | null; sync_lock_until: string | null };
+/** One website entry mirrored into one Google calendar, with the content both sides last agreed on. */
+export type CalendarEventLink = { connection_id: string; event_id: string; google_event_id: string; synced_hash: string; google_updated: string | null; synced_at: string };
+/** What the two-way sync did, shown to the people whose calendar it is. */
+export type CalendarSyncLog = { id: number; connection_id: string; organization_id: string; direction: string; action: string; title: string | null; detail: string | null; created_at: string };
 export type WorkflowTables = {
  office_tasks: Table<OfficeTask>;
  email_templates: Table<EmailTemplate>;
@@ -15,6 +19,8 @@ export type WorkflowTables = {
  form_assignments: Table<FormAssignment>;
  integration_settings: Table<{ key: string; value: Json; updated_at: string }>;
  calendar_connections: Table<CalendarConnection>;
+ calendar_event_links: Table<CalendarEventLink>;
+ calendar_sync_log: Table<CalendarSyncLog>;
  calendar_subscriptions: Table<Base & { user_id: string; calendar_profile_id: string | null; token_hash: string; revoked_at: string | null }>;
  push_subscriptions: Table<Base & { user_id: string; endpoint: string; p256dh: string; auth: string }>;
 };

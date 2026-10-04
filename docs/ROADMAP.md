@@ -26,8 +26,10 @@ on top of that.
 - **QuickBooks/Xero accounting sync, Zapier/Make webhook management** —
   `integrations.manage` permission is seeded but unused.
 - **Workflow/form builder, native apps, resource booking** — not started.
-- **Google Calendar two-way sync** — the public `.ics` feed
-  (`/calendar.ics`) exists; Calendar API sync does not.
+- **Reading a person's whole Google account** — two-way sync exists for the
+  church calendar the platform creates in a connected Google account
+  (see `docs/CALENDAR-SYNC.md`), but it deliberately cannot see their other
+  calendars: that needs a Google-verified scope.
 
 ## Payments — not connected yet, by design
 

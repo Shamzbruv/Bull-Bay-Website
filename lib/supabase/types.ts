@@ -2041,8 +2041,10 @@ export type Database = {
           location: string | null
           meeting_url: string | null
           profile_id: string
+          source: string
           starts_at: string
           title: string
+          updated_at: string
           visibility: string
         }
         Insert: {
@@ -2057,8 +2059,10 @@ export type Database = {
           location?: string | null
           meeting_url?: string | null
           profile_id: string
+          source?: string
           starts_at: string
           title: string
+          updated_at?: string
           visibility?: string
         }
         Update: {
@@ -2073,8 +2077,10 @@ export type Database = {
           location?: string | null
           meeting_url?: string | null
           profile_id?: string
+          source?: string
           starts_at?: string
           title?: string
+          updated_at?: string
           visibility?: string
         }
         Relationships: [

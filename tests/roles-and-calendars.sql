@@ -80,6 +80,25 @@ do $$ begin
  insert into public.pastoral_calendar_events(profile_id,title,starts_at,ends_at) values(current_setting('test.pastor')::uuid,'Conflict',current_setting('test.slot')::timestamptz,current_setting('test.slot')::timestamptz+interval '1 hour');
  raise exception 'FAIL overlapping entry'; exception when exclusion_violation then null; end;
 end $$;
+-- Two-way Google sync: entries that arrive from Google may overlap each other, the sync raises no bell for
+-- the calendar's owner (but is audited), and what people type into the website still cannot double up.
+-- Far in the future so the slot counts asserted further down are untouched.
+do $$ declare base timestamptz := date_trunc('hour', now()) + interval '200 days'; bells_before integer; begin
+ perform set_config('request.jwt.claim.sub','',true);
+ select count(*) into bells_before from public.notifications where user_id='22222222-2222-4222-8222-222222222222' and title='Your calendar was updated';
+ insert into public.pastoral_calendar_events(profile_id,title,starts_at,ends_at,source) values
+  (current_setting('test.pastor')::uuid,'Imported A',base,base+interval '2 hours','google'),
+  (current_setting('test.pastor')::uuid,'Imported B overlaps A',base+interval '1 hour',base+interval '3 hours','google');
+ if (select count(*) from public.pastoral_calendar_events where profile_id=current_setting('test.pastor')::uuid and source='google')<>2 then raise exception 'FAIL imported entries may overlap'; end if;
+ if (select count(*) from public.notifications where user_id='22222222-2222-4222-8222-222222222222' and title='Your calendar was updated')<>bells_before then raise exception 'FAIL sync write notified the owner'; end if;
+ if not exists(select 1 from public.audit_logs where action='calendar.insert' and metadata->>'actor_name'='Google Calendar sync') then raise exception 'FAIL sync write not audited'; end if;
+ perform set_config('request.jwt.claim.sub','22222222-2222-4222-8222-222222222222',true);
+ insert into public.pastoral_calendar_events(profile_id,title,starts_at,ends_at) values(current_setting('test.pastor')::uuid,'Typed in',base+interval '10 days',base+interval '10 days 1 hour');
+ begin
+  insert into public.pastoral_calendar_events(profile_id,title,starts_at,ends_at) values(current_setting('test.pastor')::uuid,'Typed over typed',base+interval '10 days 30 minutes',base+interval '10 days 90 minutes');
+  raise exception 'FAIL typed entries must not overlap'; exception when exclusion_violation then null; end;
+ if (select count(*) from public.notifications where user_id='22222222-2222-4222-8222-222222222222' and title='Your calendar was updated')<>bells_before then raise exception 'FAIL own entry notified the owner'; end if;
+end $$;
 select set_config('request.jwt.claim.sub','11111111-1111-4111-8111-111111111111',true);
 set local role authenticated;
 select public.respond_counsel_request(current_setting('test.request')::uuid,'cancelled');

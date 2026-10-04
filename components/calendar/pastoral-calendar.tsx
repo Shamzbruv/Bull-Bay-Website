@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { DAY_NAMES } from "@/lib/pastoral/reasons";
+import { addDays, formatSlotTime, formatTime, jamaicaDayBounds, parseDateKey, startOfMonth, startOfWeek, toDateKey, todayJamaicaKey, weekRangeLabel } from "@/lib/calendar/dates";
 
 export type AvailabilityBlock = { id: string; dayOfWeek: number; startTime: string; endTime: string; label: string | null };
 export type CalendarEntry = {
@@ -15,6 +16,8 @@ export type CalendarEntry = {
   visibility: "public" | "private";
   location?: string | null;
   meetingUrl?: string | null;
+  /** Where the entry was first made: on the website, or in a connected Google Calendar. */
+  source?: "platform" | "google";
 };
 type OpenSlot = { starts_at: string; ends_at: string };
 type CalendarView = "month" | "week" | "day";
@@ -22,53 +25,9 @@ type CalendarView = "month" | "week" | "day";
 const SHORT_DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const BOOKING_WINDOW_DAYS = 90;
 
-// -- Pure date helpers -------------------------------------------------
-// Calendar navigation is deliberately done in plain browser-local calendar
-// terms (like every native <input type="date"> already used elsewhere in
-// this feature) — the exact instant math for "does this event touch this
-// date" below is what actually has to respect Jamaica time, since that's
-// what the server-side availability/slot logic is written against.
-function toDateKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-function parseDateKey(key: string): Date {
-  const [y, m, d] = key.split("-").map(Number);
-  return new Date(y ?? new Date().getFullYear(), (m ?? 1) - 1, d ?? 1, 12);
-}
-function addDays(d: Date, n: number): Date {
-  const copy = new Date(d);
-  copy.setDate(copy.getDate() + n);
-  return copy;
-}
-function startOfWeek(d: Date): Date {
-  return addDays(d, -d.getDay());
-}
-function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 12);
-}
-function jamaicaDayBounds(dateKey: string): [Date, Date] {
-  const start = new Date(`${dateKey}T00:00:00-05:00`);
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 1);
-  return [start, end];
-}
 function eventTouchesDate(entry: CalendarEntry, dateKey: string): boolean {
   const [dayStart, dayEnd] = jamaicaDayBounds(dateKey);
   return new Date(entry.startsAt) < dayEnd && new Date(entry.endsAt) > dayStart;
-}
-function todayJamaicaKey(): string {
-  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Jamaica" });
-}
-function formatTime(time: string): string {
-  const [h, m] = time.split(":").map(Number);
-  const hour = h ?? 0;
-  const minute = m ?? 0;
-  const period = hour >= 12 ? "PM" : "AM";
-  const hour12 = hour % 12 === 0 ? 12 : hour % 12;
-  return minute ? `${hour12}:${String(minute).padStart(2, "0")} ${period}` : `${hour12} ${period}`;
-}
-function formatSlotTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("en-US", { timeZone: "America/Jamaica", hour: "numeric", minute: "2-digit" });
 }
 
 const ENTRY_LABEL: Record<CalendarEntry["kind"], string> = { day_off: "☀ Day off", busy: "◆ Busy", appointment: "◷ Appointment", meeting: "⚇ Meeting" };
@@ -102,6 +61,7 @@ export function PastoralCalendar({
   events,
   onRemoveAvailability,
   onRemoveEvent,
+  onEditEvent,
   onSlotSelect,
   selectedSlotIso,
   bookingPersonId,
@@ -113,6 +73,7 @@ export function PastoralCalendar({
   events: CalendarEntry[];
   onRemoveAvailability?: (id: string) => void;
   onRemoveEvent?: (id: string) => void;
+  onEditEvent?: (entry: CalendarEntry) => void;
   onSlotSelect?: (startsAtIso: string, endsAtIso: string) => void;
   selectedSlotIso?: string | null;
   bookingPersonId?: string;
@@ -159,9 +120,7 @@ export function PastoralCalendar({
     if (view === "month") return cursor.toLocaleDateString("en-US", { month: "long", year: "numeric" });
     if (view === "day") return cursor.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
     const start = startOfWeek(cursor);
-    const end = addDays(start, 6);
-    const sameMonth = start.getMonth() === end.getMonth();
-    return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", sameMonth ? { day: "numeric", year: "numeric" } : { month: "short", day: "numeric", year: "numeric" })}`;
+    return weekRangeLabel(start, addDays(start, 6));
   }, [view, cursor]);
 
   return (
@@ -203,6 +162,7 @@ export function PastoralCalendar({
           isBookable={isBookable}
           onRemoveAvailability={onRemoveAvailability}
           onRemoveEvent={onRemoveEvent}
+          onEditEvent={onEditEvent}
           onSlotSelect={onSlotSelect}
           selectedSlotIso={selectedSlotIso}
           bookingPersonId={bookingPersonId}
@@ -218,6 +178,7 @@ export function PastoralCalendar({
           isBookable={isBookable}
           onRemoveAvailability={onRemoveAvailability}
           onRemoveEvent={onRemoveEvent}
+          onEditEvent={onEditEvent}
           onSlotSelect={onSlotSelect}
           selectedSlotIso={selectedSlotIso}
           bookingPersonId={bookingPersonId}
@@ -300,6 +261,7 @@ function WeekGrid({
   isBookable,
   onRemoveAvailability,
   onRemoveEvent,
+  onEditEvent,
   onSlotSelect,
   selectedSlotIso,
   bookingPersonId,
@@ -313,6 +275,7 @@ function WeekGrid({
   isBookable: (key: string) => boolean;
   onRemoveAvailability?: (id: string) => void;
   onRemoveEvent?: (id: string) => void;
+  onEditEvent?: (entry: CalendarEntry) => void;
   onSlotSelect?: (startsAtIso: string, endsAtIso: string) => void;
   selectedSlotIso?: string | null;
   bookingPersonId?: string;
@@ -336,7 +299,7 @@ function WeekGrid({
             <div className="pcal-week-col-body">
               <DayHours dateKey={key} availabilityForKey={availabilityForKey} />
               {eventsForKey(key).map((e) => (
-                <EventChip key={e.id} entry={e} onRemove={mode === "manage" ? onRemoveEvent : undefined} />
+                <EventChip key={e.id} entry={e} onRemove={mode === "manage" ? onRemoveEvent : undefined} onEdit={mode === "manage" ? onEditEvent : undefined} />
               ))}
               {mode === "manage" &&
                 availabilityForKey(key).map((a) => (
@@ -369,6 +332,7 @@ function DayAgenda({
   isBookable,
   onRemoveAvailability,
   onRemoveEvent,
+  onEditEvent,
   onSlotSelect,
   selectedSlotIso,
   bookingPersonId,
@@ -380,6 +344,7 @@ function DayAgenda({
   isBookable: (key: string) => boolean;
   onRemoveAvailability?: (id: string) => void;
   onRemoveEvent?: (id: string) => void;
+  onEditEvent?: (entry: CalendarEntry) => void;
   onSlotSelect?: (startsAtIso: string, endsAtIso: string) => void;
   selectedSlotIso?: string | null;
   bookingPersonId?: string;
@@ -431,13 +396,25 @@ function DayAgenda({
             <div className="pcal-agenda-main">
               <span>
                 <span className={`badge ${e.kind === "appointment" || e.kind === "meeting" ? "gold" : e.kind === "day_off" ? "" : "gray"}`}>{ENTRY_LABEL[e.kind]}</span>{" "}
+                {e.source === "google" && (
+                  <>
+                    <span className="badge blue" title="Added in Google Calendar and synced to the website">from Google Calendar</span>{" "}
+                  </>
+                )}
                 {formatSlotTime(e.startsAt)}–{formatSlotTime(e.endsAt)} · {e.title}
               </span>
-              {onRemoveEvent && e.kind !== "appointment" && (
-                <button type="button" className="link-button" onClick={() => onRemoveEvent(e.id)}>
-                  remove
-                </button>
-              )}
+              <span className="pcal-agenda-actions">
+                {onEditEvent && e.kind !== "appointment" && (
+                  <button type="button" className="link-button" onClick={() => onEditEvent(e)}>
+                    edit
+                  </button>
+                )}
+                {onRemoveEvent && e.kind !== "appointment" && (
+                  <button type="button" className="link-button" onClick={() => onRemoveEvent(e.id)}>
+                    remove
+                  </button>
+                )}
+              </span>
             </div>
             {(e.location || e.meetingUrl) && (
               <div className="pcal-agenda-details">
@@ -460,11 +437,16 @@ function DayAgenda({
   );
 }
 
-function EventChip({ entry, onRemove }: { entry: CalendarEntry; onRemove?: (id: string) => void }) {
+function EventChip({ entry, onRemove, onEdit }: { entry: CalendarEntry; onRemove?: (id: string) => void; onEdit?: (entry: CalendarEntry) => void }) {
   return (
     <span className={`pcal-chip ${ENTRY_CLASS[entry.kind]}`} title={entry.location ?? undefined}>
       {ENTRY_LABEL[entry.kind]}: {entry.title}
       {entry.meetingUrl && <span aria-hidden="true"> 🎥</span>}
+      {onEdit && entry.kind !== "appointment" && (
+        <button type="button" className="pcal-chip-remove" aria-label={`Edit ${entry.title}`} onClick={() => onEdit(entry)}>
+          ✎
+        </button>
+      )}
       {onRemove && entry.kind !== "appointment" && (
         <button type="button" className="pcal-chip-remove" aria-label={`Remove ${entry.title}`} onClick={() => onRemove(entry.id)}>
           ×

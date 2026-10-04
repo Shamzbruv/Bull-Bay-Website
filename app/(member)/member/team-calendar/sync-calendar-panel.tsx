@@ -22,7 +22,7 @@ export function SyncCalendarPanel({ feedUrl, publicFeed = false }: { feedUrl: st
     <div className="panel">
       <h2>Sync to your phone or Google Calendar</h2>
       <p className="form-note" style={{ marginTop: 0 }}>
-        Subscribe to see your confirmed meetings and, for pastoral team members, working hours and calendar entries. Updates flow from the church platform to your calendar. Changes made in Google or your phone do not update church availability. Google and other calendar apps refresh subscriptions on their own schedule.
+        Subscribe to see your confirmed meetings and, for pastoral team members, working hours and calendar entries. A subscription is view-only: it shows the church platform’s calendar in your calendar app but cannot send changes back. To add or edit entries from Google Calendar itself, connect your Google account under Calendar connections instead. Calendar apps refresh subscriptions on their own schedule.
       </p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
         <a className="secondary-button compact" href={googleUrl} target="_blank" rel="noreferrer">

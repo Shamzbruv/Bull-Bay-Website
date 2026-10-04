@@ -2042,6 +2042,8 @@ table.data-table tr:last-child td { border-bottom: 0; }
 .pcal-chip-meeting { background: #dbeee2; color: #1f6b45; }
 .pcal-chip-remove { margin-left: auto; border: 0; background: transparent; color: inherit; opacity: .6; font-size: .9rem; line-height: 1; cursor: pointer; }
 .pcal-chip-remove:hover { opacity: 1; }
+.pcal-chip-remove + .pcal-chip-remove { margin-left: 2px; }
+.pcal-agenda-actions { display: inline-flex; gap: 12px; flex: none; }
 
 .pcal-slot-list { display: flex; flex-wrap: wrap; gap: 8px; }
 .pcal-slot-list-compact { gap: 5px; }
@@ -2107,6 +2109,105 @@ table.data-table tr:last-child td { border-bottom: 0; }
 @media (max-width: 640px) {
   .pcal-week-grid { grid-template-columns: repeat(7, minmax(110px, 1fr)); }
   .pcal-toolbar-title { order: -1; width: 100%; text-align: left; }
+}
+
+/* Member-facing church calendar: one colour layer per person ----------- */
+.ccal-legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.ccal-layer {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-inset-sm);
+  color: var(--color-muted-2);
+  font-size: .76rem;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+  opacity: .55;
+}
+.ccal-layer small { display: block; font-size: .62rem; font-weight: 600; color: var(--color-muted); }
+.ccal-layer.is-on { opacity: 1; color: var(--color-blue-700); box-shadow: inset 0 0 0 2px var(--layer); }
+.ccal-layer-dot { width: 10px; height: 10px; border-radius: 999px; background: var(--layer); flex: none; }
+
+.ccal-cell {
+  min-height: 104px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-inset-sm);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.ccal-cell:hover { box-shadow: var(--shadow-inset); }
+.ccal-cell.is-outside { opacity: .4; }
+.ccal-cell.is-today { box-shadow: inset 0 0 0 2px var(--color-blue-600); }
+.ccal-cell.is-selected { background: var(--color-blue-tint); }
+.ccal-pills { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ccal-pill {
+  display: block;
+  padding: 2px 6px;
+  border-left: 3px solid var(--layer);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--layer) 16%, #fff);
+  color: #1f2937;
+  font-size: .64rem;
+  font-weight: 700;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ccal-more { font-size: .6rem; font-weight: 700; color: var(--color-muted); }
+.ccal-dots { display: none; flex-wrap: wrap; gap: 3px; }
+.ccal-dot { width: 6px; height: 6px; border-radius: 999px; background: var(--layer); }
+
+.ccal-pill.is-busy,
+.ccal-week-item.is-busy,
+.ccal-item.is-busy { border-left-color: var(--color-muted); background: rgba(0, 0, 0, .04); color: var(--color-muted-2); font-style: italic; }
+
+.ccal-week-item {
+  display: grid;
+  gap: 2px;
+  padding: 6px 8px;
+  border-left: 3px solid var(--layer);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--layer) 12%, #fff);
+  font-size: .7rem;
+  line-height: 1.3;
+}
+.ccal-week-time { font-weight: 700; color: var(--color-muted-2); }
+.ccal .pcal-week-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.ccal-week-item { overflow-wrap: anywhere; }
+.ccal-week-who { color: var(--layer); font-weight: 700; }
+.ccal-week-where { color: var(--color-muted-2); }
+
+.ccal-day-panel { margin-top: 18px; padding: 16px; border-radius: var(--radius-sm); background: var(--color-surface); box-shadow: var(--shadow-inset-sm); }
+.ccal-day-panel h4,
+.ccal-agenda-day h4 { margin: 0 0 10px; font-size: .95rem; color: var(--color-blue-700); }
+.ccal-hours-list { display: grid; gap: 4px; margin: 0 0 12px; padding: 0; list-style: none; font-size: .78rem; }
+.ccal-hours-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ccal-agenda { display: grid; gap: 22px; }
+.ccal-item { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; margin: 8px 0; padding: 8px 0 8px 12px; border-left: 4px solid var(--layer); }
+.ccal-item-time { font-size: .76rem; font-weight: 700; color: var(--color-muted-2); }
+.ccal-item-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ccal-item-who { font-size: .72rem; font-weight: 700; color: var(--layer); }
+
+@media (max-width: 640px) {
+  .ccal-cell { min-height: 54px; align-items: center; padding: 4px; }
+  .ccal-pills { display: none; }
+  .ccal-dots { display: flex; justify-content: center; }
+  .ccal-item { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .ccal .pcal-week-grid { grid-template-columns: repeat(7, minmax(110px, 1fr)); }
 }
 
 .workspace-root .dashboard-topbar-user {
@@ -2931,3 +3032,12 @@ table.data-table tr:last-child td { border-bottom: 0; }
    at a glance in a table full of neutral church-blue actions. */
 .whatsapp-button { display: inline-flex; align-items: center; gap: 6px; color: #25d366; }
 .whatsapp-button:hover { color: #1da851; box-shadow: var(--shadow-inset-sm); }
+
+/* Two-way Google sync: the activity list ------------------------------- */
+.sync-activity { margin-top: 14px; }
+.sync-activity summary { cursor: pointer; font-size: .85rem; font-weight: 700; color: var(--color-blue-700); }
+.sync-activity ul { display: grid; gap: 8px; margin: 10px 0 6px; padding: 0; list-style: none; }
+.sync-activity li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; font-size: .8rem; line-height: 1.4; }
+.sync-activity li.is-error { color: #a8341f; }
+.sync-activity time { display: block; font-size: .68rem; color: var(--color-muted); }
+.sync-activity-mark { font-weight: 800; text-align: center; color: var(--color-blue-600); }

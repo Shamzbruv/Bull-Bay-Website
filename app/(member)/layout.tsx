@@ -21,8 +21,9 @@ const NAV_SECTIONS: DashboardNavSection[] = [
   {
     label: "Church life",
     items: [
+      { href: "/member/church-calendar", label: "Church calendar", icon: "calendar" },
       { href: "/member/events", label: "Events", icon: "calendar" },
-      { href: "/member/calendar", label: "My calendar", icon: "calendar" },
+      { href: "/member/calendar", label: "Calendar connections", icon: "calendar" },
       { href: "/member/groups", label: "Groups", icon: "people" },
       { href: "/member/ministry", label: "My ministry", icon: "church" },
       { href: "/member/serving", label: "Serving", icon: "heart" },

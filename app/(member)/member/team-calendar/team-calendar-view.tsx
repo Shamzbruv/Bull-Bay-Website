@@ -5,7 +5,11 @@ import { CounselRequestRow } from "@/app/(pastor)/pastor/care/counsel-request-ro
 import { PrayerRequestRow } from "@/app/(pastor)/pastor/care/prayer-request-row";
 import { ManageCalendarPanel } from "@/components/calendar/manage-calendar-panel";
 import type { CalendarEntry } from "@/components/calendar/pastoral-calendar";
-import { selectWithColumnFallback } from "@/lib/calendar/integrations";
+import { selectWithColumnFallback, syncStaleConnectionsForProfiles } from "@/lib/calendar/integrations";
+import { GoogleSyncStatus } from "@/components/calendar/google-sync-status";
+import { RealtimeRefresh } from "@/components/realtime-refresh";
+import { AutoRefresh } from "@/components/auto-refresh";
+import { after } from "next/server";
 
 /**
  * Shared body for the pastoral-team calendar — rendered at /member/team-calendar
@@ -50,7 +54,7 @@ export async function TeamCalendarView() {
       () =>
         supabase
           .from("pastoral_calendar_events")
-          .select("id, title, starts_at, ends_at, kind, visibility, location, meeting_url, created_by, updated_by")
+          .select("id, title, starts_at, ends_at, kind, visibility, location, meeting_url, source, created_by, updated_by")
           .eq("profile_id", profile.id)
           .gte("ends_at", new Date().toISOString())
           .order("starts_at")
@@ -58,7 +62,7 @@ export async function TeamCalendarView() {
       async () => {
         const result = await supabase
           .from("pastoral_calendar_events")
-          .select("id, title, starts_at, ends_at, kind, visibility, created_by, updated_by")
+          .select("id, title, starts_at, ends_at, kind, visibility, source, created_by, updated_by")
           .eq("profile_id", profile.id)
           .gte("ends_at", new Date().toISOString())
           .order("starts_at")
@@ -83,6 +87,9 @@ export async function TeamCalendarView() {
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
   ]);
+
+  // Opening the calendar is a good moment to pick up anything changed in Google since it was last checked.
+  after(() => syncStaleConnectionsForProfiles([profile.id], 30_000));
 
   const actorIds = [...new Set((events ?? []).flatMap(e => [e.created_by, e.updated_by]).filter((id): id is string => Boolean(id)))];
   const { data: actors } = actorIds.length ? await supabase.from("profiles").select("auth_user_id, first_name, last_name").eq("organization_id", current.organization_id).in("auth_user_id", actorIds) : { data: [] };
@@ -179,10 +186,14 @@ export async function TeamCalendarView() {
             visibility: e.visibility as CalendarEntry["visibility"],
             location: e.location,
             meetingUrl: e.meeting_url,
+            source: e.source === "google" ? "google" : "platform",
           }))}
         />
       </div>
-      <div className="panel"><h2>Calendar activity</h2><p className="form-note">The Super Administrator can review the complete history, including changes to working hours and deleted entries, in the audit log.</p>{events?.map(e => <div key={e.id} className="office-card"><strong>{e.title}</strong><p>Added by {actorName(e.created_by)}{e.updated_by && e.updated_by !== e.created_by ? ` · Updated by ${actorName(e.updated_by)}` : ""}</p></div>)}</div>
+      <GoogleSyncStatus profileId={profile.id} />
+      <div className="panel"><h2>Calendar activity</h2><p className="form-note">The Super Administrator can review the complete history, including changes to working hours and deleted entries, in the audit log.</p>{events?.map(e => <div key={e.id} className="office-card"><strong>{e.title}</strong><p>{e.source === "google" ? "Added in Google Calendar" : `Added by ${actorName(e.created_by)}`}{e.updated_by && e.updated_by !== e.created_by ? ` · Updated by ${actorName(e.updated_by)}` : ""}</p></div>)}</div>
+      <RealtimeRefresh tables={["pastoral_calendar_events"]} />
+      <AutoRefresh seconds={60} />
     </>
   );
 }

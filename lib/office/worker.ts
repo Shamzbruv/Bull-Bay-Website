@@ -15,9 +15,19 @@ export async function runOfficeWorker() {
   const { data: claimed, error: claimError } = await db.rpc("claim_office_worker", {});
   if (claimError) throw claimError;
   if (!claimed) return { busy: true };
+  // Two-way calendar sync: a healthy connection is checked about once a
+  // minute so edits made in Google reach the website quickly; one that is
+  // failing (access revoked, say) backs off to every five minutes.
+  const healthyBefore = new Date(Date.now() - 45_000).toISOString();
+  const failingBefore = new Date(Date.now() - 5 * 60_000).toISOString();
   const [emails, connections] = await Promise.all([
     db.from("email_deliveries").select("id").in("status", ["pending", "failed"]).lt("attempts", 5).order("created_at").limit(10),
-    db.from("calendar_connections").select("*").or(`last_synced_at.is.null,last_synced_at.lt.${new Date(Date.now() - 5 * 60000).toISOString()}`).order("last_synced_at", { nullsFirst: true }).limit(3),
+    db
+      .from("calendar_connections")
+      .select("*")
+      .or(`last_synced_at.is.null,and(last_error.is.null,last_synced_at.lt.${healthyBefore}),and(last_error.not.is.null,last_synced_at.lt.${failingBefore})`)
+      .order("last_synced_at", { nullsFirst: true })
+      .limit(5),
   ]);
   if (emails.error || connections.error) throw emails.error || connections.error;
   const results = await Promise.allSettled([
