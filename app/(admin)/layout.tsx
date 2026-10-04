@@ -94,6 +94,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       ],
     },
     {
+      // Every admin-workspace role (lib/tools/access.ts); this layout already
+      // sends pastors and members elsewhere.
+      label: "Service tools",
+      items: [{ href: "/admin/tools", label: "Live countdown & quiz", icon: "media" }],
+    },
+    {
       label: "Finance & store",
       items: [
         ...(allowed("giving.read", "giving.manage")

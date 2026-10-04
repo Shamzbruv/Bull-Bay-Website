@@ -1,0 +1,28 @@
+{
+  "name": "Bull Bay New Testament Church of God Quiz Night",
+  "short_name": "BBNTCOG Quiz",
+  "description": "Interactive Bible Quiz Night game for Bull Bay New Testament Church of God",
+  "start_url": "/tools/quiz/",
+  "display": "standalone",
+  "background_color": "#031B4E",
+  "theme_color": "#0033A0",
+  "icons": [
+    {
+      "src": "branding/favicons/android-chrome-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "branding/favicons/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "branding/favicons/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "scope": "/tools/quiz/"
+}

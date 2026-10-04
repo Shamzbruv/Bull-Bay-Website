@@ -44,6 +44,7 @@ for what it means.
 - [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) — the database schema and its rules
 - [`docs/SECURITY.md`](docs/SECURITY.md) — RLS, permissions, MFA, what's still a manual/legal step
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — what's built, what's deferred, and the blueprint's Definition of Done checklist
+- [`docs/CHURCH-TOOLS.md`](docs/CHURCH-TOOLS.md) — the Live Countdown and Quiz Night, merged in from their own apps
 
 ## What's here vs. what's next
 

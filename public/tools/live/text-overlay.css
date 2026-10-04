@@ -1,0 +1,21 @@
+/* Page chrome only — the actual overlay look lives in text-overlay-components.css,
+   shared with the admin panel's live preview. */
+
+/* CRITICAL: For OBS Browser Source, body must be completely transparent. */
+body {
+    margin: 0;
+    padding: 4vh 6vw;
+    background-color: transparent !important;
+    color: #f8f9fa;
+    font-family: 'Outfit', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end; /* overridden per-render to match the chosen position (top/middle/bottom) */
+    height: 100vh;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.hidden {
+    display: none !important;
+}

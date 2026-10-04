@@ -1,0 +1,122 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, sans-serif;
+
+  /* Bull Bay New Testament Church of God — brand palette, sourced from the
+     brand reference board (public/branding/reference/bbntcog-brand-board.png) */
+  --color-bb-blue: #0033a0;
+  --color-bb-blue-light: #1e5fd6;
+  --color-bb-navy: #031b4e;
+  --color-bb-deep: #020f2f;
+  --color-bb-green: #00bf3e;
+  --color-bb-green-dark: #075f2b;
+  --color-bb-cyan: #00b5e2;
+  --color-bb-red: #e62323;
+  --color-bb-gold: #d4af37;
+  --color-bb-gold-light: #f1d373;
+  --color-bb-white: #ffffff;
+
+  --shadow-glow-blue: 0 0 30px rgba(0, 181, 226, 0.25);
+  --shadow-glow-gold: 0 0 35px rgba(212, 175, 55, 0.3);
+  --shadow-glow-green: 0 0 40px rgba(11, 143, 62, 0.35);
+  --shadow-glow-red: 0 0 40px rgba(230, 35, 35, 0.32);
+
+  --animate-spin-slow: spin 30s linear infinite;
+  --animate-spin-slow-reverse: spin-reverse 40s linear infinite;
+}
+
+@keyframes spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bb-deep);
+  color: var(--color-bb-white);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+}
+
+::selection {
+  background: var(--color-bb-gold);
+  color: var(--color-bb-deep);
+}
+
+/* Keeps essential content off the edges church TVs tend to crop */
+.tv-safe-area {
+  padding: clamp(20px, 3.5vh, 56px) clamp(24px, 4vw, 72px);
+}
+
+.game-safe-area {
+  width: min(92vw, 1600px);
+  margin-inline: auto;
+}
+
+@media (min-width: 1024px) {
+  .game-safe-area {
+    width: min(88vw, 1500px);
+  }
+}
+
+@layer components {
+  .input {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.05);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+  }
+  .input:focus {
+    border-color: var(--color-bb-cyan);
+  }
+  .input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  .light-input {
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid rgba(3, 27, 78, 0.15);
+    background: white;
+    color: var(--color-bb-deep);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+  }
+  .light-input:focus {
+    border-color: var(--color-bb-blue);
+  }
+}

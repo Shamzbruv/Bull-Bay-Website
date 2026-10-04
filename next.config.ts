@@ -47,6 +47,10 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] }];
   },
+  /** The Live Countdown's sanctuary display, the address the TVs open. */
+  async rewrites() {
+    return [{ source: "/tools/live", destination: "/tools/live/index.html" }];
+  },
   experimental: {
     serverActions: {
       // Next.js rejects a Server Action whose Origin doesn't match the host

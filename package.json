@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "rm -rf .next/cache/* && next build --webpack",
+    "build": "npm run build:tools && rm -rf .next/cache/* && next build --webpack",
+    "build:tools": "npm --prefix tools/quiz ci --include=dev --no-audit --no-fund && npm --prefix tools/quiz run build:embed && rm -rf tools/quiz/node_modules",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
