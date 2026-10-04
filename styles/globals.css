@@ -3041,3 +3041,15 @@ table.data-table tr:last-child td { border-bottom: 0; }
 .sync-activity li.is-error { color: #a8341f; }
 .sync-activity time { display: block; font-size: .68rem; color: var(--color-muted); }
 .sync-activity-mark { font-weight: 800; text-align: center; color: var(--color-blue-600); }
+
+/* Documents: where the finished PDF goes, and signing urgently for the Pastor */
+.doc-send-to { border: 0; padding: 0; margin: 0 0 16px; min-width: 0; }
+.doc-send-to legend { font-size: .76rem; font-weight: 700; color: var(--color-blue-700); margin-bottom: 8px; padding: 0; }
+.doc-send-to .choice-row { display: flex; flex-wrap: wrap; gap: 6px 22px; }
+.doc-send-to .check-label { margin-bottom: 0; font-size: .85rem; font-weight: 600; }
+.clay-form .check-label input[type=radio] { width: auto; margin: 0; padding: 0; box-shadow: none; accent-color: var(--color-blue-600); }
+.outside-recipient { border-left: 3px solid var(--color-border); padding-left: 14px; margin-bottom: 16px; }
+.urgent-sign { margin: 4px 0 18px; padding: 14px 16px; border-radius: var(--radius-md); background: #fbf1e6; box-shadow: var(--shadow-inset-sm); }
+.urgent-sign .check-label { color: #8a4212; margin-bottom: 0; font-size: .82rem; }
+.urgent-sign label + label { margin-top: 14px; }
+.urgent-sign .form-note { margin-top: 8px; }

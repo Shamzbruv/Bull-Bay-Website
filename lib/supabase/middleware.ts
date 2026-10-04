@@ -90,7 +90,14 @@ export async function updateSession(request: NextRequest) {
     const isSuper = roles.has("super_admin");
     const preview = request.cookies.get("workspace_preview")?.value;
     if (isSuper && preview && preview !== "super_admin" && path !== "/auth/signout" && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
-      return NextResponse.json({ error: "Role preview is read-only. Return to Super Administrator to make changes." }, { status: 403 });
+      const message = "Role preview is read-only. Return to Super Administrator to make changes.";
+      // A form (Server Action) shows a plain-text refusal as its error
+      // message; anything else here only came out as "An unexpected
+      // response was received from the server".
+      if (request.headers.has("next-action")) {
+        return new Response(message, { status: 403, headers: { "Content-Type": "text/plain" } });
+      }
+      return NextResponse.json({ error: message }, { status: 403 });
     }
     const home = workspaceForRoles(roles);
     if (!isSuper && ((path.startsWith("/admin") && home === "member") || (path === "/admin" && home === "pastor") || (path.startsWith("/pastor") && home !== "pastor"))) {

@@ -4,7 +4,11 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { TemplateForm } from "./template-form";
-import { ClaimButton, DenyButton } from "./request-actions";
+import { ClaimButton, DenyButton, UrgentSignButton } from "./request-actions";
+import { recipientSummary } from "@/lib/documents/delivery";
+import { pastorSigningAssets, pastorSigningReady } from "@/lib/documents/certify";
+import { getWorkspaceAccess } from "@/lib/auth/workspace";
+import { PastorAssetsForm } from "@/app/(pastor)/pastor/documents/pastor-assets-form";
 import { CertifyButton } from "@/app/(pastor)/pastor/documents/certify-button";
 import { SignatureForm } from "@/app/(pastor)/pastor/documents/signature-form";
 import { TemplateStatusButton } from "./template-status-button";
@@ -27,7 +31,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
     supabase.from("document_templates").select("*").throwOnError().order("name"),
     supabase
       .from("document_requests")
-      .select("id, title, purpose, status, created_at, profiles:requester_profile_id(first_name, last_name)").throwOnError()
+      .select("id, title, purpose, status, created_at, requester_profile_id, recipient_name, recipient_email, urgent_reason, profiles:requester_profile_id(first_name, last_name)").throwOnError()
       .in("status", ["submitted", "in_review", "prepared", "pending_pastor", "completed"])
       .order("created_at", { ascending: false }).limit(100),
     supabase.from("email_templates").select("*").throwOnError().eq("organization_id",organizationId ?? "").order("name"),
@@ -35,6 +39,15 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
   ]);
 
   const templates = allTemplates?.filter(t => type === "certificates" ? t.layout === "certificate" : t.layout !== "certificate");
+  // The urgent button is for those who can't certify the normal way (the
+  // Admin Secretary); the Pastor and Executive Assistant already can.
+  const canCertify = permissions.has("documents.certify") || permissions.has("documents.sign_delegate");
+  const offerUrgent = permissions.has("documents.urgent_sign") && !canCertify && (requests ?? []).some((r) => r.status === "pending_pastor");
+  const signingReady = offerUrgent && organizationId ? await pastorSigningReady(organizationId) : false;
+  // The super administrator can add the Pastor's signature and stamp for
+  // him (not while previewing a role: nothing can be changed then).
+  const access = organizationId ? await getWorkspaceAccess(organizationId) : null;
+  const pastorAssets = access?.superAdmin && !access.preview && organizationId ? await pastorSigningAssets(organizationId) : null;
   return (
     <>
       <div className="dashboard-header">
@@ -63,6 +76,13 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
           Email templates &amp; delivery
         </Link>
       </nav>
+
+      {pastorAssets?.pastor && (
+        <div className="panel" id="pastor-signature">
+          <h2>The Pastor&apos;s signature &amp; church stamp</h2>
+          <PastorAssetsForm pastorName={pastorAssets.pastor.name} hasSignature={pastorAssets.hasSignature} hasStamp={pastorAssets.hasStamp} />
+        </div>
+      )}
 
       {showOwnSignaturePanel && (
         <div className="panel">
@@ -116,6 +136,12 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
 
       <div className="panel">
         <h2>Requests & issued documents</h2>
+        {offerUrgent && !signingReady && (
+          <p className="form-note">
+            Urgent signing for the Pastor becomes available once he uploads his signature and the church stamp on his
+            Documents page. Until then documents wait for him.
+          </p>
+        )}
         {(!requests || requests.length === 0) && <p className="panel-empty">Nothing waiting right now.</p>}
         {requests?.map((r) => {
           const requester = r.profiles as unknown as { first_name: string | null; last_name: string | null } | null;
@@ -123,10 +149,15 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
             <div key={r.id} style={{ padding: "12px 0", borderBottom: "1px solid var(--color-border)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                 <div>
-                  <b>{r.title}</b> — {requester?.first_name} {requester?.last_name}
+                  <b>{r.title}</b> — {recipientSummary(r, requester)}
                   <p style={{ margin: "4px 0 0", fontSize: ".85rem", color: "var(--color-muted-2)" }}>{r.purpose}</p>
+                  {r.urgent_reason && <p style={{ margin: "4px 0 0", fontSize: ".8rem", color: "#8a4212" }}>Signed for the Pastor, urgently: {r.urgent_reason}</p>}
                 </div>
-                <span className="badge gray">{r.status.replace("_", " ")}</span>
+                <span>
+                  {r.recipient_email && <span className="badge gold" style={{ marginRight: 6 }}>Outside the church</span>}
+                  {r.urgent_reason && <span className="badge red" style={{ marginRight: 6 }}>Urgent</span>}
+                  <span className="badge gray">{r.status.replace("_", " ")}</span>
+                </span>
               </div>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 {r.status === "submitted" && <ClaimButton requestId={r.id} />}
@@ -134,7 +165,8 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
                   {r.status === "submitted" ? "Review & prepare" : "Continue preparing"}
                 </Link>
                 <a className="secondary-button compact" href={`/api/office/documents/${r.id}/preview`} target="_blank" rel="noreferrer">Preview PDF</a>
-                {r.status === "pending_pastor" && (permissions.has("documents.certify") || permissions.has("documents.sign_delegate")) && <CertifyButton requestId={r.id} />}
+                {r.status === "pending_pastor" && canCertify && <CertifyButton requestId={r.id} />}
+                {r.status === "pending_pastor" && offerUrgent && <UrgentSignButton requestId={r.id} signingReady={signingReady} />}
                 {r.status !== "completed" && <DenyButton requestId={r.id} />}
               </div>
             </div>

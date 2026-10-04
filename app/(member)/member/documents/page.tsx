@@ -34,7 +34,7 @@ export default async function MyDocumentsPage() {
       .order("name"),
     supabase
       .from("document_requests")
-      .select("id, title, purpose, status, created_at, document_number").throwOnError()
+      .select("id, title, purpose, status, created_at, document_number, recipient_name").throwOnError()
       .eq("requester_profile_id", profile?.id ?? "")
       .order("created_at", { ascending: false }),
   ]);
@@ -77,6 +77,7 @@ export default async function MyDocumentsPage() {
                     <td>
                       {r.title}
                       {r.document_number && <div style={{ fontSize: ".7rem", color: "var(--color-muted)" }}>{r.document_number}</div>}
+                      {r.recipient_name && <div style={{ fontSize: ".7rem", color: "var(--color-muted)" }}>Sent to {r.recipient_name}</div>}
                     </td>
                     <td>{new Date(r.created_at).toLocaleDateString("en-JM", { dateStyle: "medium" })}</td>
                     <td>

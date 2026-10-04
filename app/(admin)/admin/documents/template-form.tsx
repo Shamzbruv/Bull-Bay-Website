@@ -80,7 +80,7 @@ export function TemplateForm({
             <span className="doc-preview-seal" style={{ borderColor: accent, color: accent }}>
               SEAL
             </span>
-            <span>Church office</span>
+            <span>Prepared by (e.g. Admin Secretary)</span>
           </div>
         </div>
       </div>
@@ -159,6 +159,10 @@ export function TemplateForm({
             </option>
           ))}
         </select>
+        <small className="form-note" style={{ display: "block", marginTop: 6 }}>
+          Sent to members. Someone outside the church gets the &ldquo;Document sent outside the church&rdquo; email
+          instead, which doesn&apos;t point them to the member portal.
+        </small>
       </label>
     </OfficeActionForm>
   );

@@ -32,7 +32,9 @@ export type CertifyingSigner = {
  * used to be a static "Church Office" label with nobody's name attached
  * to it. Left undefined, that old text-only behaviour is exactly what
  * still renders, so a document from before this existed looks the same
- * as it always did. */
+ * as it always did. `name` is empty for an account with no name on file:
+ * their title ("Admin Secretary") then takes the name's place, rather than
+ * the document falling back to "Church Office" as if nobody prepared it. */
 export type PreparingSigner = {
   name: string;
   title?: string;
@@ -174,8 +176,8 @@ function SignatureRow({ input, design, accent }: { input: DocumentPdfInput; desi
           <View style={{ height: 46 }} />
         )}
         <View style={{ borderTop: `0.8 solid ${INK}`, paddingTop: 4 }}>
-          <Text style={{ fontFamily: "Times-Bold", fontSize: 10 }}>{input.preparer?.name || design.secretary_name || "Church Office"}</Text>
-          <Text style={{ fontSize: 8.5, color: MUTED }}>{input.preparer ? input.preparer.title || "Prepared by" : `Issued ${input.issuedDate}`}</Text>
+          <Text style={{ fontFamily: "Times-Bold", fontSize: 10 }}>{input.preparer?.name || input.preparer?.title || design.secretary_name || "Church Office"}</Text>
+          <Text style={{ fontSize: 8.5, color: MUTED }}>{input.preparer?.name ? input.preparer.title || "Prepared by" : `Issued ${input.issuedDate}`}</Text>
         </View>
       </View>
     </View>

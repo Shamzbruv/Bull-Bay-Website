@@ -33,12 +33,25 @@ export function DashboardRouteError({ error, reset }: { error?: (Error & { diges
     if (error) console.error(error);
   }, [error]);
 
+  // The middleware refuses every change while a super administrator
+  // previews another role (lib/supabase/middleware.ts).
+  const previewRefusal = Boolean(error?.message?.startsWith("Role preview is read-only"));
+
   return (
     <div className={styles.state}>
       <div className={styles.card} role="alert">
         <span className={styles.mark}>!</span>
-        <h2>This page didn&apos;t finish loading.</h2>
-        <p>Your information is safe. Try the page again; if it continues, the latest database update may still need to be applied.</p>
+        {previewRefusal ? (
+          <>
+            <h2>Changes are switched off while you preview a role.</h2>
+            <p>Nothing was changed. Switch back to Super Administrator at the top of the page, then make the change from there.</p>
+          </>
+        ) : (
+          <>
+            <h2>This page didn&apos;t finish loading.</h2>
+            <p>Your information is safe. Try the page again; if it continues, the latest database update may still need to be applied.</p>
+          </>
+        )}
         <div className="button-row" style={{ justifyContent: "center" }}>
           <button type="button" className="primary-button" onClick={reset}>Try again</button>
           <Link className="secondary-button" href="/member">Back to dashboard</Link>

@@ -704,6 +704,10 @@ export type Database = {
           template_snapshot: Json
           signer_profile_id: string | null
           prepared_by: string | null
+          recipient_name: string | null
+          recipient_email: string | null
+          recipient_address: string | null
+          urgent_reason: string | null
 
           assigned_to: string | null
           certified_at: string | null
@@ -727,6 +731,10 @@ export type Database = {
           template_snapshot?: Json
           signer_profile_id?: string | null
           prepared_by?: string | null
+          recipient_name?: string | null
+          recipient_email?: string | null
+          recipient_address?: string | null
+          urgent_reason?: string | null
 
           assigned_to?: string | null
           certified_at?: string | null
@@ -750,6 +758,10 @@ export type Database = {
           template_snapshot?: Json
           signer_profile_id?: string | null
           prepared_by?: string | null
+          recipient_name?: string | null
+          recipient_email?: string | null
+          recipient_address?: string | null
+          urgent_reason?: string | null
 
           assigned_to?: string | null
           certified_at?: string | null

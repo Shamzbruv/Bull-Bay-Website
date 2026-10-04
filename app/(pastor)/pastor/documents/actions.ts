@@ -2,16 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
-import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
-import { generateDocumentPdf } from "@/lib/documents/pdf";
-import { getLogoBuffer, getStaffAssetBuffer } from "@/lib/documents/assets";
-import { queueOfficeEmail } from "@/lib/office/email";
+import { getOrganizationId, getUserPermissions, getUserRoleCodes } from "@/lib/auth/session";
+import { certifierName, certifyPreparedDocument } from "@/lib/documents/certify";
 import { officeContext, recordOfficeAction, roleMembers } from "@/lib/office/context";
-import { officeAction } from "@/lib/office/action";
 import { notifyUsers } from "@/lib/notifications";
-import { fullName, primaryRoleName } from "@/lib/members/name";
-import { cleanDesign } from "@/lib/documents/design";
-import { SITE_URL } from "@/lib/org";
+import { officeAction } from "@/lib/office/action";
 import type { ActionState } from "@/app/(public)/actions";
 
 export async function uploadSignatureAsset(_prev: ActionState, formData: FormData): Promise<ActionState> {
@@ -98,64 +93,74 @@ export async function uploadSignatureAsset(_prev: ActionState, formData: FormDat
 }
 
 export async function certifyDocument(requestId: string): Promise<ActionState> {
- return officeAction(async () => {
-  const { db, org, user, profile, permissions } = await officeContext();
-  if (!permissions.has("documents.certify") && !permissions.has("documents.sign_delegate")) throw new Error("Only the Pastor or Executive Assistant may apply the signature and church stamp.");
-  const { data: request } = await db.from("document_requests").select("*").eq("organization_id",org).eq("id",requestId).maybeSingle();
-  if (!request?.prepared_body || request.status !== "pending_pastor") throw new Error("Prepare the document and submit it for certification first.");
-  const [{data:recipient},{data:authority},pastors,{data:preparerProfile}] = await Promise.all([
-   db.from("profiles").select("id,first_name,last_name,email").eq("organization_id",org).eq("id",request.requester_profile_id ?? "").maybeSingle(),
-   db.from("integration_settings").select("value").eq("key",`document_authority:${org}`).maybeSingle(),
-   roleMembers(org,["pastor"]),
-   request.prepared_by ? db.from("profiles").select("auth_user_id,first_name,last_name,signature_path").eq("organization_id",org).eq("auth_user_id",request.prepared_by).maybeSingle() : Promise.resolve({data:null}),
-  ]);
-  if (!recipient?.email) throw new Error("The recipient needs an email address so the PDF can be delivered.");
-  // Printed on the certificate itself ("This certificate is presented to
-  // ___") and used as the pastor's own signature name below — a document
-  // bearing the church stamp and the pastor's signature must not go out
-  // with a blank or placeholder name in either spot, so this is checked
-  // and refused here rather than papered over with a generic fallback the
-  // way an ordinary email greeting can be.
-  const recipientName = fullName(recipient);
-  if (!recipientName) throw new Error("This member has no name on file. Add their first and last name in People before certifying this document.");
-  const assetConfig = authority?.value as { signature_path?:string; stamp_path?:string; signer_name?:string } | undefined;
-  const signerId = pastors.find(p=>p.auth_user_id===user.id)?.id ?? pastors[0]?.id;
-  const {data:signerProfile} = signerId ? await db.from("profiles").select("auth_user_id,signature_path,stamp_path,first_name,last_name").eq("id",signerId).maybeSingle() : {data:null};
+  return officeAction(async () => {
+    const { org, user, profile, permissions } = await officeContext();
+    return certifyPreparedDocument({ org, requestId, actor: { userId: user.id, name: await certifierName(org, user.id, profile), permissions } });
+  });
+}
 
-  // A signature line for whoever actually typed up the letter, distinct
-  // from the pastor's own "Certified by" signature below it — but only
-  // when they're different people. The pastor preparing and certifying
-  // his own letter doesn't need his own signature printed on it twice.
-  let preparer: { name: string; title?: string; signatureImage?: Buffer | null } | undefined;
-  if (preparerProfile?.auth_user_id && preparerProfile.auth_user_id !== signerProfile?.auth_user_id) {
-    const preparerName = fullName(preparerProfile);
-    if (preparerName) {
-      preparer = {
-        name: preparerName,
-        title: await primaryRoleName(db, org, preparerProfile.auth_user_id),
-        signatureImage: await getStaffAssetBuffer(preparerProfile.signature_path),
-      };
+/** Someone in the office signing for the Pastor because it can't wait. */
+export async function certifyDocumentUrgently(requestId: string, reason: string): Promise<ActionState> {
+  return officeAction(async () => {
+    const { org, user, profile, permissions } = await officeContext("documents.urgent_sign");
+    const urgentReason = reason.trim().slice(0, 1000);
+    if (!urgentReason) throw new Error("Say why this can't wait for the Pastor. He sees your reason.");
+    return certifyPreparedDocument({ org, requestId, actor: { userId: user.id, name: await certifierName(org, user.id, profile), permissions }, urgentReason });
+  });
+}
+
+/**
+ * The super administrator adding the Pastor's signature and the church
+ * stamp for him, from scans he handed over, so documents can be certified
+ * without him doing the upload himself. They go on his own profile, exactly
+ * as if he had uploaded them (he can replace them on his Documents page),
+ * the audit log records who did it, and he is told.
+ */
+export async function uploadPastorSigningAssets(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  return officeAction(async () => {
+    const { org, user, profile } = await officeContext();
+    if (!(await getUserRoleCodes(org)).has("super_admin")) throw new Error("Only the super administrator can add the Pastor's signature for him.");
+    const pastor = (await roleMembers(org, ["pastor"]))[0];
+    if (!pastor) throw new Error("Nobody has the Pastor role yet. Give the Pastor his role first.");
+
+    const picked: { field: "signature" | "stamp"; file: File; ext: string }[] = [];
+    for (const field of ["signature", "stamp"] as const) {
+      const file = formData.get(field);
+      if (!(file instanceof File) || file.size === 0) continue;
+      const ext = file.type === "image/png" ? "png" : file.type === "image/jpeg" ? "jpg" : null;
+      const label = field === "signature" ? "Signature" : "Stamp";
+      if (!ext) throw new Error(`${label}: use a PNG or JPEG image.`);
+      if (file.size > 2 * 1024 * 1024) throw new Error(`${label}: keep each image under 2 MB.`);
+      picked.push({ field, file, ext });
     }
-  }
+    if (!picked.length) throw new Error("Choose the signature, the stamp, or both.");
 
-  const [logo,signatureImage,stampImage] = await Promise.all([getLogoBuffer(),getStaffAssetBuffer(signerProfile?.signature_path || assetConfig?.signature_path || null),getStaffAssetBuffer(signerProfile?.stamp_path || assetConfig?.stamp_path || null)]);
-  if(!signatureImage || !stampImage) throw new Error("The authorized Pastor signature and church stamp must both be configured.");
-  const snapshot = (request.template_snapshot ?? {}) as {layout?:string;design?:unknown;email_template_id?:string};
-  const design=cleanDesign(snapshot.design);
-  const signerName=assetConfig?.signer_name || design.signer_name || fullName(signerProfile) || "Pastor";
-  const {data:numbered,error:lockError}=await db.from("document_requests").update({status:"stamped",certified_by:user.id,certified_at:new Date().toISOString(),signer_profile_id:signerId ?? null}).eq("organization_id",org).eq("id",requestId).eq("status","pending_pastor").select("document_number").maybeSingle();
-  if(lockError || !numbered?.document_number) throw new Error("This document is already being certified. Refresh before trying again.");
-  const path=`documents/${requestId}/${numbered.document_number}.pdf`;
-  try {
-   const pdf=await generateDocumentPdf({documentNumber:numbered.document_number,title:request.title,bodyParagraphs:request.prepared_body.split(/\n\s*\n/).filter(Boolean),recipientName,issuedDate:new Date().toLocaleDateString("en-JM",{dateStyle:"long",timeZone:"America/Jamaica"}),logoImage:logo,layout:snapshot.layout,design,signer:{name:signerName,title:"Pastor, New Testament Church of God, Bull Bay",signatureImage,stampImage},preparer});
-   const {error:uploadError}=await db.storage.from("member-resources").upload(path,pdf,{contentType:"application/pdf",upsert:true});if(uploadError)throw new Error("The PDF could not be saved.");
-   await recordOfficeAction(org,user.id,"document.signature_stamp_applied","document_requests",requestId,{signer_name:signerName,document_number:numbered.document_number,authority:permissions.has("documents.sign_delegate")?"executive_delegation":"pastor_approval"});
-   await notifyUsers(org,pastors.flatMap(p=>p.auth_user_id && p.auth_user_id!==user.id?[p.auth_user_id]:[]),{title:"Your signature and the church stamp were used",body:`${profile.first_name ?? ""} ${profile.last_name ?? ""} certified ${request.title} (${numbered.document_number}).`,url:`/pastor/documents?request=${requestId}`,type:"document_signature"});
-   const {error:finishError}=await db.from("document_requests").update({status:"completed",pdf_path:path}).eq("id",requestId).eq("status","stamped");if(finishError)throw finishError;
-  } catch(error) {
-   await db.from("document_requests").update({status:"pending_pastor",certified_by:null,certified_at:null,pdf_path:null}).eq("id",requestId).eq("status","stamped");throw error;
-  }
-  const result=await queueOfficeEmail({org,recipient:recipient.email,template:snapshot.email_template_id || (snapshot.layout==="certificate"?"certificate-ready":"document-ready"),fields:{recipient_name:recipientName,document_title:request.title,certificate_title:request.title,document_number:numbered.document_number,action_url:`${SITE_URL}/member/documents`},attachmentPath:path,attachmentName:`${numbered.document_number}.pdf`,dedupeKey:`document-${requestId}`,actor:user.id});
-  return result.sent?`Certified as ${numbered.document_number}. The PDF was emailed to the recipient.`:`Certified as ${numbered.document_number}. PDF email is queued for retry; check Email delivery.`;
- });
+    const admin = createServiceRoleClient();
+    const update: { signature_path?: string; stamp_path?: string } = {};
+    for (const { field, file, ext } of picked) {
+      const path = `${field === "signature" ? "signatures" : "stamps"}/${pastor.id}-${Date.now()}.${ext}`;
+      const { error } = await admin.storage.from("staff-assets").upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: true });
+      if (error) throw new Error(`Couldn't upload the ${field} image.`);
+      update[field === "signature" ? "signature_path" : "stamp_path"] = path;
+    }
+    const { error: profileError } = await admin.from("profiles").update(update).eq("organization_id", org).eq("id", pastor.id);
+    if (profileError) throw new Error("The images uploaded, but the Pastor's profile could not be updated.");
+
+    const what = picked.length === 2 ? "your signature and the church stamp" : picked[0]!.field === "signature" ? "your signature" : "the church stamp";
+    await recordOfficeAction(org, user.id, "document.pastor_signing_assets_uploaded", "profiles", pastor.id, {
+      signature: update.signature_path ? "uploaded" : "unchanged",
+      stamp: update.stamp_path ? "uploaded" : "unchanged",
+    });
+    if (pastor.auth_user_id) {
+      await notifyUsers(org, [pastor.auth_user_id], {
+        title: picked.length === 2 ? "Your signature and the church stamp were added" : `${what[0]!.toUpperCase()}${what.slice(1)} was added`,
+        body: `${await certifierName(org, user.id, profile)} uploaded ${what} for you, so documents can be certified. You can replace them on your Documents page.`,
+        url: "/pastor/documents",
+        type: "document_signature",
+      });
+    }
+    revalidatePath("/pastor/documents");
+    revalidatePath("/admin/documents");
+    return `Saved to the Pastor's profile. ${picked.length === 2 ? "His signature and the church stamp" : what === "your signature" ? "His signature" : "The church stamp"} will be used when documents are certified, and he has been told.`;
+  });
 }

@@ -49,8 +49,19 @@ export function greetingName(
 }
 
 /**
+ * Titles printed on documents and letters where the role's name in the
+ * app isn't what the church writes: the secretary role is "Admin
+ * Assistant" on screen, but signs letters as Admin Secretary.
+ */
+const DOCUMENT_TITLES: Record<string, string> = { secretary: "Admin Secretary" };
+
+export function documentTitle(role: { code?: string | null; name?: string | null } | null | undefined): string | undefined {
+  return (role?.code && DOCUMENT_TITLES[role.code]) || role?.name || undefined;
+}
+
+/**
  * The title printed under someone's name on a document or letter — "Admin
- * Assistant", "Executive Assistant" — rather than a raw permission list. A
+ * Secretary", "Executive Assistant" — rather than a raw permission list. A
  * person can hold more than one role; this one query, reused everywhere a
  * signature block needs a title, is the single place that decides which
  * one wins when they do (whichever role row sorts first).
@@ -65,10 +76,10 @@ export async function primaryRoleName(
 ): Promise<string | undefined> {
   const { data } = await db
     .from("user_roles")
-    .select("roles(name)")
+    .select("roles(code, name)")
     .eq("organization_id", organizationId)
     .eq("user_id", authUserId)
     .limit(1)
     .maybeSingle();
-  return (data?.roles as unknown as { name: string } | null)?.name;
+  return documentTitle(data?.roles as unknown as { code: string; name: string } | null);
 }

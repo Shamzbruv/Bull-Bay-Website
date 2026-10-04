@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { certifyDocument } from "./actions";
 import { useConfirm } from "@/components/dialog-provider";
 
-export function CertifyButton({ requestId, canCertify = true }: { requestId: string; canCertify?: boolean }) {
+export function CertifyButton({ requestId, canCertify = true, notReadyText }: { requestId: string; canCertify?: boolean; notReadyText?: string }) {
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const confirm = useConfirm();
@@ -12,7 +12,7 @@ export function CertifyButton({ requestId, canCertify = true }: { requestId: str
   if (!canCertify) {
     return (
       <p style={{ fontSize: ".78rem", color: "#a8341f", margin: "8px 0 0" }}>
-        Upload your signature (and stamp, if you use one) below before you can certify documents.
+        {notReadyText ?? "Upload your signature (and stamp, if you use one) below before you can certify documents."}
       </p>
     );
   }
