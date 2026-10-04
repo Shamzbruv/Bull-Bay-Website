@@ -33,3 +33,22 @@ export async function prepareRequest(id:string,_:ActionState,form:FormData):Prom
  await tellPastors();return "Sent to the Pastor for review. Authorized signers can now certify it.";
 });}
 export async function denyRequest(id:string,reason:string):Promise<ActionState>{return officeAction(async()=>{const {db,org,user}=await officeContext("documents.manage");if(!reason.trim())throw new Error("Add a reason for the member.");const {data,error}=await db.from("document_requests").update({status:"denied",denial_reason:reason.trim().slice(0,2000)}).eq("organization_id",org).eq("id",id).in("status",['submitted','in_review','prepared','pending_pastor']).select("id").maybeSingle();if(error||!data)throw new Error("This request can no longer be declined.");await recordOfficeAction(org,user.id,"document.denied","document_requests",id);return "Request declined.";});}
+
+/** For a document sent by mistake, or a test: removes it, its PDF and any
+ *  email still waiting to go out with it. The audit log keeps a note of
+ *  what was deleted (title, number, recipient) and by whom; an email that
+ *  already went out can't be unsent. */
+export async function deleteDocumentRequest(id:string):Promise<ActionState>{return officeAction(async()=>{
+ const {db,org,user}=await officeContext("documents.manage");
+ const {data:r}=await db.from("document_requests").select("id,title,status,document_number,pdf_path,recipient_name,recipient_email,requester_profile_id").eq("organization_id",org).eq("id",id).maybeSingle();
+ if(!r)throw new Error("That document has already been deleted.");
+ if(r.status==="stamped")throw new Error("This document is being certified right now. Try again in a moment.");
+ const {data:files}=await db.storage.from("member-resources").list(`documents/${id}`,{limit:100});
+ const paths=[...new Set([...(files??[]).map(f=>`documents/${id}/${f.name}`),...(r.pdf_path?[r.pdf_path]:[])])];
+ if(paths.length)await db.storage.from("member-resources").remove(paths);
+ await db.from("email_deliveries").delete().eq("organization_id",org).eq("dedupe_key",`document-${id}`).neq("status","sent");
+ const {error}=await db.from("document_requests").delete().eq("organization_id",org).eq("id",id);
+ if(error)throw new Error("The document couldn't be deleted. Please try again.");
+ await recordOfficeAction(org,user.id,"document.deleted","document_requests",id,{title:r.title,status:r.status,document_number:r.document_number??"",recipient:r.recipient_name??r.requester_profile_id??""});
+ return "Deleted.";
+});}

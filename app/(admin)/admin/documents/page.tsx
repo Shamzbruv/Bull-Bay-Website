@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile, getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { TemplateForm } from "./template-form";
-import { ClaimButton, DenyButton, UrgentSignButton } from "./request-actions";
+import { ClaimButton, DeleteDocumentButton, DenyButton, UrgentSignButton } from "./request-actions";
 import { recipientSummary } from "@/lib/documents/delivery";
 import { pastorSigningAssets, pastorSigningReady } from "@/lib/documents/certify";
 import { getWorkspaceAccess } from "@/lib/auth/workspace";
@@ -159,7 +159,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
                   <span className="badge gray">{r.status.replace("_", " ")}</span>
                 </span>
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
                 {r.status === "submitted" && <ClaimButton requestId={r.id} />}
                 <Link className="secondary-button compact" href={`/admin/documents/${r.id}`}>
                   {r.status === "submitted" ? "Review & prepare" : "Continue preparing"}
@@ -168,6 +168,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
                 {r.status === "pending_pastor" && canCertify && <CertifyButton requestId={r.id} />}
                 {r.status === "pending_pastor" && offerUrgent && <UrgentSignButton requestId={r.id} signingReady={signingReady} />}
                 {r.status !== "completed" && <DenyButton requestId={r.id} />}
+                <DeleteDocumentButton requestId={r.id} title={r.title} issued={r.status === "completed"} />
               </div>
             </div>
           );

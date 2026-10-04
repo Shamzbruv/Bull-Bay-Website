@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { claimRequest, denyRequest } from "./actions";
+import { claimRequest, deleteDocumentRequest, denyRequest } from "./actions";
 import { certifyDocumentUrgently } from "@/app/(pastor)/pastor/documents/actions";
-import { usePrompt } from "@/components/dialog-provider";
+import { useConfirm, usePrompt } from "@/components/dialog-provider";
 
 export function ClaimButton({ requestId }: { requestId: string }) {
   const [pending, startTransition] = useTransition();
@@ -79,6 +79,36 @@ export function UrgentSignButton({ requestId, signingReady }: { requestId: strin
         {pending ? "Signing…" : "Urgent: sign now"}
       </button>
       {message && <small role="status">{message}</small>}
+    </span>
+  );
+}
+
+/** Remove a document sent by mistake, or a test. */
+export function DeleteDocumentButton({ requestId, title, issued }: { requestId: string; title: string; issued: boolean }) {
+  const [pending, startTransition] = useTransition();
+  const [message, setMessage] = useState<string | null>(null);
+  const confirm = useConfirm();
+  return (
+    <span className="inline-action">
+      <button
+        type="button"
+        className="secondary-button compact danger"
+        disabled={pending}
+        onClick={async () => {
+          const sure = await confirm({
+            title: `Delete "${title}"?`,
+            message: issued
+              ? "It's removed from the list, its PDF is deleted and the person can no longer download it. The email it was sent in can't be unsent. Use this for documents sent by mistake or tests."
+              : "It's removed for good, including from the member's own list. Use this for requests made by mistake or tests.",
+            confirmLabel: "Delete",
+          });
+          if (!sure) return;
+          startTransition(async () => setMessage((await deleteDocumentRequest(requestId)).message));
+        }}
+      >
+        {pending ? "Deleting…" : "Delete"}
+      </button>
+      {message && message !== "Deleted." && <small role="status">{message}</small>}
     </span>
   );
 }
