@@ -55,9 +55,15 @@ export async function queueOfficeEmail(input: { org: string; recipient: string; 
   const { data: template, error } = await db.from("email_templates").select("*").eq("organization_id", input.org).or(`id.eq.${/^[0-9a-f-]{36}$/i.test(input.template) ? input.template : '00000000-0000-0000-0000-000000000000'},slug.eq.${input.template.replace(/[^a-zA-Z0-9_-]/g, '')}`).maybeSingle();
   if (error || !template) throw new Error("Choose an available email template before sending.");
   const fields = { church_name: "New Testament Church of God, Bull Bay", action_url: `${SITE_URL}/member`, ...input.fields };
+  // Check the template's own placeholders, not the finished text: what
+  // people typed (a form answer, a title) may contain "{{" and is fine.
+  const unfilled = [...`${template.subject}\n${template.body}`.matchAll(/\{\{([^}]+)\}\}/g)].some(([, inner]) => {
+    const key = inner!.trim();
+    return !/^[a-zA-Z0-9_]+$/.test(key) || fields[key as keyof typeof fields] == null;
+  });
+  if (unfilled) throw new Error("The selected email template has unfilled fields.");
   const subject = fillText(template.subject, fields);
   const body = fillText(template.body, fields);
-  if (/\{\{[^}]+\}\}/.test(subject + body)) throw new Error("The selected email template has unfilled fields.");
   return queueRawOfficeEmail({
     org: input.org,
     recipient: input.recipient,

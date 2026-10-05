@@ -1,12 +1,84 @@
-import { getOrganizationId,getUserPermissions } from "@/lib/auth/session";
-import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
+import Link from "next/link";
 import { AccessDenied } from "@/components/access-denied";
-import { OfficeActionForm } from "@/components/office-action-form";
-import { FormBuilder } from "./form-builder";
-import { sendOfficeForm } from "./actions";
-import type { FormField } from "@/lib/office/forms";
-export default async function FormsPage(){
- const org=await getOrganizationId();if(!org||!(await getUserPermissions(org)).has("forms.manage"))return <AccessDenied/>;
- const db=await createClient();const [{data:forms,error},{data:people},{data:responses}]=await Promise.all([db.from("office_forms").select("*").throwOnError().eq("organization_id",org).order("created_at",{ascending:false}),db.from("profiles").select("id,first_name,last_name,email").throwOnError().eq("organization_id",org).order("last_name"),db.from("form_assignments").select("id,form_id,recipient_profile_id,form_snapshot,answers,submitted_at,expires_at,created_at").throwOnError().eq("organization_id",org).order("created_at",{ascending:false}).limit(100)]);
- return <><div className="dashboard-header"><div><p className="section-kicker">Administrative team</p><h1>Forms & responses</h1><p>Create branded forms, send private invitations, and review submitted information.</p></div></div>{error&&<p role="alert">Forms could not be loaded.</p>}<details className="panel"><summary><strong>Create a form</strong></summary><FormBuilder/></details><div className="office-grid">{forms?.map(f=><div className="panel" key={f.id}><h2>{f.title}</h2><p>{f.description}</p><details><summary>Edit questions</summary><FormBuilder id={f.id} title={f.title} description={f.description} initialFields={f.fields as FormField[]}/></details><OfficeActionForm action={sendOfficeForm} label="Email form invitation"><input type="hidden" name="form_id" value={f.id}/><label>Send to a member<select name="recipient_id" required><option value="">Choose a member</option>{people?.filter(p=>p.email).map(p=><option key={p.id} value={p.id}>{p.first_name} {p.last_name} — {p.email}</option>)}</select></label></OfficeActionForm></div>)}</div><div className="panel"><h2>Invitations & submitted forms</h2>{!responses?.length&&<p className="panel-empty">Sent invitations and responses will appear here.</p>}{responses?.map(r=>{const person=people?.find(p=>p.id===r.recipient_profile_id);const snap=r.form_snapshot as {title:string;fields:FormField[]};const answers=r.answers as Record<string,string>|null;return <details key={r.id} className="office-card"><summary><strong>{snap.title}</strong> · {person?.first_name} {person?.last_name} · {r.submitted_at?"Submitted":new Date(r.expires_at)<new Date()?"Expired":"Awaiting response"}</summary>{answers&&<dl>{snap.fields.map(f=><div key={f.id}><dt><strong>{f.label}</strong></dt><dd style={{whiteSpace:"pre-wrap"}}>{answers[f.id]||"—"}</dd></div>)}</dl>}</details>;})}</div></>;
+import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { availability } from "@/lib/forms/logic";
+import { isQuestion } from "@/lib/forms/schema";
+import { definitionOf, type FormRow } from "@/lib/forms/server";
+import { FORM_TEMPLATES } from "@/lib/forms/templates";
+import { FormCardActions, NewFormGallery } from "./forms-list-client";
+
+export const metadata: Metadata = { title: "Forms" };
+
+const when = (iso: string) => new Date(iso).toLocaleDateString("en-JM", { timeZone: "America/Jamaica", dateStyle: "medium" });
+
+export default async function FormsPage() {
+  const org = await getOrganizationId();
+  if (!org || !(await getUserPermissions(org)).has("forms.manage")) return <AccessDenied />;
+  const db = createServiceRoleClient();
+  const [{ data: forms }, { data: responses }] = await Promise.all([
+    db.from("office_forms").select("*").eq("organization_id", org).order("updated_at", { ascending: false }),
+    db.from("form_responses").select("form_id, submitted_at").eq("organization_id", org).order("submitted_at", { ascending: false }).limit(20000),
+  ]);
+  const stats = new Map<string, { count: number; latest: string }>();
+  for (const r of responses ?? []) {
+    const s = stats.get(r.form_id as string);
+    if (s) s.count++;
+    else stats.set(r.form_id as string, { count: 1, latest: r.submitted_at as string });
+  }
+  const rows = ((forms ?? []) as unknown as FormRow[]).map((form) => {
+    const definition = definitionOf(form);
+    const s = stats.get(form.id);
+    const open = availability(definition.settings, s?.count ?? 0);
+    return { form, definition, count: s?.count ?? 0, latest: s?.latest ?? null, open };
+  });
+
+  return (
+    <>
+      <div className="dashboard-header">
+        <div>
+          <p className="section-kicker">Church office</p>
+          <h1>Forms</h1>
+          <p>Sign-ups, registrations, surveys, applications and quizzes, with every response in one place.</p>
+        </div>
+      </div>
+
+      <section className="panel">
+        <h2>Start a new form</h2>
+        <NewFormGallery templates={FORM_TEMPLATES.map((t) => ({ id: t.id, name: t.name, description: t.description, icon: t.icon }))} />
+      </section>
+
+      <section className="panel">
+        <h2>Your forms</h2>
+        {!rows.length && <p className="panel-empty">No forms yet. Start one above.</p>}
+        <div className="fl-list">
+          {rows.map(({ form, definition, count, latest, open }) => (
+            <article key={form.id} className="fl-card">
+              <Link href={`/admin/forms/${form.id}`} className="fl-main" style={{ ["--fl-accent" as string]: definition.settings.theme.accent } as React.CSSProperties}>
+                <span className="fl-stripe" aria-hidden="true" />
+                <span className="fl-title">{definition.title}</span>
+                <span className="fl-meta">
+                  {definition.items.filter(isQuestion).length} questions · edited {when(form.updated_at)}
+                  {definition.settings.quiz.enabled && " · quiz"}
+                </span>
+                <span className="fl-badges">
+                  <span className={`badge ${open.open ? "blue" : "gray"}`}>{open.open ? "Accepting" : open.reason === "not_yet_open" ? "Opens later" : "Closed"}</span>
+                  {definition.settings.listInMemberPortal && <span className="badge">In member portal</span>}
+                  {definition.settings.requireSignIn && <span className="badge">Members only</span>}
+                </span>
+              </Link>
+              <div className="fl-side">
+                <Link href={`/admin/forms/${form.id}?tab=responses`} className="fl-count">
+                  <strong>{count}</strong> {count === 1 ? "response" : "responses"}
+                  {latest && <small>latest {when(latest)}</small>}
+                </Link>
+                <FormCardActions formId={form.id} publicId={form.public_id} title={definition.title} responseCount={count} />
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </>
+  );
 }

@@ -46,6 +46,7 @@ for what it means.
 - [`docs/ROADMAP.md`](docs/ROADMAP.md) — what's built, what's deferred, and the blueprint's Definition of Done checklist
 - [`docs/CHURCH-TOOLS.md`](docs/CHURCH-TOOLS.md) — the Live Countdown and Quiz Night, merged in from their own apps
 - [`docs/DOCUMENTS.md`](docs/DOCUMENTS.md) — letters and certificates: preparing, certifying, outside recipients, urgent signing
+- [`docs/FORMS.md`](docs/FORMS.md) — the form builder: question types, logic, quizzes, sharing, responses, and how answers are kept safe
 
 ## What's here vs. what's next
 
