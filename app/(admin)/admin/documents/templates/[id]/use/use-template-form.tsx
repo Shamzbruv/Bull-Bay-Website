@@ -3,6 +3,7 @@ import { useState } from "react";
 import { OfficeActionForm } from "@/components/office-action-form";
 import { templateFields,fieldLabel } from "@/lib/documents/design";
 import { UrgentSignFields } from "../../../urgent-sign-fields";
+import { PreviewNote, PreviewPdfButton } from "../../../preview-pdf-button";
 import { useDocumentTemplate } from "./actions";
 type Person={id:string;first_name:string|null;last_name:string|null;email:string|null;address_line1:string|null;joined_at:string|null};
 const nameOf=(p?:Person)=>[p?.first_name,p?.last_name].filter(Boolean).join(" ");
@@ -19,7 +20,7 @@ export function UseTemplateForm({id,body,people,canUrgentSign,signingReady}:{id:
  const chooseMember=(personId:string)=>{setPerson(personId);const p=people.find(p=>p.id===personId);setValues(v=>({...v,member_name:nameOf(p)||(mode==="outside"?outside.name:""),membership_since:p?.joined_at??"",...(mode==="member"?{recipient_address:p?.address_line1??""}:{})}));};
  const chooseMode=(next:"member"|"outside")=>{setMode(next);if(next==="outside")setValues(v=>({...v,recipient_name:outside.name,recipient_address:outside.address,...(person?{}:{member_name:outside.name})}));};
  const editOutside=(key:"name"|"email"|"address",value:string)=>{const next={...outside,[key]:value};setOutside(next);if(key==="name")setValues(v=>({...v,recipient_name:value,...(person?{}:{member_name:value})}));if(key==="address")setValues(v=>({...v,recipient_address:value}));};
- return <OfficeActionForm action={useDocumentTemplate.bind(null,id)} label={urgent?"Sign, stamp and send now":"Prepare document for certification"}>
+ return <OfficeActionForm action={useDocumentTemplate.bind(null,id)} label={urgent?"Sign, stamp and send now":"Prepare document for certification"} actions={<PreviewPdfButton href={`/api/office/documents/templates/${id}/preview`}/>}>
   <fieldset className="doc-send-to">
    <legend>Send the finished PDF to</legend>
    <div className="choice-row">
@@ -44,5 +45,6 @@ export function UseTemplateForm({id,body,people,canUrgentSign,signingReady}:{id:
   {fields.map(k=><label key={k}>{fieldLabel(k)}<input name={`field_${k}`} required value={values[k]??""} onChange={e=>setValues({...values,[k]:e.target.value})}/></label>)}
   <details><summary>Preview document text</summary><p style={{whiteSpace:"pre-wrap"}}>{body.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,(match,key:string)=>values[key]||match)}</p></details>
   {canUrgentSign&&<UrgentSignFields urgent={urgent} onChange={setUrgent} signingReady={signingReady}/>}
+  <PreviewNote/>
  </OfficeActionForm>;
 }

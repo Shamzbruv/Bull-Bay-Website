@@ -25,6 +25,18 @@ Nothing can be changed while the super administrator previews another role:
 the middleware refuses it, and the error page now says so and how to switch
 back, instead of "This page didn't finish loading".
 
+## Previewing before sending
+
+"Use template" and "Prepare the document" each have a **Preview PDF** button
+next to the send button. It opens the document in a new tab, from what's
+filled in so far (blanks show as `[Child name]`), with the same layout,
+name and "prepared by" as the certified PDF. Nothing is saved or sent. A
+preview is marked DRAFT and never carries the Pastor's signature, the church
+stamp or a document number; those are only added when it's certified.
+Routes: `app/api/office/documents/templates/[id]/preview` and
+`app/api/office/documents/[id]/preview` (POST for unsaved text; GET for the
+saved document, or the issued PDF). Shared code: `lib/documents/preview.ts`.
+
 ## Sending to someone outside the church
 
 "Use template" asks where the finished PDF goes: a church member, or someone

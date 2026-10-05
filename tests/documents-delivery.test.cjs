@@ -99,3 +99,12 @@ test('a dedication certificate is presented to the child, while the parents get 
   assert.equal(nameOnDocument({ requester_profile_id: 'm1', recipient_name: null, recipient_email: null, details: { member_name: 'Sis. Jane' } }, member), 'Jane Brown', 'a member keeps their name on file');
   assert.equal(nameOnDocument({ requester_profile_id: null, recipient_name: null, recipient_email: null }, null), '');
 });
+
+const { mergeTemplate, markBlanks } = load('lib/documents/merge');
+
+test('a preview shows what is still blank in plain words', () => {
+  const body = 'This certifies that {{member_name}} was baptized on {{ baptism_date }} at {{baptism_place}}.';
+  const merged = mergeTemplate(body, { member_name: 'Jane Brown', baptism_date: '4 October 2026' }).join('\n\n');
+  assert.equal(markBlanks(merged), 'This certifies that Jane Brown was baptized on 4 October 2026 at [Baptism place].');
+  assert.equal(markBlanks('No blanks here.'), 'No blanks here.');
+});

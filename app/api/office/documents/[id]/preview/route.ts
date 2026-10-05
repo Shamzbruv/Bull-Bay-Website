@@ -1,23 +1,69 @@
-import { getCurrentProfile,getUserPermissions } from "@/lib/auth/session";
-import { createClient,createServiceRoleClient } from "@/lib/supabase/server";
-import { generateDocumentPdf } from "@/lib/documents/pdf";
-import { getLogoBuffer } from "@/lib/documents/assets";
-import { cleanDesign } from "@/lib/documents/design";
-import { preparingSigner } from "@/lib/documents/certify";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { nameOnDocument } from "@/lib/documents/delivery";
-export async function GET(_:Request,{params}:{params:Promise<{id:string}>}){
- const profile=await getCurrentProfile();if(!profile)return new Response("Sign in required",{status:401});const permissions=await getUserPermissions(profile.organization_id);if(!permissions.has("documents.manage")&&!permissions.has("documents.certify"))return new Response("Forbidden",{status:403});
- const {id}=await params;const db=await createClient();const {data:r}=await db.from("document_requests").select("*").eq("organization_id",profile.organization_id).eq("id",id).maybeSingle();if(!r)return new Response("Not found",{status:404});
- let bytes:Buffer;
- if(r.status==='completed'&&r.pdf_path){const {data,error}=await createServiceRoleClient().storage.from("member-resources").download(r.pdf_path);if(error||!data)return new Response("PDF unavailable",{status:503});bytes=Buffer.from(await data.arrayBuffer());}
- else {
-  const {data:p}=await db.from("profiles").select("first_name,last_name").eq("id",r.requester_profile_id??"").maybeSingle();
-  // Same preview a certification would produce, shown before the pastor
-  // has signed anything, so whoever is preparing it sees their own name and
-  // title land in the right place. Until it's submitted, that's whoever
-  // claimed the request.
-  const preparer=await preparingSigner(createServiceRoleClient(),profile.organization_id,r.prepared_by??r.assigned_to);
-  const snapshot=(r.template_snapshot??{}) as {layout?:string;design?:unknown};bytes=await generateDocumentPdf({title:r.title,documentNumber:r.document_number||"DRAFT",recipientName:nameOnDocument(r,p)||'(no name on file — this will block certification)',bodyParagraphs:(r.prepared_body||"Document text has not yet been prepared.").split(/\n\s*\n/),issuedDate:new Date().toLocaleDateString("en-JM",{timeZone:"America/Jamaica"}),logoImage:await getLogoBuffer(),draft:true,layout:snapshot.layout,design:cleanDesign(snapshot.design),preparer});
- }
- return new Response(new Uint8Array(bytes),{headers:{"Content-Type":"application/pdf","Content-Disposition":`inline; filename="church-document.pdf"`,"Cache-Control":"private, no-store"}});
+import { markBlanks } from "@/lib/documents/merge";
+import { draftDocumentPdf, pdfResponse, previewViewer } from "@/lib/documents/preview";
+
+// A document request as a PDF. GET: as it stands (the issued PDF once it's
+// certified). POST: with the text being edited on "Prepare the document",
+// before it's saved or sent. Nothing is saved either way.
+
+type Params = { params: Promise<{ id: string }> };
+
+async function loadRequest(org: string, id: string) {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return null;
+  const db = createServiceRoleClient();
+  const { data: request } = await db.from("document_requests").select("*").eq("organization_id", org).eq("id", id).maybeSingle();
+  if (!request) return null;
+  const [{ data: member }, { data: template }] = await Promise.all([
+    db.from("profiles").select("first_name,last_name").eq("organization_id", org).eq("id", request.requester_profile_id ?? "").maybeSingle(),
+    // Before it's prepared a request has no copy of its template yet; the
+    // live one is what preparing it will copy.
+    request.template_snapshot || !request.template_id
+      ? Promise.resolve({ data: null })
+      : db.from("document_templates").select("layout,design").eq("organization_id", org).eq("id", request.template_id).maybeSingle(),
+  ]);
+  return { request, member, template: (request.template_snapshot ?? template) as { layout?: string; design?: unknown } | null };
+}
+
+export async function GET(_: Request, { params }: Params) {
+  const viewer = await previewViewer();
+  if (viewer instanceof Response) return viewer;
+  const loaded = await loadRequest(viewer.org, (await params).id);
+  if (!loaded) return new Response("Not found", { status: 404 });
+  const { request, member, template } = loaded;
+  if (request.status === "completed" && request.pdf_path) {
+    const { data, error } = await createServiceRoleClient().storage.from("member-resources").download(request.pdf_path);
+    if (error || !data) return new Response("PDF unavailable", { status: 503 });
+    return pdfResponse(Buffer.from(await data.arrayBuffer()), `${request.document_number || "church-document"}.pdf`);
+  }
+  // Until it's sent to the Pastor, it's prepared by whoever took it on.
+  const bytes = await draftDocumentPdf({
+    org: viewer.org,
+    title: request.title,
+    body: markBlanks(request.prepared_body || ""),
+    recipientName: nameOnDocument(request, member),
+    template,
+    preparedBy: request.prepared_by ?? request.assigned_to,
+  });
+  return pdfResponse(bytes, "document-preview.pdf");
+}
+
+export async function POST(incoming: Request, { params }: Params) {
+  const viewer = await previewViewer();
+  if (viewer instanceof Response) return viewer;
+  const loaded = await loadRequest(viewer.org, (await params).id);
+  if (!loaded) return new Response("Not found", { status: 404 });
+  const form = await incoming.formData().catch(() => null);
+  if (!form) return new Response("Bad request", { status: 400 });
+  const { request, member, template } = loaded;
+  // Whoever sends it to the Pastor becomes the one who prepared it.
+  const bytes = await draftDocumentPdf({
+    org: viewer.org,
+    title: request.title,
+    body: markBlanks(String(form.get("prepared_body") ?? "").trim().slice(0, 30000)),
+    recipientName: nameOnDocument(request, member),
+    template,
+    preparedBy: viewer.authUserId,
+  });
+  return pdfResponse(bytes, "document-preview.pdf");
 }

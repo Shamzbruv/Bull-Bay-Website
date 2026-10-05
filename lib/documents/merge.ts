@@ -1,3 +1,5 @@
+import { fieldLabel } from "@/lib/documents/design";
+
 /** Replaces {{field_name}} placeholders in a template body with values from
  * a flat string map. Unknown placeholders are left as-is (visibly, so a
  * secretary preparing the document notices a field wasn't filled rather
@@ -11,6 +13,12 @@ export function mergeTemplate(body: string, fields: Record<string, string>): str
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter(Boolean);
+}
+
+/** For a preview: blanks still to fill in, as [Child name] rather than
+ * {{child_name}}. */
+export function markBlanks(text: string): string {
+  return text.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key: string) => `[${fieldLabel(key)}]`);
 }
 
 export const STANDARD_MERGE_FIELDS = [

@@ -6,6 +6,7 @@ import { initialActionState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/submit-button";
 import { FormStatus } from "@/components/form-status";
 import { UrgentSignFields } from "../urgent-sign-fields";
+import { PreviewNote, PreviewPdfButton } from "../preview-pdf-button";
 
 export function PrepareForm({ requestId, initialBody, canUrgentSign, signingReady }: { requestId: string; initialBody: string; canUrgentSign: boolean; signingReady: boolean }) {
   const action = prepareRequest.bind(null, requestId);
@@ -19,8 +20,12 @@ export function PrepareForm({ requestId, initialBody, canUrgentSign, signingRead
         <textarea name="prepared_body" required defaultValue={initialBody} style={{ minHeight: 260 }} />
       </label>
       {canUrgentSign && <UrgentSignFields urgent={urgent} onChange={setUrgent} signingReady={signingReady} />}
+      <PreviewNote />
       <FormStatus state={state} />
-      <SubmitButton pendingLabel={urgent ? "Signing…" : "Sending…"}>{urgent ? "Sign, stamp and send now" : "Send to Pastor for certification"}</SubmitButton>
+      <div className="form-actions-row">
+        <PreviewPdfButton href={`/api/office/documents/${requestId}/preview`} />
+        <SubmitButton pendingLabel={urgent ? "Signing…" : "Sending…"}>{urgent ? "Sign, stamp and send now" : "Send to Pastor for certification"}</SubmitButton>
+      </div>
     </form>
   );
 }
