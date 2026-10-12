@@ -148,3 +148,78 @@ test("outsiders cannot steal or replace a fixed knockout opponent, and match tot
   s = act(restored, { type: "reveal", index: 0 });
   assert.equal(activeMatch(s).scores[s.stealing], s.bank);
 });
+
+test("four families play the first pair, then the second pair, then a winners-only final", () => {
+  let s = make(4, 1);
+  assert.deepEqual(s.opponents, ["family-0", "family-1"]);
+  s = scoreBoard(s, "family-1");
+  assert.equal(s.phase, "match_complete");
+  s = act(s, { type: "next_match" });
+  assert.deepEqual(s.opponents, ["family-2", "family-3"]);
+  s = scoreBoard(s, "family-3");
+  s = act(s, { type: "next_match" });
+  assert.deepEqual(s.opponents, ["family-1", "family-3"]);
+  s = scoreBoard(s, "family-3");
+  assert.equal(s.tournament.championId, "family-3");
+});
+test("padded brackets finish even when the final advancement is a bye", () => {
+  for (let n = 2; n <= 12; n++)
+    for (let rounds = requiredKnockoutRounds(n); rounds <= 4; rounds++) {
+      let s = make(n, 1, rounds);
+      let boards = 0;
+      while (s.phase !== "finished") {
+        assert.ok(boards < n);
+        if (s.phase === "match_complete") {
+          s = act(s, { type: "next_match" });
+          continue;
+        }
+        s = scoreBoard(s, activeMatch(s).families[0]);
+        boards++;
+      }
+      assert.equal(boards, n - 1);
+      assert.ok(s.tournament.championId);
+    }
+});
+test("standard is a separate format with cumulative scores and no eliminations", () => {
+  const { startStandardState } = load("tournament");
+  let s = startStandardState(
+    newFeud(
+      Array.from({ length: 4 }, (_, i) => ({
+        name: `Family ${i}`,
+        members: "",
+      })),
+      GENERAL_BIBLE,
+      "standard",
+    ),
+    2,
+    2,
+  );
+  assert.equal(s.tournament, undefined);
+  assert.equal(s.questions.length, 4);
+  s = scoreBoard(s, "family-0");
+  assert.deepEqual(s.opponents, ["family-0", "family-1"]);
+  s = scoreBoard(s, "family-0");
+  assert.deepEqual(s.opponents, ["family-2", "family-3"]);
+  s = scoreBoard(s, "family-2");
+  s = scoreBoard(s, "family-2");
+  assert.equal(s.phase, "finished");
+  assert.equal(s.families.length, 4);
+  assert.ok(s.families[0].score > 0);
+  assert.ok(s.families[2].score > 0);
+  assert.throws(
+    () =>
+      startStandardState(
+        newFeud(
+          [
+            { name: "A", members: "" },
+            { name: "B", members: "" },
+          ],
+          FAMILY_FUSION,
+          "too-long",
+        ),
+        10,
+        3,
+      ),
+    /needs 30 unique questions/,
+  );
+});

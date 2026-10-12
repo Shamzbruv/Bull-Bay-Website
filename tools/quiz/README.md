@@ -10,9 +10,17 @@ Kings Chapter 1** quiz.
 > [`docs/CHURCH-TOOLS.md`](../../docs/CHURCH-TOOLS.md). Locally,
 > `npm run dev` serves it at `http://localhost:5173/tools/quiz/`.
 
-## Family Feud knockout tournament
+## Family Feud formats
 
-Open **Family Feud** at `/tools/quiz/feud`. Choose a reusable question pack:
+Open **Family Feud** at `/tools/quiz/feud`. First choose the game format:
+
+- **Standard game** (default): all families stay in the game. Choose the
+  questions per round and number of rounds; the highest total score wins.
+- **Tournament**: families play in entered order. With four families, the
+  first two play match 1, the next two play match 2, and only those two
+  match winners meet in the final.
+
+Choose a reusable question pack:
 
 - **Family Fusion PowerPoint:** 26 distinct questions extracted from the
   supplied 202-slide deck (21 main questions plus five Big Money prompts).

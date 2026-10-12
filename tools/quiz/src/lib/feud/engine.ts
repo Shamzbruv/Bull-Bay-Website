@@ -25,6 +25,7 @@ export interface FeudState {
   packTitle?: string;
   packId?: string;
   tournament?: FeudTournament;
+  standardRounds?: { rounds: number; questionsPerRound: number };
   families: Family[];
   questions: FeudQuestion[];
   round: number;
@@ -274,8 +275,18 @@ export function feudReducer(s: FeudState, action: FeudAction): FeudState {
         ...s,
         round,
         opponents: [
-          s.families[round % s.families.length].id,
-          s.families[(round + 1) % s.families.length].id,
+          s.families[
+            (s.standardRounds
+              ? Math.floor(round / s.standardRounds.questionsPerRound) * 2
+              : round) % s.families.length
+          ].id,
+          s.families[
+            ((s.standardRounds
+              ? Math.floor(round / s.standardRounds.questionsPerRound) * 2
+              : round) +
+              1) %
+              s.families.length
+          ].id,
         ],
         control: undefined,
         stealing: undefined,
@@ -305,6 +316,7 @@ export function feudPresenter(s: FeudState) {
     category: q.category,
     packId: s.packId,
     tournament: s.tournament,
+    standardRounds: s.standardRounds,
     currentMatch: activeMatch(s),
     families: s.families,
     round: s.round,

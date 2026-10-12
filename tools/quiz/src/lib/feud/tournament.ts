@@ -57,9 +57,6 @@ export function buildKnockout(
     );
   if (!Number.isInteger(questionsPerRound) || questionsPerRound < 1)
     throw new Error("Choose at least one question per round.");
-  let seeds = [1, 2];
-  for (let size = 4; size <= 2 ** rounds; size *= 2)
-    seeds = seeds.flatMap((seed) => [seed, size + 1 - seed]);
   const matches: KnockoutMatch[] = [];
   for (let stage = 1; stage <= rounds; stage++)
     for (let slot = 0; slot < 2 ** (rounds - stage); slot++) {
@@ -69,10 +66,7 @@ export function buildKnockout(
         slot,
         families:
           stage === 1
-            ? [
-                ids[seeds[slot * 2] - 1] ?? null,
-                ids[seeds[slot * 2 + 1] - 1] ?? null,
-              ]
+            ? [ids[slot * 2] ?? null, ids[slot * 2 + 1] ?? null]
             : [null, null],
         sources:
           stage === 1
@@ -159,13 +153,17 @@ export function completeMatch(s: FeudState, winnerId: string): FeudState {
       m.id === match.id ? { ...m, status: "complete", winnerId } : m,
     ),
   });
-  if (match.stage === tournament.rounds)
+  const finalMatch = tournament.matches.find(
+    (m) => m.stage === tournament.rounds,
+  )!;
+  const championId = finalMatch.winnerId;
+  if (championId && ["complete", "bye"].includes(finalMatch.status))
     return {
       ...s,
       phase: "finished",
       deadline: undefined,
-      tournament: { ...tournament, championId: winnerId },
-      notice: `${s.families.find((f) => f.id === winnerId)!.name} wins the tournament!`,
+      tournament: { ...tournament, championId },
+      notice: `${s.families.find((f) => f.id === championId)!.name} wins the tournament!`,
     };
   return {
     ...s,
@@ -242,4 +240,30 @@ export function shuffleTournamentBoards(
       [boards[i], boards[j]] = [boards[j], boards[i]];
     }
   return boards;
+}
+
+export function startStandardState(
+  s: FeudState,
+  rounds: number,
+  questionsPerRound: number,
+): FeudState {
+  if (
+    !Number.isInteger(rounds) ||
+    rounds < 1 ||
+    !Number.isInteger(questionsPerRound) ||
+    questionsPerRound < 1
+  )
+    throw new Error("Choose at least one round and one question per round.");
+  const required = rounds * questionsPerRound,
+    questions = uniqueBoards(s.questions);
+  if (questions.length < required)
+    throw new Error(
+      `This game needs ${required} unique questions, but this selection has ${questions.length}. Reduce the number of rounds or questions per round.`,
+    );
+  return {
+    ...s,
+    tournament: undefined,
+    standardRounds: { rounds, questionsPerRound },
+    questions: questions.slice(0, required),
+  };
 }
