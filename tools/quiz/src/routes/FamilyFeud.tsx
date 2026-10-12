@@ -66,7 +66,7 @@ function Board({ state }: { state: FeudPresenter }) {
           >
             <span>{f.name}</span>
             <strong>{f.score}</strong>
-            {state.control === f.id && <small>IN CONTROL</small>}
+            {state.control === f.id && <small>{state.phase === "settled" ? "ROUND WINNER" : "IN CONTROL"}</small>}
             {state.stealing === f.id && state.phase === "steal" && (
               <small>STEAL ATTEMPT</small>
             )}

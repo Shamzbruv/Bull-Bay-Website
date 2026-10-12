@@ -226,7 +226,7 @@ export function feudPresenter(s: FeudState) {
     total: s.questions.length,
     phase: s.phase,
     opponents: s.opponents,
-    control: s.control,
+    control: s.phase === "settled" ? s.winner : s.control,
     stealing: s.stealing,
     strikes: s.strikes,
     multiplier: s.multiplier,

@@ -85,6 +85,7 @@ test("three strikes permit a successful steal, including a third family selected
   s = act(s, { type: "reveal", index: 1 });
   assert.equal(s.phase, "settled");
   assert.equal(s.families[2].score, 75);
+  assert.equal(feudPresenter(s).control, "family-2");
   assert.equal(s.families[0].score, 0);
   assert.equal(act(s, { type: "stealFailed" }), s);
 });
