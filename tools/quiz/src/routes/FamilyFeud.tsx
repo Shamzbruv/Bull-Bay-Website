@@ -67,7 +67,11 @@ function Board({ state }: { state: FeudPresenter }) {
           >
             <span>{f.name}</span>
             <strong>{f.score}</strong>
-            {state.control === f.id && <small>{state.phase === "settled" ? "ROUND WINNER" : "IN CONTROL"}</small>}
+            {state.control === f.id && (
+              <small>
+                {state.phase === "settled" ? "ROUND WINNER" : "IN CONTROL"}
+              </small>
+            )}
             {state.stealing === f.id && state.phase === "steal" && (
               <small>STEAL ATTEMPT</small>
             )}
@@ -162,8 +166,8 @@ function Board({ state }: { state: FeudPresenter }) {
 export function FamilyFeud() {
   const [game, setGame] = useState<FeudState | null>(loadGame);
   const [families, setFamilies] = useState([
-    { name: "Family 1", members: "" },
-    { name: "Family 2", members: "" },
+    { name: "", members: "" },
+    { name: "", members: "" },
   ]);
   const [error, setError] = useState("");
   const [timerSeconds, setTimerSeconds] = useState(20);
@@ -295,9 +299,13 @@ export function FamilyFeud() {
           </div>
           <div className="ff-actions">
             <button onClick={testStrikeSound}>Test X sound ✕</button>
-            <button onClick={() => setSound(!sound)}>Sound {sound ? "on" : "off"}</button>
+            <button onClick={() => setSound(!sound)}>
+              Sound {sound ? "on" : "off"}
+            </button>
           </div>
-          <p>Wrong answers and failed steals play the X buzzer when sound is on.</p>
+          <p>
+            Wrong answers and failed steals play the X buzzer when sound is on.
+          </p>
           <h2>Who’s playing?</h2>
           <p>
             Add 2–12 families. Two face off each round; rotate opponents or
@@ -307,8 +315,11 @@ export function FamilyFeud() {
             {families.map((f, i) => (
               <div key={i}>
                 <label>
-                  Family {i + 1}
+                  Family name
                   <input
+                    aria-label={`Family name ${i + 1}`}
+                    placeholder="e.g. Baker family"
+                    required
                     maxLength={40}
                     value={f.name}
                     onChange={(e) =>
@@ -350,10 +361,7 @@ export function FamilyFeud() {
             <button
               disabled={families.length >= 12}
               onClick={() =>
-                setFamilies([
-                  ...families,
-                  { name: `Family ${families.length + 1}`, members: "" },
-                ])
+                setFamilies([...families, { name: "", members: "" }])
               }
             >
               + Add family
@@ -406,6 +414,15 @@ export function FamilyFeud() {
             </p>
           </div>
           <div className="ff-actions">
+            <button
+              onClick={() =>
+                document
+                  .getElementById("ff-edit-names")
+                  ?.setAttribute("open", "")
+              }
+            >
+              Edit family names
+            </button>
             <button onClick={openDisplay}>Open audience screen ↗</button>
             <button
               onClick={() => {
@@ -446,7 +463,7 @@ export function FamilyFeud() {
                   <summary>Change face-off families & points</summary>
                   {game.opponents.map((id, slot) => (
                     <label key={slot}>
-                      Family {slot + 1}
+                      {game.families.find((family) => family.id === id)?.name}
                       <select
                         value={id}
                         disabled={game.revealed.length > 0}
@@ -640,6 +657,50 @@ export function FamilyFeud() {
                 ))}
               </div>
             )}
+            <details id="ff-edit-names">
+              <summary>Edit family names</summary>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const data = new FormData(event.currentTarget);
+                  const names = Object.fromEntries(
+                    game.families.map((family) => [
+                      family.id,
+                      String(data.get(family.id) ?? "").trim(),
+                    ]),
+                  );
+                  if (
+                    Object.values(names).some((name) => !name) ||
+                    new Set(
+                      Object.values(names).map((name) => name.toLowerCase()),
+                    ).size !== game.families.length
+                  ) {
+                    setError("Enter a different family name for every family.");
+                    return;
+                  }
+                  setError("");
+                  dispatch({ type: "rename", names });
+                }}
+              >
+                {game.families.map((family) => (
+                  <label key={`${family.id}-${family.name}`}>
+                    {family.name}
+                    <input
+                      name={family.id}
+                      defaultValue={family.name}
+                      maxLength={40}
+                      required
+                      aria-label={`Rename ${family.name}`}
+                    />
+                  </label>
+                ))}
+                <button type="submit">Save family names</button>
+                <p>
+                  Updates the scoreboard, face-off controls and audience screen
+                  without resetting scores.
+                </p>
+              </form>
+            </details>
             <details>
               <summary>Score correction & session</summary>
               <label>

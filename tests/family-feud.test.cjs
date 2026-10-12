@@ -166,3 +166,29 @@ test("invalid team and score actions cannot corrupt totals; save and resume is f
     ),
   );
 });
+
+test("renaming families updates audience labels without losing game progress", () => {
+  const s = act(act(controlled(), { type: "reveal", index: 0 }), {
+    type: "award",
+    id: "family-0",
+  });
+  const renamed = act(s, {
+    type: "rename",
+    names: {
+      "family-0": "Brown family",
+      "family-1": "Smith family",
+      "family-2": "Baker family",
+    },
+  });
+  assert.equal(feudPresenter(renamed).families[0].name, "Brown family");
+  assert.equal(renamed.families[0].score, 40);
+  assert.equal(renamed.phase, s.phase);
+  assert.deepEqual(renamed.revealed, s.revealed);
+  assert.equal(
+    act(s, {
+      type: "rename",
+      names: { "family-0": "Same", "family-1": "same", "family-2": "Baker" },
+    }),
+    s,
+  );
+});

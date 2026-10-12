@@ -36,7 +36,8 @@ export type FeudAction =
   | { type: "multiplier"; value: number }
   | { type: "timer"; deadline?: number }
   | { type: "adjust"; id: string; points: number }
-  | { type: "finish" };
+  | { type: "finish" }
+  | { type: "rename"; names: Record<string, string> };
 export function newFeud(
   names: { name: string; members: string }[],
   questions: FeudQuestion[],
@@ -183,6 +184,20 @@ export function feudReducer(s: FeudState, action: FeudAction): FeudState {
             ),
           }
         : s;
+    case "rename": {
+      const names = s.families.map((f) => action.names[f.id]?.trim() ?? "");
+      if (
+        names.some((name) => !name || name.length > 40) ||
+        new Set(names.map((name) => name.toLowerCase())).size !==
+          s.families.length
+      )
+        return s;
+      return {
+        ...s,
+        families: s.families.map((f, i) => ({ ...f, name: names[i] })),
+        notice: "Family names updated.",
+      };
+    }
     case "finish":
       return {
         ...s,
