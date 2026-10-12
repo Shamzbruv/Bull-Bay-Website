@@ -570,3 +570,39 @@ summary:focus-visible {
     animation: none;
   }
 }
+
+.ff-game-options {
+  background: #0c2141;
+  border: 1px solid #5276ac;
+  border-radius: 18px;
+  padding: 22px;
+  margin: 22px 0;
+}
+.ff-game-options select {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin: 8px 0 16px;
+  border: 1px solid #5276ac;
+  border-radius: 10px;
+  background: #071833;
+  color: white;
+  font-size: 16px;
+}
+.ff-game-options .ff-shuffle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.ff-game-options .ff-shuffle input {
+  width: 18px;
+  margin: 0;
+}
+.ff-game-options a {
+  color: #a7d9ff;
+  text-decoration: underline;
+}
+.ff-round {
+  white-space: normal;
+  max-width: 260px;
+}

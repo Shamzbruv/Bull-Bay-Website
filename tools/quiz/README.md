@@ -13,9 +13,11 @@ Kings Chapter 1** quiz.
 ## Bible Family Feud
 
 Open **Family Feud** from the Quiz Night home screen or navigation, at
-`/tools/quiz/feud`. The first pack contains 12 factual answer boards from
-**1 Kings 3 (KJV)**, each with verse references and accepted equivalent
-wording for the host. Point values are game values, not survey results.
+`/tools/quiz/feud`. The **Open Bible** question bank contains 60 factual answer boards from
+across the Old and New Testaments, divided into six categories with ten
+boards each. Choose a category and 10, 20, 30, or all available boards,
+with optional shuffling. Families may consult their Bibles. Each answer
+has a verse reference. Point values are game values, not survey results.
 
 - Add 2–12 uniquely named families and optional member names.
 - Choose the two face-off opponents, reveal matching answers, then select
@@ -27,8 +29,8 @@ wording for the host. Point values are game values, not survey results.
   A successful steal awards the revealed-answer bank including the stealing
   answer; a failed steal awards the bank to the original family.
 - Award the bank once, reveal any remaining answers without adding points,
-  then move to the next board. Default rounds 1–4 are 1×, 5–8 are 2×,
-  and 9–12 are 3×; the host can set the multiplier before the first reveal.
+  then move to the next board. The first, middle, and final thirds of the selected game use
+  1×, 2×, and 3× points respectively; the host can set the multiplier before the first reveal.
 - Optional 5–120 second timer, sound effects, undo (last 50 actions in the
   current host session), score corrections, early finish and final standings
   support live hosting. The timer never grades an answer or issues a strike.
@@ -45,6 +47,16 @@ wording for the host. Point values are game values, not survey results.
 
 New packs can use `src/lib/feud/questions.ts`'s `FeudQuestion` structure.
 Scoring and audience redaction are tested by `tests/family-feud.test.cjs`.
+Category selection and library seeding are tested by
+`tests/general-bible-feud.test.cjs`.
+
+The original 12 **1 Kings Chapter 3** boards now appear as host-graded
+short-answer questions in the regular Quiz Library, alongside chapters
+1 and 2. Local libraries add the new quiz without replacing existing
+edits. The Supabase adapter seeds it on first library load using
+conflict-ignoring inserts. A partial seed can retry without overwriting
+quiz metadata. An old chapter-specific Family Feud save remains resumable,
+with a clear notice and a button to set up a general Bible game.
 
 ## Getting started
 

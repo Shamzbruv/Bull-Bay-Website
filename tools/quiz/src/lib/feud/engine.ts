@@ -8,6 +8,7 @@ export interface Family {
 export type FeudPhase = "faceoff" | "play" | "steal" | "settled" | "finished";
 export interface FeudState {
   id: string;
+  packTitle?: string;
   families: Family[];
   questions: FeudQuestion[];
   round: number;
@@ -224,7 +225,12 @@ export function feudReducer(s: FeudState, action: FeudAction): FeudState {
         revealed: [],
         strikes: 0,
         bank: 0,
-        multiplier: round >= 8 ? 3 : round >= 4 ? 2 : 1,
+        multiplier:
+          round >= Math.ceil((s.questions.length * 2) / 3)
+            ? 3
+            : round >= Math.ceil(s.questions.length / 3)
+              ? 2
+              : 1,
         deadline: undefined,
         notice: "Face-off! The host chooses which family plays or passes.",
       };
@@ -236,6 +242,8 @@ export function feudPresenter(s: FeudState) {
   const q = s.questions[s.round];
   return {
     id: s.id,
+    packTitle: s.packTitle ?? "1 Kings 3 (previous pack)",
+    category: q.category,
     families: s.families,
     round: s.round,
     total: s.questions.length,

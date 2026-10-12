@@ -2,9 +2,10 @@ import type { Quiz } from '../../types/quiz';
 import type { GameHistoryEntry } from '../../types/game';
 import type { DataAdapter } from './repository';
 import { quiz1Kings1 } from '../../data/seed/1-kings-chapter-1';
+import { quiz1Kings3 } from '../../data/seed/1-kings-chapter-3';
 import { quiz1Kings2 } from '../../data/seed/1-kings-chapter-2';
 
-const BUILT_IN_QUIZZES = [quiz1Kings1, quiz1Kings2];
+const BUILT_IN_QUIZZES = [quiz1Kings1, quiz1Kings2, quiz1Kings3];
 
 const QUIZZES_KEY = 'bbntcog-quizzes';
 const HISTORY_KEY = 'bbntcog-game-history';

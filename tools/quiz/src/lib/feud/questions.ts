@@ -12,6 +12,7 @@ export interface FeudQuestion {
   id: string;
   prompt: string;
   answers: FeudAnswer[];
+  category?: string;
 }
 const a = (
   text: string,

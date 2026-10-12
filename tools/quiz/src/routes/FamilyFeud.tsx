@@ -4,7 +4,11 @@ import { AppShell } from "../components/layout/AppShell";
 import { ChurchLogo } from "../components/brand/ChurchLogo";
 import { useSettingsStore } from "../state/settingsStore";
 import { soundManager } from "../lib/sound/soundManager";
-import { KINGS_THREE } from "../lib/feud/questions";
+import {
+  GENERAL_BIBLE,
+  FEUD_CATEGORIES,
+  selectGeneralBoards,
+} from "../lib/feud/general-bible";
 import { feudPresenter, feudReducer, newFeud } from "../lib/feud/engine";
 import type { FeudAction, FeudPresenter, FeudState } from "../lib/feud/engine";
 import "./family-feud.css";
@@ -53,7 +57,7 @@ function Board({ state }: { state: FeudPresenter }) {
           </h1>
         </div>
         <div className="ff-round">
-          1 KINGS 3
+          {state.packTitle}
           <small>
             Board {state.round + 1} / {state.total}
           </small>
@@ -170,7 +174,14 @@ export function FamilyFeud() {
     { name: "", members: "" },
   ]);
   const [error, setError] = useState("");
-  const [timerSeconds, setTimerSeconds] = useState(20);
+  const [timerSeconds, setTimerSeconds] = useState(60);
+  const [category, setCategory] = useState("all");
+  const [roundCount, setRoundCount] = useState(20);
+  const [shuffle, setShuffle] = useState(true);
+  const available = GENERAL_BIBLE.filter(
+    (q) => category === "all" || q.category === category,
+  ).length;
+  const selectedCount = Math.min(roundCount, available);
   const [adjustFamily, setAdjustFamily] = useState("");
   const [adjustPoints, setAdjustPoints] = useState(10);
   const sound = useSettingsStore((s) => s.soundEnabled);
@@ -262,7 +273,14 @@ export function FamilyFeud() {
   }
   function start() {
     try {
-      setGame(newFeud(families, KINGS_THREE, crypto.randomUUID()));
+      setGame({
+        ...newFeud(
+          families,
+          selectGeneralBoards(category, selectedCount, shuffle),
+          crypto.randomUUID(),
+        ),
+        packTitle: "General Bible · Open Bible",
+      });
       setHistory([]);
       setError("");
       if (sound) soundManager.play("intro");
@@ -284,18 +302,66 @@ export function FamilyFeud() {
           <p className="ff-eyebrow">A NEW WAY TO PLAY</p>
           <h1>Bible Family Feud</h1>
           <p className="ff-lead">
-            Bring your families. Take the stage. Find the answers in Scripture.
+            Bring your families and your Bibles. Take the stage.
           </p>
           <div className="ff-pack">
-            <strong>FIRST QUESTION PACK · 1 KINGS 3</strong>
+            <strong>GENERAL BIBLE · OPEN BIBLE</strong>
             <p className="text-3xl font-black text-white" role="status">
-              {KINGS_THREE.length} questions in this quiz
+              {selectedCount} boards tonight · {GENERAL_BIBLE.length} in the
+              question bank
             </p>
             <p>
-              Factual answer boards covering Solomon’s request and judgment.
-              Every answer has a verse reference. No interpretations or invented
-              survey answers.
+              Play across the Old and New Testaments. Families may use their
+              Bibles. Every answer is a direct Scripture fact with a verse
+              reference; you judge the spoken answer and reveal each matching
+              tile.
             </p>
+          </div>
+          <div className="ff-game-options">
+            <label>
+              Tonight’s category
+              <select
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+              >
+                <option value="all">
+                  All categories · Old & New Testament
+                </option>
+                {Object.entries(FEUD_CATEGORIES).map(([id, title]) => (
+                  <option key={id} value={id}>
+                    {title} · 10 boards
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Number of boards
+              <select
+                value={roundCount}
+                onChange={(event) => setRoundCount(Number(event.target.value))}
+              >
+                {[10, 20, 30, 60].map((count) => (
+                  <option key={count} value={count}>
+                    {count === 60 ? "All available boards" : `${count} boards`}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="ff-shuffle">
+              <input
+                type="checkbox"
+                checked={shuffle}
+                onChange={(event) => setShuffle(event.target.checked)}
+              />{" "}
+              Shuffle questions for a fresh game
+            </label>
+            <p>
+              {available} boards available in this selection; {selectedCount}{" "}
+              will be played.
+            </p>
+            <Link to="/quizzes/1-kings-chapter-3">
+              Looking for 1 Kings 3? It is now a regular quiz →
+            </Link>
           </div>
           <div className="ff-actions">
             <button onClick={testStrikeSound}>Test X sound ✕</button>
@@ -404,6 +470,40 @@ export function FamilyFeud() {
   return (
     <AppShell>
       <div className="ff-host">
+        {!game.packTitle && (
+          <div className="ff-pack">
+            <strong>This saved game uses the previous 1 Kings 3 pack.</strong>
+            <p>
+              That pack is now a regular quiz in the Quiz Library. Start a new
+              game to play general Bible Family Feud.
+            </p>
+            <div className="ff-actions">
+              <Link to="/quizzes/1-kings-chapter-3">
+                Open the 1 Kings 3 quiz
+              </Link>
+              <button
+                onClick={() => {
+                  if (
+                    confirm(
+                      "Start a general Bible game? This resets the saved round and scores but keeps the family names.",
+                    )
+                  ) {
+                    setFamilies(
+                      game.families.map((f) => ({
+                        name: f.name,
+                        members: f.members,
+                      })),
+                    );
+                    setGame(null);
+                    setHistory([]);
+                  }
+                }}
+              >
+                Set up general Bible Family Feud
+              </button>
+            </div>
+          </div>
+        )}
         <header className="ff-host-title">
           <div>
             <Link to="/">← Quiz Night</Link>
@@ -457,6 +557,10 @@ export function FamilyFeud() {
           <Board state={feudPresenter(game)} />
           <aside className="ff-controls">
             <h2>Host controls</h2>
+            <p>
+              Open Bible game · Families may look up their answers. You control
+              the pace.
+            </p>
             {game.phase === "faceoff" && (
               <>
                 <details className="ff-faceoff-settings">
