@@ -10,53 +10,48 @@ Kings Chapter 1** quiz.
 > [`docs/CHURCH-TOOLS.md`](../../docs/CHURCH-TOOLS.md). Locally,
 > `npm run dev` serves it at `http://localhost:5173/tools/quiz/`.
 
-## Bible Family Feud
+## Family Feud knockout tournament
 
-Open **Family Feud** from the Quiz Night home screen or navigation, at
-`/tools/quiz/feud`. The **Open Bible** question bank contains 60 factual answer boards from
-across the Old and New Testaments, divided into six categories with ten
-boards each. Choose a category and 10, 20, 30, or all available boards,
-with optional shuffling. Families may consult their Bibles. Each answer
-has a verse reference. Point values are game values, not survey results.
+Open **Family Feud** at `/tools/quiz/feud`. Choose a reusable question pack:
 
-- Add 2–12 uniquely named families and optional member names.
-- Choose the two face-off opponents, reveal matching answers, then select
-  which family plays (or receives a pass). Other families remain on the
-  scoreboard; opponents rotate on subsequent boards and can be changed
-  before a board's first reveal.
-- Reveal tiles individually from the private answer key. Three strikes
-  trigger a one-answer steal. The host can choose another family to steal.
-  A successful steal awards the revealed-answer bank including the stealing
-  answer; a failed steal awards the bank to the original family.
-- Award the bank once, reveal any remaining answers without adding points,
-  then move to the next board. The first, middle, and final thirds of the selected game use
-  1×, 2×, and 3× points respectively; the host can set the multiplier before the first reveal.
-- Optional 5–120 second timer, sound effects, undo (last 50 actions in the
-  current host session), score corrections, early finish and final standings
-  support live hosting. The timer never grades an answer or issues a strike.
-- **Open audience screen** creates a read-only board in another window on
-  the same browser/computer. Move it to the projector and use Fullscreen.
-  Broadcast messages contain only the current question and revealed answers,
-  with no future questions or unrevealed answer text. This is a local
-  presentation workflow, not a remote-device or phone-buzzer mode.
-- Family Feud saves its current session in this browser's localStorage,
-  independently of the regular quiz data. Return to Family Feud to resume;
-  clearing browser storage removes this save. It does not require a database
-  migration. Both host and audience routes keep the existing church admin
-  access check.
+- **Family Fusion PowerPoint:** 26 distinct questions extracted from the
+  supplied 202-slide deck (21 main questions plus five Big Money prompts).
+  Repeated reveal slides and Player 2 copies are collapsed. The answer order
+  and illustrative scores remain as supplied. Question 21 has a private host
+  note about two apparently unrelated source answers; no corrections are invented.
+- **Saved general Bible bank:** the existing 60 boards across six categories.
+  The original 1 Kings Chapter 3 quiz remains in the regular Quiz Library.
 
-New packs can use `src/lib/feud/questions.ts`'s `FeudQuestion` structure.
-Scoring and audience redaction are tested by `tests/family-feud.test.cjs`.
-Category selection and library seeding are tested by
-`tests/general-bible-feud.test.cjs`.
+Add 2–12 named families. Set **questions per round (per match)** and the total
+number of knockout rounds. A bracket needs at least `ceil(log2(families))`
+rounds; extra slots receive automatic byes. Every actual matchup plays the
+configured question count, with winners advancing and losing families eliminated.
+The final-match winner is the champion, regardless of cumulative point totals.
 
-The original 12 **1 Kings Chapter 3** boards now appear as host-graded
-short-answer questions in the regular Quiz Library, alongside chapters
-1 and 2. Local libraries add the new quiz without replacing existing
-edits. The Supabase adapter seeds it on first library load using
-conflict-ignoring inserts. A partial seed can retry without overwriting
-quiz metadata. An old chapter-specific Family Feud save remains resumable,
-with a clear notice and a button to set up a general Bible game.
+The tournament requires `(families - 1) * questionsPerRound` unique questions.
+Setup refuses to start if the selected pack/category cannot supply them. The
+entire question sequence is selected once, optionally shuffled, deduplicated by
+both ID and normalized question text, and saved with the game. No question is
+reused across matches or rounds, including after refreshing the host page.
+
+The host controls board reveals, strikes, timers, passing control, and steals.
+Only the opposing family in the current match can steal. Match scores reset
+between matches; cumulative totals remain visible. A tied match requires an
+explicit host tie-break decision (for example, a toss), without repeating a
+question or exceeding the configured question count. The private console shows
+bracket progress. Undo, score corrections, family renaming and browser resume
+continue to work.
+
+Open the read-only audience display in a second window on the same browser and
+computer, then move it to the projector. Unrevealed answers and future questions
+are excluded from the broadcast. Both routes keep existing church admin access.
+Old standard-game saves are preserved, with an explicit button to start a new
+knockout tournament using the same family names.
+
+The Supabase and local library adapters add **1 Kings Chapter 3** without
+replacing edited quizzes. No database schema migration is required.
+Scoring, pack selection, non-destructive library seeding, bracket advancement,
+byes, tie decisions, and no-repeat invariants have tests in `tests/`.
 
 ## Getting started
 

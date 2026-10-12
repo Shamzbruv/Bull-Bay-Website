@@ -4,11 +4,15 @@ import { AppShell } from "../components/layout/AppShell";
 import { ChurchLogo } from "../components/brand/ChurchLogo";
 import { useSettingsStore } from "../state/settingsStore";
 import { soundManager } from "../lib/sound/soundManager";
+import { GENERAL_BIBLE, FEUD_CATEGORIES } from "../lib/feud/general-bible";
+import { FAMILY_FUSION } from "../lib/feud/family-fusion";
 import {
-  GENERAL_BIBLE,
-  FEUD_CATEGORIES,
-  selectGeneralBoards,
-} from "../lib/feud/general-bible";
+  startTournamentState,
+  requiredKnockoutRounds,
+  tournamentQuestionDemand,
+  shuffleTournamentBoards,
+  uniqueBoards,
+} from "../lib/feud/tournament";
 import { feudPresenter, feudReducer, newFeud } from "../lib/feud/engine";
 import type { FeudAction, FeudPresenter, FeudState } from "../lib/feud/engine";
 import "./family-feud.css";
@@ -41,17 +45,25 @@ function useClock() {
 }
 function Board({ state }: { state: FeudPresenter }) {
   const now = useClock();
+  const highlightedFamily =
+    state.phase === "finished"
+      ? (state.tournament?.championId ?? state.control)
+      : state.phase === "match_complete"
+        ? state.currentMatch?.winnerId
+        : state.control;
   const seconds = state.deadline
     ? Math.max(0, Math.ceil((state.deadline - now) / 1000))
     : null;
   const standings = [...state.families].sort((a, b) => b.score - a.score);
-  const leaders = standings.filter((f) => f.score === standings[0].score);
+  const leaders = state.tournament?.championId
+    ? state.families.filter((f) => f.id === state.tournament!.championId)
+    : standings.filter((f) => f.score === standings[0].score);
   return (
     <section className="ff-stage" aria-label="Family Feud audience board">
       <header className="ff-title">
         <ChurchLogo size="sm" />
         <div>
-          <small>BULL BAY NTCOG • BIBLE GAME NIGHT</small>
+          <small>{state.packId === "family-fusion" ? "FAMILY FUSION NIGHT · BBNTCOG" : "BULL BAY NTCOG · BIBLE GAME NIGHT"}</small>
           <h1>
             FAMILY <span>FEUD</span>
           </h1>
@@ -67,13 +79,19 @@ function Board({ state }: { state: FeudPresenter }) {
         {state.families.map((f) => (
           <div
             key={f.id}
-            className={`ff-score ${state.control === f.id ? "ff-active" : ""} ${state.stealing === f.id && state.phase === "steal" ? "ff-stealing" : ""}`}
+            className={`ff-score ${highlightedFamily === f.id ? "ff-active" : ""} ${state.stealing === f.id && state.phase === "steal" ? "ff-stealing" : ""}`}
           >
             <span>{f.name}</span>
             <strong>{f.score}</strong>
-            {state.control === f.id && (
+            {highlightedFamily === f.id && (
               <small>
-                {state.phase === "settled" ? "ROUND WINNER" : "IN CONTROL"}
+                {state.phase === "finished" && state.tournament?.championId
+                  ? "CHAMPION"
+                  : state.phase === "match_complete"
+                    ? "MATCH WINNER"
+                    : state.phase === "settled"
+                      ? "BOARD WINNER"
+                      : "IN CONTROL"}
               </small>
             )}
             {state.stealing === f.id && state.phase === "steal" && (
@@ -82,6 +100,26 @@ function Board({ state }: { state: FeudPresenter }) {
           </div>
         ))}
       </div>
+      {state.tournament && (
+        <div className="ff-tournament-banner">
+          <strong>
+            Knockout round {state.currentMatch?.stage} /{" "}
+            {state.tournament.rounds} · Question{" "}
+            {state.tournament.questionInMatch + 1} /{" "}
+            {state.tournament.questionsPerRound}
+          </strong>
+          <p>
+            {state.currentMatch?.families
+              .filter(Boolean)
+              .map(
+                (id) =>
+                  `${state.families.find((f) => f.id === id)?.name}: ${state.currentMatch?.scores[id!] ?? 0}`,
+              )
+              .join(" vs ")}{" "}
+            · MATCH SCORES
+          </p>
+        </div>
+      )}
       {state.phase === "finished" ? (
         <div className="ff-final">
           <span>🏆</span>
@@ -89,7 +127,11 @@ function Board({ state }: { state: FeudPresenter }) {
             {leaders.length > 1 ? "Tied champions" : "Tonight’s champions"}
           </h2>
           <h3>{leaders.map((f) => f.name).join(" & ")}</h3>
-          <p>{standings[0].score} points</p>
+          <p>
+            {state.tournament?.championId
+              ? "Knockout tournament winner"
+              : `${standings[0].score} points`}
+          </p>
           <ol>
             {standings.map((f) => (
               <li key={f.id}>
@@ -108,8 +150,12 @@ function Board({ state }: { state: FeudPresenter }) {
                 : state.phase === "steal"
                   ? "STEAL THE BOARD"
                   : state.phase === "settled"
-                    ? "ROUND COMPLETE"
-                    : "LET’S PLAY"}
+                    ? "BOARD COMPLETE"
+                    : state.phase === "match_complete"
+                      ? "MATCH COMPLETE"
+                      : state.phase === "match_tie"
+                        ? "TIE BREAK"
+                        : "LET’S PLAY"}
             </span>
             <span>
               ROUND BANK <b>{state.bank}</b> · {state.multiplier}× POINTS
@@ -132,7 +178,9 @@ function Board({ state }: { state: FeudPresenter }) {
                   <>
                     <span>
                       {answer.text}
-                      <small>{answer.reference}</small>
+                      {state.packId !== "family-fusion" && (
+                        <small>{answer.reference}</small>
+                      )}
                     </span>
                     <strong>{answer.points * state.multiplier}</strong>
                   </>
@@ -160,8 +208,9 @@ function Board({ state }: { state: FeudPresenter }) {
         </>
       )}
       <footer className="ff-footnote">
-        Direct Bible answers • Host reveals the board • Game points, not survey
-        results
+        {state.packId === "family-fusion"
+          ? "Family Fusion · Illustrative scores, not actual survey results"
+          : "Direct Bible answers · Host reveals the board · Game points, not survey results"}
       </footer>
     </section>
   );
@@ -175,13 +224,31 @@ export function FamilyFeud() {
   ]);
   const [error, setError] = useState("");
   const [timerSeconds, setTimerSeconds] = useState(60);
+  const [packId, setPackId] = useState("family-fusion");
   const [category, setCategory] = useState("all");
-  const [roundCount, setRoundCount] = useState(20);
+  const [questionsPerRound, setQuestionsPerRound] = useState(2);
+  const [totalRounds, setTotalRounds] = useState(1);
+  const minimumRounds = requiredKnockoutRounds(families.length);
+  const effectiveRounds = Math.max(totalRounds, minimumRounds);
+  const pack = packId === "family-fusion" ? FAMILY_FUSION : GENERAL_BIBLE;
+  const categories =
+    packId === "family-fusion"
+      ? Object.fromEntries(
+          [...new Set(pack.map((q) => q.category!))].map((c) => [
+            c,
+            c.replaceAll("-", " "),
+          ]),
+        )
+      : FEUD_CATEGORIES;
+  const pool = uniqueBoards(
+    pack.filter((q) => category === "all" || q.category === category),
+  );
+  const available = pool.length;
+  const selectedCount = tournamentQuestionDemand(
+    families.length,
+    questionsPerRound,
+  );
   const [shuffle, setShuffle] = useState(true);
-  const available = GENERAL_BIBLE.filter(
-    (q) => category === "all" || q.category === category,
-  ).length;
-  const selectedCount = Math.min(roundCount, available);
   const [adjustFamily, setAdjustFamily] = useState("");
   const [adjustPoints, setAdjustPoints] = useState(10);
   const sound = useSettingsStore((s) => s.soundEnabled);
@@ -273,14 +340,24 @@ export function FamilyFeud() {
   }
   function start() {
     try {
-      setGame({
-        ...newFeud(
-          families,
-          selectGeneralBoards(category, selectedCount, shuffle),
-          crypto.randomUUID(),
+      setGame(
+        startTournamentState(
+          {
+            ...newFeud(
+              families,
+              shuffleTournamentBoards(pool, shuffle),
+              crypto.randomUUID(),
+            ),
+            packId,
+            packTitle:
+              packId === "family-fusion"
+                ? "Family Fusion · Church Edition"
+                : "General Bible · Open Bible",
+          },
+          effectiveRounds,
+          questionsPerRound,
         ),
-        packTitle: "General Bible · Open Bible",
-      });
+      );
       setHistory([]);
       setError("");
       if (sound) soundManager.play("intro");
@@ -300,53 +377,88 @@ export function FamilyFeud() {
         <div className="ff-setup">
           <Link to="/">← Quiz Night</Link>
           <p className="ff-eyebrow">A NEW WAY TO PLAY</p>
-          <h1>Bible Family Feud</h1>
+          <h1>Family Feud Tournament</h1>
           <p className="ff-lead">
-            Bring your families and your Bibles. Take the stage.
+            Choose a question pack and set up your family tournament.
           </p>
           <div className="ff-pack">
-            <strong>GENERAL BIBLE · OPEN BIBLE</strong>
+            <strong>KNOCKOUT FAMILY FEUD TOURNAMENT</strong>
             <p className="text-3xl font-black text-white" role="status">
-              {selectedCount} boards tonight · {GENERAL_BIBLE.length} in the
-              question bank
+              {effectiveRounds} {effectiveRounds === 1 ? "round" : "rounds"} ·{" "}
+              {questionsPerRound} questions per match · {selectedCount} unique
+              questions
             </p>
             <p>
-              Play across the Old and New Testaments. Families may use their
-              Bibles. Every answer is a direct Scripture fact with a verse
-              reference; you judge the spoken answer and reveal each matching
-              tile.
+              Choose the imported PowerPoint pack or your saved general Bible
+              bank. Winning families advance; losing families are eliminated.
+              Scores reset for each match, while total points stay on the
+              scoreboard.
             </p>
           </div>
           <div className="ff-game-options">
+            <label>
+              Question pack
+              <select
+                value={packId}
+                onChange={(e) => {
+                  setPackId(e.target.value);
+                  setCategory("all");
+                }}
+              >
+                <option value="family-fusion">
+                  Family Fusion PowerPoint · 26 unique questions
+                </option>
+                <option value="general-bible">
+                  Saved general Bible bank · 60 questions
+                </option>
+              </select>
+            </label>
             <label>
               Tonight’s category
               <select
                 value={category}
                 onChange={(event) => setCategory(event.target.value)}
               >
-                <option value="all">
-                  All categories · Old & New Testament
-                </option>
-                {Object.entries(FEUD_CATEGORIES).map(([id, title]) => (
+                <option value="all">All categories</option>
+                {Object.entries(categories).map(([id, title]) => (
                   <option key={id} value={id}>
-                    {title} · 10 boards
+                    {title} · {pack.filter((q) => q.category === id).length}{" "}
+                    questions
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              Number of boards
+              Questions per round (per match)
+              <input
+                type="number"
+                min={1}
+                max={available}
+                value={questionsPerRound}
+                onChange={(e) =>
+                  setQuestionsPerRound(Math.max(1, Number(e.target.value) || 1))
+                }
+              />
+            </label>
+            <label>
+              Rounds until the tournament ends
               <select
-                value={roundCount}
-                onChange={(event) => setRoundCount(Number(event.target.value))}
+                value={effectiveRounds}
+                onChange={(e) => setTotalRounds(Number(e.target.value))}
               >
-                {[10, 20, 30, 60].map((count) => (
-                  <option key={count} value={count}>
-                    {count === 60 ? "All available boards" : `${count} boards`}
+                {[1, 2, 3, 4].map((n) => (
+                  <option key={n} value={n} disabled={n < minimumRounds}>
+                    {n} knockout {n === 1 ? "round" : "rounds"} · up to {2 ** n}{" "}
+                    families
                   </option>
                 ))}
               </select>
             </label>
+            <p>
+              {families.length} families need at least {minimumRounds} knockout
+              rounds. Extra bracket slots receive byes. Each matchup plays{" "}
+              {questionsPerRound} questions before the winner advances.
+            </p>
             <label className="ff-shuffle">
               <input
                 type="checkbox"
@@ -357,8 +469,16 @@ export function FamilyFeud() {
             </label>
             <p>
               {available} boards available in this selection; {selectedCount}{" "}
-              will be played.
+              are needed for all {families.length - 1}{" "}
+              {families.length === 2 ? "match" : "matches"}. No question is
+              repeated.
             </p>
+            {selectedCount > available && (
+              <p role="alert">
+                Not enough questions. Reduce questions per round, remove
+                families, or choose another category or pack.
+              </p>
+            )}
             <Link to="/quizzes/1-kings-chapter-3">
               Looking for 1 Kings 3? It is now a regular quiz →
             </Link>
@@ -374,8 +494,8 @@ export function FamilyFeud() {
           </p>
           <h2>Who’s playing?</h2>
           <p>
-            Add 2–12 families. Two face off each round; rotate opponents or
-            choose them yourself.
+            Add 2–12 families. Each match has two families. Winners advance
+            through the bracket.
           </p>
           <div className="ff-family-inputs">
             {families.map((f, i) => (
@@ -432,7 +552,11 @@ export function FamilyFeud() {
             >
               + Add family
             </button>
-            <button className="ff-primary" onClick={start}>
+            <button
+              className="ff-primary"
+              disabled={selectedCount > available}
+              onClick={start}
+            >
               Take the stage →
             </button>
           </div>
@@ -441,8 +565,8 @@ export function FamilyFeud() {
             <h2>You are the Quizmaster</h2>
             <ol>
               <li>
-                Choose face-off opponents. Read the prompt, judge their answers,
-                and reveal matching tiles.
+                Read the prompt to the families in the current match. Judge
+                their answers and reveal matching tiles.
               </li>
               <li>
                 Give board control to the winning family, or the other family if
@@ -504,6 +628,35 @@ export function FamilyFeud() {
             </div>
           </div>
         )}
+        {!game.tournament && (
+          <div className="ff-pack">
+            <strong>This is a saved standard game.</strong>
+            <p>
+              Your existing scores are preserved. Start a new knockout
+              tournament to use rounds and elimination.
+            </p>
+            <button
+              onClick={() => {
+                if (
+                  confirm(
+                    "Set up a new tournament? This replaces the saved game but keeps family names.",
+                  )
+                ) {
+                  setFamilies(
+                    game.families.map((f) => ({
+                      name: f.name,
+                      members: f.members,
+                    })),
+                  );
+                  setGame(null);
+                  setHistory([]);
+                }
+              }}
+            >
+              Set up knockout tournament
+            </button>
+          </div>
+        )}
         <header className="ff-host-title">
           <div>
             <Link to="/">← Quiz Night</Link>
@@ -558,19 +711,22 @@ export function FamilyFeud() {
           <aside className="ff-controls">
             <h2>Host controls</h2>
             <p>
-              Open Bible game · Families may look up their answers. You control
-              the pace.
+              {game.packId === "family-fusion"
+                ? "Use the answer list from the PowerPoint. You decide equivalent wording."
+                : "Open Bible game · Families may look up their answers. You control the pace."}
             </p>
             {game.phase === "faceoff" && (
               <>
                 <details className="ff-faceoff-settings">
-                  <summary>Change face-off families & points</summary>
+                  <summary>Face-off families & points</summary>
                   {game.opponents.map((id, slot) => (
                     <label key={slot}>
                       {game.families.find((family) => family.id === id)?.name}
                       <select
                         value={id}
-                        disabled={game.revealed.length > 0}
+                        disabled={
+                          Boolean(game.tournament) || game.revealed.length > 0
+                        }
                         onChange={(e) =>
                           dispatch({
                             type: "opponent",
@@ -658,7 +814,11 @@ export function FamilyFeud() {
                     }
                   >
                     {game.families
-                      .filter((f) => f.id !== game.control)
+                      .filter(
+                        (f) =>
+                          f.id !== game.control &&
+                          (!game.tournament || game.opponents.includes(f.id)),
+                      )
                       .map((f) => (
                         <option key={f.id} value={f.id}>
                           {f.name}
@@ -687,11 +847,66 @@ export function FamilyFeud() {
                   className="ff-primary"
                   onClick={() => dispatch({ type: "next" })}
                 >
-                  {game.round + 1 === game.questions.length
-                    ? "Show final standings"
-                    : "Next board →"}
+                  {game.tournament
+                    ? game.tournament.questionInMatch + 1 ===
+                      game.tournament.questionsPerRound
+                      ? "Finish match & advance winner"
+                      : "Next question in this match →"
+                    : game.round + 1 === game.questions.length
+                      ? "Show final standings"
+                      : "Next board →"}
                 </button>
               </>
+            )}
+            {game.phase === "match_complete" && (
+              <button
+                className="ff-primary"
+                onClick={() => dispatch({ type: "next_match" })}
+              >
+                Start next tournament match →
+              </button>
+            )}
+            {game.phase === "match_tie" && (
+              <div>
+                <h3>Tie-break decision</h3>
+                <p>
+                  Match points are equal. Use a toss or another host decision;
+                  no question is reused.
+                </p>
+                {game.opponents.map((id) => (
+                  <button
+                    key={id}
+                    onClick={() => dispatch({ type: "tie_winner", id })}
+                  >
+                    Advance {game.families.find((f) => f.id === id)?.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            {game.tournament && (
+              <details>
+                <summary>Tournament bracket</summary>
+                {game.tournament.matches.map((m) => (
+                  <p key={m.id}>
+                    Round {m.stage} / Match {m.slot + 1}:{" "}
+                    {m.families
+                      .map((id) =>
+                        id
+                          ? game.families.find((f) => f.id === id)?.name
+                          : "Bye / awaiting winner",
+                      )
+                      .join(" vs ")}{" "}
+                    · {m.status}
+                    {m.winnerId &&
+                      ` · Winner: ${game.families.find((f) => f.id === m.winnerId)?.name}`}
+                  </p>
+                ))}
+              </details>
+            )}
+            {q.hostNote && (
+              <p role="note" className="ff-source-note">
+                Source deck note: {q.hostNote}
+              </p>
             )}
             {canPlay && (
               <details className="ff-timer-controls">
@@ -909,7 +1124,7 @@ export function FamilyFeudDisplay() {
       ) : (
         <div className="ff-waiting">
           <ChurchLogo size="xl" />
-          <h1>Bible Family Feud</h1>
+          <h1>Family Feud Tournament</h1>
           <p>Waiting for the Quizmaster…</p>
           <p>Open the host console in this same browser on this computer.</p>
         </div>

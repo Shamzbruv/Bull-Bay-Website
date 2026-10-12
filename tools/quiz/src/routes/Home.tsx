@@ -82,9 +82,9 @@ export function Home() {
           </motion.button>
 
           <Link to="/feud" className="w-full max-w-2xl rounded-2xl border-2 border-bb-gold/60 bg-bb-navy px-8 py-6 hover:bg-bb-blue/40 transition">
-            <span className="block text-xs uppercase tracking-[0.25em] text-bb-gold-light">Open Bible · 60 general Bible boards</span>
-            <span className="block mt-2 font-display text-3xl font-black text-white">BIBLE FAMILY FEUD</span>
-            <span className="block mt-2 text-sm text-white/70">Multiple families · Three strikes · Steals · You reveal the answers</span>
+            <span className="block text-xs uppercase tracking-[0.25em] text-bb-gold-light">Knockout tournament · Choose your question pack</span>
+            <span className="block mt-2 font-display text-3xl font-black text-white">FAMILY FEUD TOURNAMENT</span>
+            <span className="block mt-2 text-sm text-white/70">PowerPoint or Bible questions · Families advance · You reveal the answers</span>
           </Link>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-4">

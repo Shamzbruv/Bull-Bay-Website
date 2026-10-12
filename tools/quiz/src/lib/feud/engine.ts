@@ -1,3 +1,10 @@
+import {
+  activeMatch,
+  prepareNextTournamentBoard,
+  nextTournamentMatch,
+  completeMatch,
+  type FeudTournament,
+} from "./tournament";
 import type { FeudQuestion } from "./questions";
 export interface Family {
   id: string;
@@ -5,10 +12,19 @@ export interface Family {
   members: string;
   score: number;
 }
-export type FeudPhase = "faceoff" | "play" | "steal" | "settled" | "finished";
+export type FeudPhase =
+  | "faceoff"
+  | "play"
+  | "steal"
+  | "settled"
+  | "finished"
+  | "match_complete"
+  | "match_tie";
 export interface FeudState {
   id: string;
   packTitle?: string;
+  packId?: string;
+  tournament?: FeudTournament;
   families: Family[];
   questions: FeudQuestion[];
   round: number;
@@ -38,7 +54,9 @@ export type FeudAction =
   | { type: "timer"; deadline?: number }
   | { type: "adjust"; id: string; points: number }
   | { type: "finish" }
-  | { type: "rename"; names: Record<string, string> };
+  | { type: "rename"; names: Record<string, string> }
+  | { type: "next_match" }
+  | { type: "tie_winner"; id: string };
 export function newFeud(
   names: { name: string; members: string }[],
   questions: FeudQuestion[],
@@ -78,6 +96,19 @@ function award(s: FeudState, id: string): FeudState {
     families: s.families.map((f) =>
       f.id === id ? { ...f, score: f.score + s.bank } : f,
     ),
+    tournament: s.tournament
+      ? {
+          ...s.tournament,
+          matches: s.tournament.matches.map((m) =>
+            m.id === s.tournament!.activeMatchId
+              ? {
+                  ...m,
+                  scores: { ...m.scores, [id]: (m.scores[id] ?? 0) + s.bank },
+                }
+              : m,
+          ),
+        }
+      : undefined,
     phase: "settled",
     winner: id,
     deadline: undefined,
@@ -89,6 +120,7 @@ export function feudReducer(s: FeudState, action: FeudAction): FeudState {
   switch (action.type) {
     case "opponent": {
       if (
+        s.tournament ||
         s.phase !== "faceoff" ||
         s.revealed.length ||
         ![0, 1].includes(action.slot) ||
@@ -150,6 +182,7 @@ export function feudReducer(s: FeudState, action: FeudAction): FeudState {
     }
     case "stealer":
       return s.phase === "steal" &&
+        (!s.tournament || s.opponents.includes(action.id)) &&
         action.id !== s.control &&
         s.families.some((f) => f.id === action.id)
         ? { ...s, stealing: action.id }
@@ -174,10 +207,35 @@ export function feudReducer(s: FeudState, action: FeudAction): FeudState {
       return ["faceoff", "play", "steal"].includes(s.phase)
         ? { ...s, deadline: action.deadline }
         : s;
+    case "next_match":
+      return nextTournamentMatch(s);
+    case "tie_winner":
+      return s.phase === "match_tie" ? completeMatch(s, action.id) : s;
     case "adjust":
       return Number.isFinite(action.points) && Number.isInteger(action.points)
         ? {
             ...s,
+            tournament: s.tournament
+              ? {
+                  ...s.tournament,
+                  matches: s.tournament.matches.map((m) =>
+                    m.id === s.tournament!.activeMatchId &&
+                    m.status === "ready" &&
+                    m.families.includes(action.id)
+                      ? {
+                          ...m,
+                          scores: {
+                            ...m.scores,
+                            [action.id]: Math.max(
+                              0,
+                              (m.scores[action.id] ?? 0) + action.points,
+                            ),
+                          },
+                        }
+                      : m,
+                  ),
+                }
+              : undefined,
             families: s.families.map((f) =>
               f.id === action.id
                 ? { ...f, score: Math.max(0, f.score + action.points) }
@@ -208,6 +266,7 @@ export function feudReducer(s: FeudState, action: FeudAction): FeudState {
       };
     case "next": {
       if (s.phase !== "settled") return s;
+      if (s.tournament) return prepareNextTournamentBoard(s);
       if (s.round + 1 === s.questions.length)
         return { ...s, phase: "finished", notice: "Final standings" };
       const round = s.round + 1;
@@ -244,6 +303,9 @@ export function feudPresenter(s: FeudState) {
     id: s.id,
     packTitle: s.packTitle ?? "1 Kings 3 (previous pack)",
     category: q.category,
+    packId: s.packId,
+    tournament: s.tournament,
+    currentMatch: activeMatch(s),
     families: s.families,
     round: s.round,
     total: s.questions.length,

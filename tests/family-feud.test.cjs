@@ -17,7 +17,11 @@ function load(file) {
     { compilerOptions: { module: ts.ModuleKind.CommonJS } },
   ).outputText;
   const mod = { exports: {} };
-  new Function("module", "exports", output)(mod, mod.exports);
+  new Function("module", "exports", "require", output)(
+    mod,
+    mod.exports,
+    (name) => load(name.replace(/^\.\//, "")),
+  );
   return mod.exports;
 }
 const { KINGS_THREE } = load("questions");

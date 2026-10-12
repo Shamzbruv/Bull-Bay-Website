@@ -606,3 +606,21 @@ summary:focus-visible {
   white-space: normal;
   max-width: 260px;
 }
+
+.ff-tournament-banner {
+  padding: 14px;
+  margin: 12px 0;
+  border: 1px solid #d4af37;
+  border-radius: 12px;
+  color: #f1d373;
+  text-align: center;
+}
+.ff-tournament-banner p {
+  margin-top: 8px;
+  color: #c9d9f3;
+}
+.ff-source-note {
+  border: 1px solid #d4af37;
+  padding: 12px;
+  border-radius: 10px;
+}
