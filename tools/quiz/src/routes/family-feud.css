@@ -1,0 +1,572 @@
+.ff-setup,
+.ff-host {
+  max-width: 1500px;
+  margin: auto;
+  padding: 32px clamp(16px, 3vw, 48px) 80px;
+}
+.ff-setup {
+  max-width: 950px;
+}
+.ff-setup h1 {
+  font-size: clamp(36px, 6vw, 68px);
+  font-weight: 900;
+  color: #f1d373;
+  margin: 12px 0;
+}
+.ff-eyebrow {
+  margin-top: 30px;
+  color: #00b5e2;
+  letter-spacing: 0.2em;
+  font-size: 12px;
+}
+.ff-lead {
+  font-size: 21px;
+  color: #d0def5;
+}
+.ff-pack,
+.ff-rules {
+  border: 1px solid #d4af3750;
+  background: #102754;
+  padding: 24px;
+  border-radius: 20px;
+  margin: 28px 0;
+}
+.ff-pack strong {
+  color: #f1d373;
+}
+.ff-pack p,
+.ff-rules li {
+  margin: 10px 0;
+  line-height: 1.65;
+}
+.ff-setup h2,
+.ff-controls h2 {
+  font-size: 24px;
+  font-weight: 800;
+}
+.ff-setup p,
+.ff-controls p {
+  color: #c0cce3;
+  line-height: 1.6;
+}
+.ff-family-inputs > div {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr auto;
+  align-items: end;
+  gap: 12px;
+  margin: 16px 0;
+}
+.ff-setup label,
+.ff-controls label {
+  display: block;
+  color: #c5d6f3;
+  font-size: 13px;
+}
+.ff-setup input,
+.ff-controls input,
+.ff-controls select {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin: 6px 0 12px;
+  background: #071833;
+  border: 1px solid #5276ac;
+  border-radius: 10px;
+  color: white;
+  font-size: 16px;
+}
+.ff-setup button,
+.ff-host button {
+  padding: 11px 16px;
+  border: 1px solid #6380b4;
+  background: #173765;
+  border-radius: 10px;
+  color: white;
+  font-weight: 650;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.2s;
+}
+.ff-setup button:hover,
+.ff-host button:hover {
+  background: #245395;
+}
+.ff-setup button:disabled,
+.ff-host button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ff-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.ff-setup .ff-primary,
+.ff-host .ff-primary {
+  background: #d4af37;
+  color: #06152f;
+  border-color: #f1d373;
+}
+.ff-host .ff-danger {
+  background: #8b2034;
+  border-color: #ed687c;
+}
+.ff-host-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.ff-host-title h1 {
+  font-size: 30px;
+  font-weight: 800;
+  margin: 10px 0;
+}
+.ff-host a,
+.ff-setup > a {
+  color: #a7d9ff;
+  text-decoration: underline;
+}
+.ff-host-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 350px;
+  gap: 24px;
+  margin-top: 20px;
+  align-items: start;
+}
+.ff-stage {
+  background: radial-gradient(ellipse at 50% 0, #194582 0, #061633 65%);
+  border: 2px solid #bb953e;
+  border-radius: 28px;
+  padding: clamp(18px, 3vw, 40px);
+  box-shadow: 0 15px 70px #0008;
+  color: white;
+  min-width: 0;
+}
+.ff-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid #f1d37355;
+  padding-bottom: 20px;
+  margin-bottom: 22px;
+}
+.ff-title small {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.13em;
+  color: #b8cde8;
+}
+.ff-title h1 {
+  font-size: clamp(25px, 3vw, 48px);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1.2;
+}
+.ff-title h1 span {
+  color: #f1d373;
+}
+.ff-round {
+  margin-left: auto;
+  text-align: right;
+  color: #f1d373;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.ff-round small {
+  margin-top: 6px;
+  letter-spacing: 0;
+}
+.ff-scoreboard {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.ff-score {
+  flex: 1 1 130px;
+  padding: 12px;
+  border: 1px solid #5276ac;
+  border-radius: 12px;
+  background: #0d2345;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ff-score span {
+  flex: 1;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.ff-score strong {
+  font-size: 27px;
+  color: #f1d373;
+  font-variant-numeric: tabular-nums;
+}
+.ff-score small {
+  width: 100%;
+  font-size: 10px;
+  color: #f1d373;
+  letter-spacing: 0.12em;
+}
+.ff-active {
+  border: 2px solid #f1d373;
+  box-shadow: 0 0 20px #d4af3733;
+}
+.ff-stealing {
+  border-color: #ed687c;
+}
+.ff-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: #9bdaff;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+.ff-status b {
+  font-size: 24px;
+  color: #f1d373;
+}
+.ff-time-up {
+  color: #ff8190;
+  font-weight: bold;
+}
+.ff-question {
+  font-weight: 800;
+  font-size: clamp(21px, 2.5vw, 35px);
+  line-height: 1.4;
+  margin: 20px 0 26px;
+  text-align: center;
+  text-wrap: balance;
+}
+.ff-answers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ff-answer {
+  min-height: 87px;
+  background: linear-gradient(180deg, #164884, #092654);
+  border: 2px solid #3c74b7;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  overflow-wrap: anywhere;
+  box-shadow: inset 0 2px 0 #ffffff22;
+}
+.ff-number {
+  flex-shrink: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #06172f;
+  border: 1px solid #d4af37;
+  display: grid;
+  place-items: center;
+  color: #f1d373;
+}
+.ff-answer > span {
+  flex: 1;
+  font-size: clamp(16px, 1.7vw, 26px);
+  font-weight: 700;
+  line-height: 1.25;
+}
+.ff-answer strong {
+  font-size: 26px;
+  color: #06152f;
+  background: #f1d373;
+  border-radius: 8px;
+  padding: 6px;
+  min-width: 42px;
+  text-align: center;
+}
+.ff-answer small {
+  display: block;
+  font-size: 11px;
+  color: #c8daf0;
+  margin-top: 7px;
+  font-weight: 400;
+}
+.ff-hidden {
+  text-align: center;
+  letter-spacing: 0.12em;
+  color: #7493bd;
+}
+.ff-revealed {
+  border-color: #f1d373;
+  animation: ff-reveal 0.4s ease-out;
+}
+.ff-strikes {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  margin: 24px 0 8px;
+}
+.ff-strikes span {
+  font-size: 45px;
+  font-weight: 900;
+  line-height: 1;
+  color: #ffffff18;
+  text-shadow: 0 0 1px #678;
+}
+.ff-strikes .ff-struck {
+  color: #ff334f;
+  text-shadow: 0 0 18px #e6232377;
+  animation: ff-strike 0.3s ease-out;
+}
+.ff-notice {
+  text-align: center;
+  color: #f1d373;
+  font-size: 16px;
+  font-weight: 700;
+  min-height: 25px;
+}
+.ff-footnote {
+  margin-top: 22px;
+  font-size: 10px;
+  text-align: center;
+  color: #a0b4ce;
+  letter-spacing: 0.05em;
+}
+.ff-controls {
+  background: #0c2141;
+  border: 1px solid #425e87;
+  border-radius: 20px;
+  padding: 22px;
+}
+.ff-controls h3 {
+  color: #f1d373;
+  font-weight: 700;
+  margin: 20px 0 10px;
+}
+.ff-controls > button {
+  display: block;
+  width: 100%;
+  margin: 12px 0;
+}
+.ff-controls p {
+  font-size: 13px;
+  margin: 12px 0;
+}
+.ff-timer-controls {
+  margin: 20px 0;
+  padding: 18px 0;
+  border-top: 1px solid #45618a;
+  border-bottom: 1px solid #45618a;
+}
+.ff-timer-controls button {
+  margin-right: 6px;
+  margin-bottom: 10px;
+}
+.ff-timer-controls small {
+  display: block;
+  color: #aebfd8;
+}
+.ff-secret {
+  background: #06152e;
+  border: 1px dashed #d4af3780;
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 20px;
+}
+.ff-secret button {
+  display: block;
+  width: 100%;
+  margin: 12px 0;
+  padding: 14px;
+}
+.ff-secret strong,
+.ff-secret small,
+.ff-secret button > span {
+  display: block;
+}
+.ff-secret small {
+  font-size: 11px;
+  font-weight: 400;
+  color: #bdcfe5;
+  margin: 8px 0;
+}
+.ff-secret button > span {
+  color: #f1d373;
+  font-size: 12px;
+}
+.ff-controls details {
+  border-top: 1px solid #45618a;
+  margin-top: 24px;
+  padding-top: 18px;
+}
+.ff-controls details button {
+  display: block;
+  width: 100%;
+  margin: 12px 0;
+}
+.ff-controls summary {
+  cursor: pointer;
+  color: #b5c9e8;
+  margin-bottom: 15px;
+}
+.ff-final {
+  text-align: center;
+  padding: 22px;
+}
+.ff-final > span {
+  font-size: 64px;
+}
+.ff-final h2 {
+  font-size: 23px;
+}
+.ff-final h3 {
+  font-size: clamp(30px, 4vw, 56px);
+  font-weight: 900;
+  color: #f1d373;
+}
+.ff-final ol {
+  max-width: 650px;
+  margin: 30px auto;
+  text-align: left;
+}
+.ff-final li {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  background: #163564;
+  margin: 10px 0;
+  padding: 16px;
+  border-radius: 12px;
+}
+.ff-display {
+  min-height: 100vh;
+  background: #020d25;
+  padding: clamp(12px, 2.5vw, 40px);
+  display: grid;
+  place-items: center;
+}
+.ff-display .ff-stage {
+  width: min(1500px, 100%);
+}
+.ff-display .ff-question {
+  font-size: clamp(24px, 3vw, 46px);
+}
+.ff-display .ff-answer {
+  min-height: 110px;
+}
+.ff-fullscreen {
+  position: fixed;
+  right: 15px;
+  bottom: 10px;
+  background: #0c2141cc;
+  color: white;
+  padding: 8px;
+  border-radius: 8px;
+  opacity: 0.3;
+}
+.ff-fullscreen:hover,
+.ff-fullscreen:focus-visible {
+  opacity: 1;
+}
+.ff-connection {
+  position: fixed;
+  left: 15px;
+  bottom: 12px;
+  background: #8b2034;
+  padding: 10px;
+  border-radius: 8px;
+}
+.ff-waiting {
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+}
+.ff-waiting h1 {
+  font-size: 48px;
+  font-weight: 900;
+  color: #f1d373;
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+summary:focus-visible {
+  outline: 3px solid #00b5e2;
+  outline-offset: 3px;
+}
+@keyframes ff-reveal {
+  from {
+    transform: rotateX(80deg);
+    opacity: 0.1;
+  }
+  to {
+    transform: rotateX(0);
+    opacity: 1;
+  }
+}
+@keyframes ff-strike {
+  from {
+    transform: scale(1.8);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+@media (max-width: 1100px) {
+  .ff-host-layout {
+    grid-template-columns: 1fr;
+  }
+  .ff-host .ff-answers {
+    grid-template-columns: 1fr 1fr;
+  }
+  .ff-host-title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .ff-controls {
+    max-width: none;
+  }
+}
+@media (max-width: 600px) {
+  .ff-family-inputs > div {
+    grid-template-columns: 1fr;
+  }
+  .ff-title {
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .ff-round {
+    font-size: 12px;
+  }
+  .ff-title small {
+    font-size: 8px;
+  }
+  .ff-answers,
+  .ff-host .ff-answers {
+    grid-template-columns: 1fr;
+  }
+  .ff-answer {
+    min-height: 75px;
+  }
+  .ff-stage {
+    border-radius: 18px;
+  }
+  .ff-score {
+    flex-basis: 110px;
+  }
+  .ff-question {
+    font-size: 22px;
+  }
+  .ff-display .ff-answer {
+    min-height: 85px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ff-revealed,
+  .ff-strikes .ff-struck {
+    animation: none;
+  }
+}

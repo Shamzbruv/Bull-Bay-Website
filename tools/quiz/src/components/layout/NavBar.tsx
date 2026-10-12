@@ -5,6 +5,7 @@ import { brand } from '../../config/brand';
 
 const LINKS = [
   { to: '/', label: 'Home' },
+  { to: '/feud', label: 'Family Feud' },
   { to: '/quizzes', label: 'Quiz Library' },
   { to: '/history', label: 'History' },
   { to: '/admin', label: 'Admin' },

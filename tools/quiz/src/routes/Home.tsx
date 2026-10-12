@@ -81,6 +81,12 @@ export function Home() {
             START GAME
           </motion.button>
 
+          <Link to="/feud" className="w-full max-w-2xl rounded-2xl border-2 border-bb-gold/60 bg-bb-navy px-8 py-6 hover:bg-bb-blue/40 transition">
+            <span className="block text-xs uppercase tracking-[0.25em] text-bb-gold-light">New game mode · 1 Kings 3</span>
+            <span className="block mt-2 font-display text-3xl font-black text-white">BIBLE FAMILY FEUD</span>
+            <span className="block mt-2 text-sm text-white/70">Multiple families · Three strikes · Steals · You reveal the answers</span>
+          </Link>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
             <SecondaryAction to="/quizzes" icon={<Library size={20} />} label="Quiz Library" />
             <SecondaryAction to="/admin/quizzes/new" icon={<PlusCircle size={20} />} label="Create Quiz" />

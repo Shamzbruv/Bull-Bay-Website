@@ -10,6 +10,42 @@ Kings Chapter 1** quiz.
 > [`docs/CHURCH-TOOLS.md`](../../docs/CHURCH-TOOLS.md). Locally,
 > `npm run dev` serves it at `http://localhost:5173/tools/quiz/`.
 
+## Bible Family Feud
+
+Open **Family Feud** from the Quiz Night home screen or navigation, at
+`/tools/quiz/feud`. The first pack contains 12 factual answer boards from
+**1 Kings 3 (KJV)**, each with verse references and accepted equivalent
+wording for the host. Point values are game values, not survey results.
+
+- Add 2–12 uniquely named families and optional member names.
+- Choose the two face-off opponents, reveal matching answers, then select
+  which family plays (or receives a pass). Other families remain on the
+  scoreboard; opponents rotate on subsequent boards and can be changed
+  before a board's first reveal.
+- Reveal tiles individually from the private answer key. Three strikes
+  trigger a one-answer steal. The host can choose another family to steal.
+  A successful steal awards the revealed-answer bank including the stealing
+  answer; a failed steal awards the bank to the original family.
+- Award the bank once, reveal any remaining answers without adding points,
+  then move to the next board. Default rounds 1–4 are 1×, 5–8 are 2×,
+  and 9–12 are 3×; the host can set the multiplier before the first reveal.
+- Optional 5–120 second timer, sound effects, undo (last 50 actions in the
+  current host session), score corrections, early finish and final standings
+  support live hosting. The timer never grades an answer or issues a strike.
+- **Open audience screen** creates a read-only board in another window on
+  the same browser/computer. Move it to the projector and use Fullscreen.
+  Broadcast messages contain only the current question and revealed answers,
+  with no future questions or unrevealed answer text. This is a local
+  presentation workflow, not a remote-device or phone-buzzer mode.
+- Family Feud saves its current session in this browser's localStorage,
+  independently of the regular quiz data. Return to Family Feud to resume;
+  clearing browser storage removes this save. It does not require a database
+  migration. Both host and audience routes keep the existing church admin
+  access check.
+
+New packs can use `src/lib/feud/questions.ts`'s `FeudQuestion` structure.
+Scoring and audience redaction are tested by `tests/family-feud.test.cjs`.
+
 ## Getting started
 
 ```bash

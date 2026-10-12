@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
@@ -58,6 +58,7 @@ export function PlaySetup() {
   return (
     <AppShell>
       <div className="game-safe-area tv-safe-area max-w-4xl mx-auto pb-24">
+        <Link to="/feud" className="block mb-8 rounded-2xl border border-bb-gold/50 bg-bb-gold/10 p-5 text-bb-gold-light">Play Bible Family Feud → Multiple families, answer boards, strikes and steals</Link>
         <div className="flex items-center justify-center gap-3 mb-10">
           {STEPS.map((label, i) => (
             <div key={label} className="flex items-center gap-3">
