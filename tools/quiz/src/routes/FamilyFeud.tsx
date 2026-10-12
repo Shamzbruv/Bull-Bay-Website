@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AppShell } from "../components/layout/AppShell";
 import { ChurchLogo } from "../components/brand/ChurchLogo";
+import { useSettingsStore } from "../state/settingsStore";
 import { soundManager } from "../lib/sound/soundManager";
 import { KINGS_THREE } from "../lib/feud/questions";
 import { feudPresenter, feudReducer, newFeud } from "../lib/feud/engine";
@@ -168,7 +169,8 @@ export function FamilyFeud() {
   const [timerSeconds, setTimerSeconds] = useState(20);
   const [adjustFamily, setAdjustFamily] = useState("");
   const [adjustPoints, setAdjustPoints] = useState(10);
-  const [sound, setSound] = useState(true);
+  const sound = useSettingsStore((s) => s.soundEnabled);
+  const setSound = useSettingsStore((s) => s.setSoundEnabled);
   const [history, setHistory] = useState<FeudState[]>([]);
   const channel = useRef<BroadcastChannel | null>(null);
   const current = useRef(game);
@@ -238,13 +240,21 @@ export function FamilyFeud() {
         action.type === "reveal"
           ? "correct"
           : action.type === "strike" || action.type === "stealFailed"
-            ? "incorrect"
+            ? "feud-strike"
             : next.phase === "finished"
               ? "winner"
               : action.type === "award"
                 ? "score-up"
                 : "click",
       );
+  }
+  function testStrikeSound() {
+    setSound(true);
+    soundManager.setEnabled(true);
+    const volume = useSettingsStore.getState().volume;
+    if (volume === 0) useSettingsStore.getState().setVolume(0.6);
+    soundManager.setVolume(volume || 0.6);
+    soundManager.play("feud-strike");
   }
   function start() {
     try {
@@ -274,12 +284,20 @@ export function FamilyFeud() {
           </p>
           <div className="ff-pack">
             <strong>FIRST QUESTION PACK · 1 KINGS 3</strong>
+            <p className="text-3xl font-black text-white" role="status">
+              {KINGS_THREE.length} questions in this quiz
+            </p>
             <p>
-              12 factual answer boards covering Solomon’s request and judgment.
+              Factual answer boards covering Solomon’s request and judgment.
               Every answer has a verse reference. No interpretations or invented
               survey answers.
             </p>
           </div>
+          <div className="ff-actions">
+            <button onClick={testStrikeSound}>Test X sound ✕</button>
+            <button onClick={() => setSound(!sound)}>Sound {sound ? "on" : "off"}</button>
+          </div>
+          <p>Wrong answers and failed steals play the X buzzer when sound is on.</p>
           <h2>Who’s playing?</h2>
           <p>
             Add 2–12 families. Two face off each round; rotate opponents or
@@ -396,6 +414,7 @@ export function FamilyFeud() {
             >
               Sound {sound ? "on" : "off"}
             </button>
+            <button onClick={testStrikeSound}>Test X sound ✕</button>
             <button
               disabled={!history.length}
               onClick={() => {

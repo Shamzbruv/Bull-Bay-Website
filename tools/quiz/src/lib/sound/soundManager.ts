@@ -15,6 +15,7 @@ export type SoundName =
   | 'buzz'
   | 'correct'
   | 'incorrect'
+  | 'feud-strike'
   | 'score-up'
   | 'round-transition'
   | 'winner'
@@ -55,6 +56,11 @@ const SEQUENCES: Record<SoundName, Tone[]> = {
   incorrect: [
     { freq: 220, duration: 0.15, type: 'sawtooth', gain: 0.25 },
     { freq: 196, duration: 0.25, type: 'sawtooth', delay: 0.15, gain: 0.25 },
+  ],
+  // Sustained low, dissonant buzzer for the Family Feud X reveal.
+  'feud-strike': [
+    { freq: 110, duration: 0.7, type: 'sawtooth', gain: 0.22 },
+    { freq: 117, duration: 0.7, type: 'square', gain: 0.16 },
   ],
   'score-up': [{ freq: 988, duration: 0.1, type: 'sine', gain: 0.2 }],
   'round-transition': [
