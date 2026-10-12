@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { FamilyFeud, FamilyFeudDisplay } from './routes/FamilyFeud';
 import { Home } from './routes/Home';
 import { PlaySetup } from './routes/PlaySetup';
 import { GameHost } from './routes/GameHost';
@@ -22,6 +23,8 @@ function App() {
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/feud" element={<FamilyFeud />} />
+        <Route path="/feud/:gameId/display" element={<FamilyFeudDisplay />} />
         <Route path="/play/setup" element={<PlaySetup />} />
         <Route path="/game/:gameId" element={<GameHost />} />
         <Route path="/game/:gameId/display" element={<GameDisplay />} />

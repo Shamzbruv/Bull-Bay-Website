@@ -1,0 +1,752 @@
+import { useEffect, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { AppShell } from "../components/layout/AppShell";
+import { ChurchLogo } from "../components/brand/ChurchLogo";
+import { soundManager } from "../lib/sound/soundManager";
+import { KINGS_THREE } from "../lib/feud/questions";
+import { feudPresenter, feudReducer, newFeud } from "../lib/feud/engine";
+import type { FeudAction, FeudPresenter, FeudState } from "../lib/feud/engine";
+import "./family-feud.css";
+
+const SAVE_KEY = "bbntcog-family-feud-v1";
+const channelName = (id: string) => `bbntcog-family-feud-${id}`;
+function loadGame(): FeudState | null {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(SAVE_KEY) ?? "null",
+    ) as FeudState | null;
+    if (
+      saved?.id &&
+      saved.families.length >= 2 &&
+      saved.questions[saved.round]?.answers.length
+    )
+      return saved;
+  } catch {
+    /* A fresh game is available if the browser's save is damaged. */
+  }
+  return null;
+}
+function useClock() {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const tick = window.setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(tick);
+  }, []);
+  return now;
+}
+function Board({ state }: { state: FeudPresenter }) {
+  const now = useClock();
+  const seconds = state.deadline
+    ? Math.max(0, Math.ceil((state.deadline - now) / 1000))
+    : null;
+  const standings = [...state.families].sort((a, b) => b.score - a.score);
+  const leaders = standings.filter((f) => f.score === standings[0].score);
+  return (
+    <section className="ff-stage" aria-label="Family Feud audience board">
+      <header className="ff-title">
+        <ChurchLogo size="sm" />
+        <div>
+          <small>BULL BAY NTCOG • BIBLE GAME NIGHT</small>
+          <h1>
+            FAMILY <span>FEUD</span>
+          </h1>
+        </div>
+        <div className="ff-round">
+          1 KINGS 3
+          <small>
+            Board {state.round + 1} / {state.total}
+          </small>
+        </div>
+      </header>
+      <div className="ff-scoreboard">
+        {state.families.map((f) => (
+          <div
+            key={f.id}
+            className={`ff-score ${state.control === f.id ? "ff-active" : ""} ${state.stealing === f.id && state.phase === "steal" ? "ff-stealing" : ""}`}
+          >
+            <span>{f.name}</span>
+            <strong>{f.score}</strong>
+            {state.control === f.id && <small>IN CONTROL</small>}
+            {state.stealing === f.id && state.phase === "steal" && (
+              <small>STEAL ATTEMPT</small>
+            )}
+          </div>
+        ))}
+      </div>
+      {state.phase === "finished" ? (
+        <div className="ff-final">
+          <span>🏆</span>
+          <h2>
+            {leaders.length > 1 ? "Tied champions" : "Tonight’s champions"}
+          </h2>
+          <h3>{leaders.map((f) => f.name).join(" & ")}</h3>
+          <p>{standings[0].score} points</p>
+          <ol>
+            {standings.map((f) => (
+              <li key={f.id}>
+                <span>{f.name}</span>
+                <strong>{f.score}</strong>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : (
+        <>
+          <div className="ff-status">
+            <span>
+              {state.phase === "faceoff"
+                ? "FACE-OFF"
+                : state.phase === "steal"
+                  ? "STEAL THE BOARD"
+                  : state.phase === "settled"
+                    ? "ROUND COMPLETE"
+                    : "LET’S PLAY"}
+            </span>
+            <span>
+              ROUND BANK <b>{state.bank}</b> · {state.multiplier}× POINTS
+            </span>
+            {seconds !== null && (
+              <span role="timer" className={seconds === 0 ? "ff-time-up" : ""}>
+                {seconds === 0 ? "TIME’S UP" : `${seconds}s`}
+              </span>
+            )}
+          </div>
+          <h2 className="ff-question">{state.prompt}</h2>
+          <div className="ff-answers">
+            {state.answers.map((answer, i) => (
+              <div
+                key={`${state.round}-${i}`}
+                className={`ff-answer ${answer ? "ff-revealed" : ""}`}
+              >
+                <b className="ff-number">{i + 1}</b>
+                {answer ? (
+                  <>
+                    <span>
+                      {answer.text}
+                      <small>{answer.reference}</small>
+                    </span>
+                    <strong>{answer.points * state.multiplier}</strong>
+                  </>
+                ) : (
+                  <span
+                    className="ff-hidden"
+                    aria-label={`Answer ${i + 1} hidden`}
+                  >
+                    ••••••••
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="ff-strikes" aria-label={`${state.strikes} strikes`}>
+            {[1, 2, 3].map((n) => (
+              <span key={n} className={state.strikes >= n ? "ff-struck" : ""}>
+                ✕
+              </span>
+            ))}
+          </div>
+          <p className="ff-notice" aria-live="polite">
+            {state.notice}
+          </p>
+        </>
+      )}
+      <footer className="ff-footnote">
+        Direct Bible answers • Host reveals the board • Game points, not survey
+        results
+      </footer>
+    </section>
+  );
+}
+
+export function FamilyFeud() {
+  const [game, setGame] = useState<FeudState | null>(loadGame);
+  const [families, setFamilies] = useState([
+    { name: "Family 1", members: "" },
+    { name: "Family 2", members: "" },
+  ]);
+  const [error, setError] = useState("");
+  const [timerSeconds, setTimerSeconds] = useState(20);
+  const [adjustFamily, setAdjustFamily] = useState("");
+  const [adjustPoints, setAdjustPoints] = useState(10);
+  const [sound, setSound] = useState(true);
+  const [history, setHistory] = useState<FeudState[]>([]);
+  const channel = useRef<BroadcastChannel | null>(null);
+  const current = useRef(game);
+  const now = useClock();
+  useEffect(() => {
+    current.current = game;
+  }, [game]);
+  const gameId = game?.id;
+  useEffect(() => {
+    if (!gameId) return;
+    const bus = new BroadcastChannel(channelName(gameId));
+    channel.current = bus;
+    const send = () => {
+      if (current.current)
+        bus.postMessage({
+          type: "state",
+          state: feudPresenter(current.current),
+        });
+    };
+    bus.onmessage = (e) => {
+      if (e.data?.type === "ready") send();
+    };
+    send();
+    const heartbeat = setInterval(send, 2000);
+    return () => {
+      clearInterval(heartbeat);
+      bus.close();
+      channel.current = null;
+    };
+  }, [gameId]);
+  useEffect(() => {
+    try {
+      if (game) localStorage.setItem(SAVE_KEY, JSON.stringify(game));
+      else localStorage.removeItem(SAVE_KEY);
+    } catch {
+      queueMicrotask(() =>
+        setError(
+          "Browser storage is unavailable. Keep this host tab open to retain your game.",
+        ),
+      );
+    }
+    if (game)
+      channel.current?.postMessage({
+        type: "state",
+        state: feudPresenter(game),
+      });
+  }, [game]);
+  const expired = useRef<number | undefined>(undefined);
+  useEffect(() => {
+    if (
+      game?.deadline &&
+      now >= game.deadline &&
+      expired.current !== game.deadline
+    ) {
+      expired.current = game.deadline;
+      if (sound) soundManager.play("time-up");
+    }
+  }, [now, game?.deadline, sound]);
+  function dispatch(action: FeudAction) {
+    if (!game) return;
+    const next = feudReducer(game, action);
+    if (next === game) return;
+    setHistory([...history.slice(-49), game]);
+    setGame(next);
+    if (sound)
+      soundManager.play(
+        action.type === "reveal"
+          ? "correct"
+          : action.type === "strike" || action.type === "stealFailed"
+            ? "incorrect"
+            : next.phase === "finished"
+              ? "winner"
+              : action.type === "award"
+                ? "score-up"
+                : "click",
+      );
+  }
+  function start() {
+    try {
+      setGame(newFeud(families, KINGS_THREE, crypto.randomUUID()));
+      setHistory([]);
+      setError("");
+      if (sound) soundManager.play("intro");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not start the game.");
+    }
+  }
+  function openDisplay() {
+    if (!game) return;
+    const url = `${import.meta.env.BASE_URL}feud/${game.id}/display`;
+    if (!window.open(url, "bbntcog-feud-display"))
+      setError("Allow pop-ups or use the audience display link below.");
+  }
+  if (!game)
+    return (
+      <AppShell>
+        <div className="ff-setup">
+          <Link to="/">← Quiz Night</Link>
+          <p className="ff-eyebrow">A NEW WAY TO PLAY</p>
+          <h1>Bible Family Feud</h1>
+          <p className="ff-lead">
+            Bring your families. Take the stage. Find the answers in Scripture.
+          </p>
+          <div className="ff-pack">
+            <strong>FIRST QUESTION PACK · 1 KINGS 3</strong>
+            <p>
+              12 factual answer boards covering Solomon’s request and judgment.
+              Every answer has a verse reference. No interpretations or invented
+              survey answers.
+            </p>
+          </div>
+          <h2>Who’s playing?</h2>
+          <p>
+            Add 2–12 families. Two face off each round; rotate opponents or
+            choose them yourself.
+          </p>
+          <div className="ff-family-inputs">
+            {families.map((f, i) => (
+              <div key={i}>
+                <label>
+                  Family {i + 1}
+                  <input
+                    maxLength={40}
+                    value={f.name}
+                    onChange={(e) =>
+                      setFamilies(
+                        families.map((v, n) =>
+                          n === i ? { ...v, name: e.target.value } : v,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label>
+                  Members <small>(optional)</small>
+                  <input
+                    maxLength={160}
+                    placeholder="Names, separated by commas"
+                    value={f.members}
+                    onChange={(e) =>
+                      setFamilies(
+                        families.map((v, n) =>
+                          n === i ? { ...v, members: e.target.value } : v,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <button
+                  disabled={families.length <= 2}
+                  onClick={() =>
+                    setFamilies(families.filter((_, n) => n !== i))
+                  }
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="ff-actions">
+            <button
+              disabled={families.length >= 12}
+              onClick={() =>
+                setFamilies([
+                  ...families,
+                  { name: `Family ${families.length + 1}`, members: "" },
+                ])
+              }
+            >
+              + Add family
+            </button>
+            <button className="ff-primary" onClick={start}>
+              Take the stage →
+            </button>
+          </div>
+          {error && <p role="alert">{error}</p>}
+          <div className="ff-rules">
+            <h2>You are the Quizmaster</h2>
+            <ol>
+              <li>
+                Choose face-off opponents. Read the prompt, judge their answers,
+                and reveal matching tiles.
+              </li>
+              <li>
+                Give board control to the winning family, or the other family if
+                they pass.
+              </li>
+              <li>
+                Three wrong answers open a steal. A correct steal wins the bank;
+                a failed steal gives it to the controlling family.
+              </li>
+              <li>
+                Use 1×, 2× or 3× points. Reveal remaining answers after awarding
+                the round. Undo any mistaken host action.
+              </li>
+            </ol>
+            <p>
+              Open the audience screen on a second monitor from this same
+              browser and computer. Keep the host console on your own screen.
+            </p>
+          </div>
+        </div>
+      </AppShell>
+    );
+  const q = game.questions[game.round];
+  const canPlay = ["faceoff", "play", "steal"].includes(game.phase);
+  return (
+    <AppShell>
+      <div className="ff-host">
+        <header className="ff-host-title">
+          <div>
+            <Link to="/">← Quiz Night</Link>
+            <h1>Quizmaster console</h1>
+            <p>
+              Only you reveal answers. Show the audience window on the
+              projector.
+            </p>
+          </div>
+          <div className="ff-actions">
+            <button onClick={openDisplay}>Open audience screen ↗</button>
+            <button
+              onClick={() => {
+                setSound(!sound);
+              }}
+            >
+              Sound {sound ? "on" : "off"}
+            </button>
+            <button
+              disabled={!history.length}
+              onClick={() => {
+                const prev = history.at(-1);
+                if (prev) {
+                  setHistory(history.slice(0, -1));
+                  setGame({ ...prev, deadline: undefined });
+                }
+              }}
+            >
+              Undo
+            </button>
+          </div>
+        </header>
+        {error && <p role="alert">{error}</p>}
+        <a
+          target="bbntcog-feud-display"
+          href={`${import.meta.env.BASE_URL}feud/${game.id}/display`}
+        >
+          Audience display link
+        </a>
+        <div className="ff-host-layout">
+          <Board state={feudPresenter(game)} />
+          <aside className="ff-controls">
+            <h2>Host controls</h2>
+            {game.phase === "faceoff" && (
+              <>
+                <details className="ff-faceoff-settings">
+                  <summary>Change face-off families & points</summary>
+                  {game.opponents.map((id, slot) => (
+                    <label key={slot}>
+                      Family {slot + 1}
+                      <select
+                        value={id}
+                        disabled={game.revealed.length > 0}
+                        onChange={(e) =>
+                          dispatch({
+                            type: "opponent",
+                            slot,
+                            id: e.target.value,
+                          })
+                        }
+                      >
+                        {game.families.map((f) => (
+                          <option
+                            key={f.id}
+                            value={f.id}
+                            disabled={game.opponents[1 - slot] === f.id}
+                          >
+                            {f.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                  <label>
+                    Round multiplier
+                    <select
+                      value={game.multiplier}
+                      disabled={game.revealed.length > 0}
+                      onChange={(e) =>
+                        dispatch({
+                          type: "multiplier",
+                          value: Number(e.target.value),
+                        })
+                      }
+                    >
+                      {[1, 2, 3].map((n) => (
+                        <option key={n} value={n}>
+                          {n}× points
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </details>
+                <p>
+                  Reveal face-off answers below, then choose who plays. If the
+                  winner passes, give control to the opponent.
+                </p>
+                {game.opponents.map((id) => (
+                  <button
+                    key={id}
+                    onClick={() => dispatch({ type: "control", id })}
+                  >
+                    Let {game.families.find((f) => f.id === id)?.name} play
+                  </button>
+                ))}
+              </>
+            )}
+            {game.phase === "play" && (
+              <>
+                <button
+                  className="ff-danger"
+                  disabled={game.revealed.length === q.answers.length}
+                  onClick={() => dispatch({ type: "strike" })}
+                >
+                  ✕ Wrong answer / strike
+                </button>
+                <button
+                  className="ff-primary"
+                  onClick={() => dispatch({ type: "award", id: game.control! })}
+                >
+                  Award bank to controlling family
+                </button>
+                <p>
+                  {game.revealed.length === q.answers.length
+                    ? "Board cleared! Award the bank to finish the round."
+                    : "Reveal a matching answer below or record a strike. Award early only when you choose to close the round."}
+                </p>
+              </>
+            )}
+            {game.phase === "steal" && (
+              <>
+                <label>
+                  Family attempting the steal
+                  <select
+                    value={game.stealing}
+                    onChange={(e) =>
+                      dispatch({ type: "stealer", id: e.target.value })
+                    }
+                  >
+                    {game.families
+                      .filter((f) => f.id !== game.control)
+                      .map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {f.name}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <p>
+                  One guess. Reveal a remaining answer for a successful steal;
+                  it awards the bank automatically.
+                </p>
+                <button
+                  className="ff-danger"
+                  onClick={() => dispatch({ type: "stealFailed" })}
+                >
+                  Steal failed — award original family
+                </button>
+              </>
+            )}
+            {game.phase === "settled" && (
+              <>
+                <button onClick={() => dispatch({ type: "showAll" })}>
+                  Reveal remaining answers (no extra points)
+                </button>
+                <button
+                  className="ff-primary"
+                  onClick={() => dispatch({ type: "next" })}
+                >
+                  {game.round + 1 === game.questions.length
+                    ? "Show final standings"
+                    : "Next board →"}
+                </button>
+              </>
+            )}
+            {canPlay && (
+              <details className="ff-timer-controls">
+                <summary>Answer timer</summary>
+                <label>
+                  Answer timer (seconds)
+                  <input
+                    type="number"
+                    min={5}
+                    max={120}
+                    value={timerSeconds}
+                    onChange={(e) =>
+                      setTimerSeconds(
+                        Math.max(
+                          5,
+                          Math.min(120, Number(e.target.value) || 20),
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <button
+                  onClick={() =>
+                    dispatch({
+                      type: "timer",
+                      deadline: Date.now() + timerSeconds * 1000,
+                    })
+                  }
+                >
+                  Start / restart timer
+                </button>
+                <button
+                  disabled={!game.deadline}
+                  onClick={() => dispatch({ type: "timer" })}
+                >
+                  Clear timer
+                </button>
+                <small>
+                  The timer signals time up. You decide the strike or reveal.
+                </small>
+              </details>
+            )}
+            {game.phase !== "finished" && (
+              <div className="ff-secret">
+                <h3>Private answer key</h3>
+                <p>Accept equivalent wording. Numbers are game points.</p>
+                {q.answers.map((a, index) => (
+                  <button
+                    key={index}
+                    disabled={!canPlay || game.revealed.includes(index)}
+                    onClick={() => dispatch({ type: "reveal", index })}
+                  >
+                    <strong>
+                      {index + 1}. {a.text}{" "}
+                      <span>· {a.points * game.multiplier}</span>
+                    </strong>
+                    <small>
+                      {a.reference}
+                      {a.accept && ` · Accept: ${a.accept}`}
+                    </small>
+                    <span>
+                      {game.revealed.includes(index)
+                        ? "Revealed ✓"
+                        : "Reveal answer"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <details>
+              <summary>Score correction & session</summary>
+              <label>
+                Family
+                <select
+                  value={adjustFamily || game.families[0].id}
+                  onChange={(e) => setAdjustFamily(e.target.value)}
+                >
+                  {game.families.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                      {f.members ? ` (${f.members})` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Points to add or subtract
+                <input
+                  type="number"
+                  step={1}
+                  value={adjustPoints}
+                  onChange={(e) => setAdjustPoints(Number(e.target.value))}
+                />
+              </label>
+              <button
+                onClick={() =>
+                  dispatch({
+                    type: "adjust",
+                    id: adjustFamily || game.families[0].id,
+                    points: adjustPoints,
+                  })
+                }
+              >
+                Apply score correction
+              </button>
+              <button
+                disabled={game.phase === "finished"}
+                onClick={() => {
+                  if (confirm("End the game now and show final standings?"))
+                    dispatch({ type: "finish" });
+                }}
+              >
+                End game early
+              </button>
+              <button
+                onClick={() => {
+                  if (
+                    confirm(
+                      "Replace this saved game and reset all family scores?",
+                    )
+                  ) {
+                    setFamilies(
+                      game.families.map((f) => ({
+                        name: f.name,
+                        members: f.members,
+                      })),
+                    );
+                    setGame(null);
+                    setHistory([]);
+                  }
+                }}
+              >
+                Set up a new game
+              </button>
+              <p>
+                This game saves in this browser. Return to Family Feud to resume
+                it.
+              </p>
+            </details>
+          </aside>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+export function FamilyFeudDisplay() {
+  const { gameId } = useParams();
+  const [state, setState] = useState<FeudPresenter | null>(null);
+  const [lastSync, setLastSync] = useState(0);
+  const now = useClock();
+  useEffect(() => {
+    const bus = new BroadcastChannel(channelName(gameId ?? ""));
+    bus.onmessage = (e) => {
+      if (e.data?.type === "state" && e.data.state.id === gameId) {
+        setState(e.data.state);
+        setLastSync(Date.now());
+      }
+    };
+    bus.postMessage({ type: "ready" });
+    const retry = setInterval(() => bus.postMessage({ type: "ready" }), 2000);
+    return () => {
+      clearInterval(retry);
+      bus.close();
+    };
+  }, [gameId]);
+  return (
+    <main className="ff-display">
+      {state ? (
+        <Board state={state} />
+      ) : (
+        <div className="ff-waiting">
+          <ChurchLogo size="xl" />
+          <h1>Bible Family Feud</h1>
+          <p>Waiting for the Quizmaster…</p>
+          <p>Open the host console in this same browser on this computer.</p>
+        </div>
+      )}
+      {state && now - lastSync > 6000 && (
+        <p role="status" className="ff-connection">
+          Host disconnected. Showing the last board — reopen the host console to
+          continue.
+        </p>
+      )}
+      <button
+        className="ff-fullscreen"
+        onClick={() => {
+          if (document.fullscreenElement)
+            void document.exitFullscreen().catch(() => {});
+          else
+            void document.documentElement.requestFullscreen().catch(() => {});
+        }}
+      >
+        Fullscreen ⛶
+      </button>
+    </main>
+  );
+}
