@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { JsonLd } from "@/components/json-ld";
-import { getEventBySlug } from "@/lib/data/public";
-import { getSessionUser } from "@/lib/auth/session";
+import { getEventForViewer } from "@/lib/events/viewer";
+import { getCurrentProfile } from "@/lib/auth/session";
 import { RegisterForm } from "./register-form";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const event = await getEventBySlug(slug);
+  const event = await getEventForViewer(slug);
   if (!event) return {};
   return {
     title: event.title,
@@ -16,12 +16,17 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function EventDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function EventDetailPage({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{member?: string}> }) {
   const { slug } = await params;
-  const [event, user] = await Promise.all([getEventBySlug(slug), getSessionUser()]);
+  const query = await searchParams;
+  const [event, profile] = await Promise.all([getEventForViewer(slug), getCurrentProfile()]);
   if (!event || event.status !== "published") notFound();
 
   const startsAt = new Date(event.starts_at);
+  // This async Server Component evaluates the registration window per request.
+  // eslint-disable-next-line react-hooks/purity
+  const now = Date.now();
+  const closed = startsAt.getTime() <= now || Boolean(event.registration_closes_at && new Date(event.registration_closes_at).getTime() <= now) || Boolean(event.registration_opens_at && new Date(event.registration_opens_at).getTime() > now);
 
   return (
     <section className="section two-col" style={{ paddingTop: 50 }}>
@@ -50,7 +55,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ sl
         {event.location_name && <p style={{ color: "var(--color-muted)" }}>📍 {event.location_name}</p>}
         {event.description && <p className="large-copy">{event.description}</p>}
       </div>
-      <RegisterForm eventId={event.id} signedIn={Boolean(user)} />
+      <RegisterForm eventId={event.id} slug={slug} profile={profile?.organization_id === event.organization_id ? {name: [profile.first_name, profile.last_name].filter(Boolean).join(' '), email: profile.email ?? '', phone: profile.phone ?? ''} : null} memberRequested={query.member === 'yes'} closed={closed} />
     </section>
   );
 }

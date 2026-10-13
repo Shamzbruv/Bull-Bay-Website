@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { OfficeActionForm } from "@/components/office-action-form";
+import { createMemberRecord } from "./[id]/actions";
+import { MEMBERSHIP_STATUSES } from "@/lib/members/records";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions, isSuperAdmin, getAuthUser } from "@/lib/auth/session";
@@ -44,9 +47,12 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
         .eq("organization_id", organizationId ?? "")
         .in("user_id", authUserIds)
     : { data: [] as { user_id: string; role_id: string; roles: { name: string } | null }[] };
-  const roleByUser = new Map(
-    (grants ?? []).map((g) => [g.user_id, { id: g.role_id, name: (g.roles as unknown as { name: string } | null)?.name ?? "Staff" }]),
-  );
+  const roleByUser = new Map<string, { id: string; name: string }[]>();
+  for (const g of grants ?? []) {
+    const assigned = roleByUser.get(g.user_id) ?? [];
+    assigned.push({ id: g.role_id, name: (g.roles as unknown as { name: string } | null)?.name ?? "Staff" });
+    roleByUser.set(g.user_id, assigned);
+  }
 
   return (
     <>
@@ -63,6 +69,7 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
       {permissions.has("people.write") && (
         <div className="panel">
           <InviteMemberForm />
+          <details className="office-card"><summary>+ Add a person without a login</summary><OfficeActionForm action={createMemberRecord} label="Add person"><div className="office-grid"><label>First name<input name="first_name" required maxLength={100}/></label><label>Last name<input name="last_name" required maxLength={100}/></label><label>Email (optional)<input name="email" type="email" maxLength={254}/></label><label>Phone<input name="phone" maxLength={50}/></label><label>Membership date<input name="joined_at" type="date"/></label><label>Status<select name="membership_status" defaultValue="member">{MEMBERSHIP_STATUSES.map(s=><option key={s} value={s}>{s.replaceAll('_',' ')}</option>)}</select></label></div></OfficeActionForm></details>
         </div>
       )}
 
@@ -78,14 +85,17 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
               <th>Phone</th>
               <th>WhatsApp</th>
               <th>Status</th>
-              <th>Staff role</th>
+              <th>Church roles</th>
+              <th>Membership date</th>
               <th>Account</th>
               {permissions.has("people.write") && <th>Password</th>}
             </tr>
           </thead>
           <tbody>
             {people?.map((p) => {
-              const grant = p.auth_user_id ? roleByUser.get(p.auth_user_id) : undefined;
+              const assigned = p.auth_user_id ? roleByUser.get(p.auth_user_id) ?? [] : [];
+              const grant = assigned[0];
+              const allRoles = assigned.map(g => g.name).join(', ');
               const wa = whatsAppLink(p.phone);
               return (
                 <tr key={p.id}>
@@ -121,16 +131,17 @@ export default async function AdminPeoplePage({ searchParams }: { searchParams: 
                   <td>
                     {canManageRoles ? (
                       p.auth_user_id === actor?.id || p.email?.toLowerCase() === "shamzbiz1@gmail.com" ? (
-                        <span className="badge">{grant?.name ?? "Super Administrator"} (locked)</span>
+                        <span className="badge">{allRoles || "Super Administrator"} (locked)</span>
                       ) : p.auth_user_id ? (
-                        <RoleSelect profileId={p.id} roleId={grant?.id ?? ""} roles={roles ?? []} />
+                        <><span className="badge">{allRoles || "No assigned role"}</span><RoleSelect profileId={p.id} roleId={grant?.id ?? ""} roles={roles ?? []} /></>
                       ) : (
                         <span className="badge gray" title="Invite them first">invite first</span>
                       )
                     ) : (
-                      <span className="badge">{grant?.name ?? "Member"}</span>
+                      <span className="badge">{allRoles || "No assigned role"}</span>
                     )}
                   </td>
+                  <td>{p.joined_at || "—"}</td>
                   <td>
                     {p.auth_user_id ? (
                       p.must_change_password ? (

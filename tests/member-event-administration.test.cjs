@@ -1,0 +1,103 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
+const { PGlite } = require('@electric-sql/pglite');
+const root = path.join(__dirname, '..');
+function load(file) {
+  const source = ts.transpileModule(fs.readFileSync(path.join(root, file), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+  const mod = { exports: {} };
+  new Function('require','module','exports',source)(require,mod,mod.exports);
+  return mod.exports;
+}
+const { registrationInput, csvCell } = load('lib/events/registration.ts');
+const { memberDates, memberDetail } = load('lib/members/records.ts');
+const valid = {isMember:'no',guestName:'Jane Brown',guestEmail:'jane@example.com',guestPhone:'+1 876 555 1234',quantity:'1',attendees:'',requirements:'',notes:'',consent:'yes'};
+test('event answers require contact, membership, consent, whole quantities, and matching attendee names',()=>{
+  assert.equal(registrationInput.safeParse(valid).success,true);
+  for(const changes of [{isMember:''},{guestEmail:'bad'},{guestPhone:''},{consent:''},{quantity:'1.5'},{quantity:'0'},{quantity:'51'},{quantity:'2',attendees:''},{quantity:'1',attendees:'Extra person'}]) assert.equal(registrationInput.safeParse({...valid,...changes}).success,false,JSON.stringify(changes));
+  assert.equal(registrationInput.safeParse({...valid,quantity:'3',attendees:'Tom Brown\nSue Brown'}).success,true);
+});
+test('member dates and custom categories validate real dates and meaningful values',()=>{
+  assert.equal(memberDates.safeParse({joined_at:'2024-02-29',date_of_birth:'1970-01-01',deceased_at:'2025-12-01'}).success,true);
+  for(const changes of [{joined_at:'2025-02-29'},{deceased_at:'2099-01-01'},{date_of_birth:'2000-01-01',deceased_at:'1999-01-01'}]) assert.equal(memberDates.safeParse({joined_at:'',date_of_birth:'',deceased_at:'',...changes}).success,false);
+  assert.equal(memberDetail.safeParse({category:' Baptism ',label:'Minister',value:'Rev. Smith'}).data.category,'Baptism');
+  assert.equal(memberDetail.safeParse({category:' ',label:'Minister',value:'Rev. Smith'}).success,false);
+});
+test('CSV quotes names, multiline answers and spreadsheet formulas safely',()=>{
+  assert.equal(csvCell('Jane "J" Brown'),'"Jane ""J"" Brown"');
+  assert.equal(csvCell(' =HYPERLINK("x")'),'"\' =HYPERLINK(""x"")"');
+  assert.equal(csvCell('Line 1\nLine 2'),'"Line 1\nLine 2"');
+});
+const id = n => `00000000-0000-0000-0000-${String(n).padStart(12,'0')}`;
+test('migration: staff scope, atomic alerts, capacity, duplicates, member sign-in, and deletion safeguards',async()=>{
+ const db = new PGlite();
+ try {
+  await db.exec(fs.readFileSync(path.join(__dirname,'fixtures/member-event-schema.sql'),'utf8'));
+  const migration=fs.readdirSync(path.join(root,'supabase/migrations')).find(f=>f.endsWith('_member_records_event_registration.sql'));
+  await db.query('insert into organizations(id) values($1),($2)',[id(1),id(2)]);
+  await db.query('insert into auth.users(id) values($1),($2),($3)',[id(11),id(12),id(13)]);
+  await db.query("insert into roles(id,organization_id,code) values($1,$4,'secretary'),($2,$4,'member'),($3,$4,'church_admin')",[id(21),id(22),id(23),id(1)]);
+  await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',migration),'utf8'));
+  assert.equal((await db.query('select * from role_permissions where role_id=$1',[id(21)])).rows.length,5,'secretary receives all office permissions');
+  await db.query('insert into user_roles(organization_id,user_id,role_id) values($1,$2,$4),($1,$3,$5),($1,$6,$7)',[id(1),id(11),id(12),id(21),id(22),id(13),id(23)]);
+  await db.query("insert into profiles(id,organization_id,auth_user_id,membership_status) values($1,$5,$6,'member'),($2,$5,$7,'member'),($3,$5,null,'member'),($4,$8,null,'member')",[id(31),id(32),id(33),id(34),id(1),id(11),id(12),id(2)]);
+  await db.query("insert into profiles(id,organization_id,auth_user_id,membership_status) values($1,$2,$3,'member')",[id(35),id(1),id(13)]);
+  await db.query('insert into member_details(organization_id,profile_id,category,label,value) values($1,$2,\'Baptism\',\'Date\',\'2024-01-01\')',[id(1),id(32)]);
+  await assert.rejects(db.query('insert into member_details(organization_id,profile_id,category,label,value) values($1,$2,\'Baptism\',\'Date\',\'x\')',[id(1),id(34)]),/foreign key/);
+  await db.query("select set_config('test.user_id',$1,false)",[id(12)]);
+  await db.exec('set role authenticated');
+  assert.equal((await db.query('select * from member_details')).rows.length,0,'members cannot read office details');
+  await assert.rejects(db.query("insert into member_details(organization_id,profile_id,category,label,value) values($1,$2,'Private','Note','x')",[id(1),id(32)]),/row-level security/);
+  await db.exec('reset role');
+  await db.query("select set_config('test.user_id',$1,false)",[id(11)]);
+  await db.exec('set role authenticated');
+  assert.equal((await db.query('select * from member_details')).rows.length,1,'secretary can read details');
+  assert.equal((await db.query('select * from user_roles')).rows.length,3,'secretary sees all church roles');
+  await db.exec('reset role');
+  await db.query("insert into events(id,organization_id,title,starts_at,status,visibility,capacity) values($1,$2,'Church day',now()+interval '1 day','published','public',3)",[id(41),id(1)]);
+  const register=(changes={})=>{
+   const a={org:id(1),event:id(41),person:null,member:false,name:'Jane Brown',email:'jane@example.com',phone:'8765551234',quantity:2,details:{attendees:['Tom Brown']},notes:'Please call',...changes};
+   return db.query('select register_church_event($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) as result',[a.org,a.event,a.person,a.member,a.name,a.email,a.phone,a.quantity,JSON.stringify(a.details),a.notes]);
+  };
+  assert.equal((await register()).rows[0].result.created,true);
+  assert.equal((await db.query('select * from notifications')).rows.length,2,'secretary and admin get transactional alerts');
+  assert.equal((await register()).rows[0].result.created,false,'double submit is idempotent');
+  assert.equal((await db.query('select * from notifications')).rows.length,2,'duplicate generates no alert');
+  await assert.rejects(register({email:'group@example.com',quantity:2}),/not enough spaces/);
+  await assert.rejects(register({email:'member@example.com',member:true}),/must sign in/);
+  await assert.rejects(register({org:id(2)}),/not open/);
+  await assert.rejects(register({person:id(34),member:true,email:'other@example.com',quantity:1}),/cannot register/);
+  await db.query("update profiles set membership_status='deceased' where id=$1",[id(32)]);
+  await assert.rejects(register({person:id(32),member:true,email:'member@example.com',quantity:1}),/cannot register/);
+  await db.query("update profiles set membership_status='member' where id=$1",[id(32)]);
+  assert.equal((await register({person:id(32),member:true,email:'member@example.com',quantity:1})).rows[0].result.created,true);
+  await db.query("update events set status='cancelled' where id=$1",[id(41)]);
+  await assert.rejects(register({email:'new@example.com',quantity:1}),/not open/);
+  await db.query("update events set status='published',visibility='members',capacity=10 where id=$1",[id(41)]);
+  await assert.rejects(register({email:'visitor@example.com',quantity:1}),/sign in as a church member/);
+  await db.query("update events set visibility='staff' where id=$1",[id(41)]);
+  await assert.rejects(register({person:id(32),member:true,email:'different@example.com',quantity:1}),/restricted to church staff/);
+  await db.query("update events set visibility='public',registration_opens_at=now()+interval '1 hour' where id=$1",[id(41)]);
+  await assert.rejects(register({email:'different@example.com',quantity:1}),/not opened yet/);
+  await db.query("update events set registration_opens_at=null,registration_closes_at=now()-interval '1 hour' where id=$1",[id(41)]);
+  await assert.rejects(register({email:'different@example.com',quantity:1}),/has closed/);
+  await db.exec('set role authenticated');
+  await assert.rejects(register(),/permission denied for function/);
+  await assert.rejects(db.query("insert into event_registrations(event_id,guest_name,guest_email) values($1,'Bypass','bypass@example.com')",[id(41)]),/row-level security/);
+  await db.exec('reset role');
+  await assert.rejects(db.query('select office_delete_member($1,$2,$3)',[id(1),id(11),id(31)]),/protected/);
+  await assert.rejects(db.query('select office_delete_member($1,$2,$3)',[id(1),id(12),id(33)]),/not allowed/);
+  await assert.rejects(db.query('select office_delete_member($1,$2,$3)',[id(1),id(11),id(35)]),/protected/);
+  await assert.rejects(db.query('select office_delete_member($1,$2,$3)',[id(1),id(11),id(34)]),/not found/);
+  await db.query('insert into auth.sessions(user_id) values($1)',[id(12)]);
+  await db.query('select office_delete_member($1,$2,$3)',[id(1),id(11),id(32)]);
+  assert.equal((await db.query('select * from profiles where id=$1',[id(32)])).rows.length,0);
+  assert.equal((await db.query('select * from member_details')).rows.length,0,'custom details cascade on member deletion');
+  assert.equal((await db.query('select * from auth.sessions where user_id=$1',[id(12)])).rows.length,0,'member sessions revoked');
+  assert.equal((await db.query('select * from event_registrations')).rows.length,2,'historical registrations preserved');
+  assert.equal((await db.query('select * from event_registrations where profile_id is not null')).rows.length,0);
+  assert.equal((await db.query("select * from audit_logs where action='member.deleted'")).rows.length,1);
+ } finally { await db.close(); }
+});

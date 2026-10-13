@@ -15,6 +15,12 @@ export type Database = {
   }
   public: {
     Tables: WorkflowTables & {
+      member_details: {
+        Row: { id: string; organization_id: string; profile_id: string; category: string; label: string; value: string; updated_by: string | null; created_at: string; updated_at: string }
+        Insert: { id?: string; organization_id: string; profile_id: string; category: string; label: string; value: string; updated_by?: string | null; created_at?: string; updated_at?: string }
+        Update: { category?: string; label?: string; value?: string; updated_by?: string | null; updated_at?: string }
+        Relationships: []
+      }
       announcements: {
         Row: {
           body: string
@@ -997,6 +1003,7 @@ export type Database = {
           notes: string | null
           profile_id: string | null
           quantity: number
+          registration_details: Json
           status: string
         }
         Insert: {
@@ -1009,6 +1016,7 @@ export type Database = {
           notes?: string | null
           profile_id?: string | null
           quantity?: number
+          registration_details?: Json
           status?: string
         }
         Update: {
@@ -1021,6 +1029,7 @@ export type Database = {
           notes?: string | null
           profile_id?: string | null
           quantity?: number
+          registration_details?: Json
           status?: string
         }
         Relationships: [
@@ -2535,6 +2544,8 @@ export type Database = {
           joined_at: string | null
           last_name: string | null
           marital_status: string | null
+          membership_information: string | null
+          deceased_at: string | null
           membership_status: string
           must_change_password: boolean
           notes: string | null
@@ -2574,6 +2585,8 @@ export type Database = {
           joined_at?: string | null
           last_name?: string | null
           marital_status?: string | null
+          membership_information?: string | null
+          deceased_at?: string | null
           membership_status?: string
           must_change_password?: boolean
           notes?: string | null
@@ -2613,6 +2626,8 @@ export type Database = {
           joined_at?: string | null
           last_name?: string | null
           marital_status?: string | null
+          membership_information?: string | null
+          deceased_at?: string | null
           membership_status?: string
           must_change_password?: boolean
           notes?: string | null
@@ -3363,6 +3378,10 @@ export type Database = {
       }
     }
     Functions: {
+      register_church_event: {
+        Args: { org: string; event: string; person: string | null; member: boolean; contact_name: string; contact_email: string; contact_phone: string; party_size: number; details: Json; additional_notes: string }
+        Returns: Json
+      }
       claim_office_worker: { Args: Record<PropertyKey, never>; Returns: boolean }
       office_delete_member: { Args: {org: string; actor: string; person: string}; Returns: undefined }
       office_prayer_transition: { Args: { org: string; actor: string; prayer: string; decision: string; assignee?: string; note?: string }; Returns: Database["public"]["Tables"]["prayer_requests"]["Row"] }
@@ -3721,6 +3740,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      register_church_event: {
+        Args: { org: string; event: string; person: string | null; member: boolean; contact_name: string; contact_email: string; contact_phone: string; party_size: number; details: Json; additional_notes: string }
+        Returns: Json
+      }
       allow_any_operation: {
         Args: { expected_operations: string[] }
         Returns: boolean

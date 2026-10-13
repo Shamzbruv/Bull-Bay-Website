@@ -36,7 +36,7 @@ function initialCompletedFields(profile: Profile) {
   return COMPLETION_FIELDS.filter((field) => hasValue(profile[field])).length;
 }
 
-const MEMBERSHIP_STATUSES = ["visitor", "returning_visitor", "attendee", "prospective_member", "member", "inactive"];
+import { MEMBERSHIP_STATUSES } from "@/lib/members/records";
 
 export function ProfileForm({
   profile,

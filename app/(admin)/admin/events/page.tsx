@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
@@ -16,7 +17,7 @@ export default async function AdminEventsPage() {
   const supabase = await createClient();
   const { data: events } = await supabase
     .from("events")
-    .select("id, title, category, description, location_name, starts_at, status, visibility, event_registrations(id)").throwOnError()
+    .select("id, title, category, description, location_name, starts_at, status, visibility, capacity, registration_opens_at, registration_closes_at, event_registrations(id)").throwOnError()
     .eq("organization_id", organizationId ?? "")
     .order("starts_at", { ascending: false })
     .limit(100);
@@ -61,7 +62,7 @@ export default async function AdminEventsPage() {
                   <td>
                     <span className={`badge ${e.status === "published" ? "" : "gray"}`}>{e.status}</span>
                   </td>
-                  <td>{e.event_registrations?.length ?? 0}</td>
+                  <td><Link href={`/admin/events/${e.id}/registrations`}>{e.event_registrations?.length ?? 0} · View registrations</Link></td>
                   <td>
                     <DeleteButton
                       action={deleteEvent}

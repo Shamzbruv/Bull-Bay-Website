@@ -24,22 +24,17 @@ function slugify(input: string) {
 
 // People -----------------------------------------------------------------
 export async function updateMembershipStatus(profileId: string, status: string): Promise<ActionState> {
-  const allowed = new Set(["visitor", "returning_visitor", "attendee", "prospective_member", "member", "inactive"]);
-  const organizationId = await getOrganizationId();
-  const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
-  if (!organizationId || !permissions.has("people.write")) {
-    return { status: "error", message: "You don't have permission to update membership records." };
-  }
-  if (!allowed.has(status)) return { status: "error", message: "Choose a valid membership status." };
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from("profiles")
-    .update({ membership_status: status })
-    .eq("organization_id", organizationId)
-    .eq("id", profileId);
-  if (error) return { status: "error", message: "The membership status could not be saved." };
-  revalidatePath("/admin/people");
-  return { status: "success", message: "Membership status saved." };
+  try {
+    const { officeContext, recordOfficeAction } = await import("@/lib/office/context");
+    const { MEMBERSHIP_STATUSES } = await import("@/lib/members/records");
+    if (!MEMBERSHIP_STATUSES.some(item => item === status)) return { status: "error", message: "Choose a valid membership status." };
+    const { db, org, user } = await officeContext("people.write");
+    const { data, error } = await db.from("profiles").update({ membership_status: status, ...(status !== "deceased" ? { deceased_at: null } : {}) }).eq("organization_id", org).eq("id", profileId).select("id").maybeSingle();
+    if (error || !data) return { status: "error", message: "The membership status could not be saved." };
+    await recordOfficeAction(org, user.id, "member.status_updated", "profiles", profileId, { status });
+    revalidatePath("/", "layout");
+    return { status: "success", message: "Membership status saved." };
+  } catch (error) { return { status: "error", message: error instanceof Error ? error.message : "Could not update membership status." }; }
 }
 
 export async function updateVisitorStatus(submissionId: string, status: string): Promise<void> {
@@ -65,6 +60,14 @@ export async function saveEvent(_prev: ActionState, formData: FormData): Promise
   const startsAtJamaica = new Date(`${startsAt}:00-05:00`);
   if (Number.isNaN(startsAtJamaica.getTime())) return { status: "error", message: "Choose a valid start date and time." };
 
+  const capacityText = String(formData.get('capacity') || '').trim();
+  const capacity = capacityText ? Number(capacityText) : null;
+  if (capacity !== null && (!Number.isInteger(capacity) || capacity < 1 || capacity > 100000)) return { status: 'error', message: 'Capacity must be a whole number between 1 and 100,000.' };
+  const windowDate = (key: string) => { const raw = String(formData.get(key) || ''); return raw ? new Date(`${raw}:00-05:00`) : null; };
+  const opens = windowDate('registration_opens_at');
+  const closes = windowDate('registration_closes_at');
+  if ((opens && !Number.isFinite(opens.getTime())) || (closes && !Number.isFinite(closes.getTime()))) return { status: 'error', message: 'Enter valid registration dates.' };
+  if ((opens && opens >= startsAtJamaica) || (closes && closes > startsAtJamaica) || (opens && closes && opens >= closes)) return { status: 'error', message: 'Registration must open before it closes and before the event starts.' };
   const payload = {
     organization_id: organizationId,
     slug: slugify(String(formData.get("slug") || title)),
@@ -73,6 +76,9 @@ export async function saveEvent(_prev: ActionState, formData: FormData): Promise
     description: String(formData.get("description") || "").trim() || null,
     location_name: String(formData.get("location_name") || "").trim() || null,
     starts_at: startsAtJamaica.toISOString(),
+    capacity,
+    registration_opens_at: opens?.toISOString() ?? null,
+    registration_closes_at: closes?.toISOString() ?? null,
     status: String(formData.get("status") || "draft"),
     visibility: String(formData.get("visibility") || "public"),
   };
@@ -815,6 +821,8 @@ export async function promoteAnnualPlanItemToEvent(itemId: string, _prev: Action
 }
 
 // Conference document --------------------------------------------------
+
+
 export async function uploadConferenceDocument(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
   const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();

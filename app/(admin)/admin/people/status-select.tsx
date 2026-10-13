@@ -3,17 +3,18 @@
 import { useState, useTransition } from "react";
 import { updateMembershipStatus } from "@/app/(admin)/admin/actions";
 
-const STATUSES = ["visitor", "returning_visitor", "attendee", "prospective_member", "member", "inactive"];
+import { MEMBERSHIP_STATUSES as STATUSES } from "@/lib/members/records";
 
 export function StatusSelect({ profileId, status }: { profileId: string; status: string }) {
   const [value, setValue] = useState(status);
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const displayedValue = pending ? value : status;
 
   return (
     <span className="inline-action">
       <select
-        value={value}
+        value={displayedValue}
         disabled={pending}
         aria-label="Membership status"
         onChange={(event) => {

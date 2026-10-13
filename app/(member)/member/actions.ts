@@ -9,14 +9,8 @@ import type { ActionState } from "@/app/(public)/actions";
 const CONTACT_METHODS = new Set(["email", "sms", "whatsapp", "phone"]);
 const GENDERS = new Set(["female", "male"]);
 const MARITAL_STATUSES = new Set(["single", "married", "widowed", "divorced", "separated"]);
-const MEMBERSHIP_STATUSES = new Set([
-  "visitor",
-  "returning_visitor",
-  "attendee",
-  "prospective_member",
-  "member",
-  "inactive",
-]);
+import { MEMBERSHIP_STATUSES as MEMBER_STATUSES } from "@/lib/members/records";
+const MEMBERSHIP_STATUSES = new Set<string>(MEMBER_STATUSES);
 
 type ParsedField = { value: string | null; error: string | null };
 
@@ -167,12 +161,13 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
   // staff who hold people.write, and ignored entirely for everyone else
   // even if the fields are posted directly.
   const permissions = await getUserPermissions(profile.organization_id);
-  const officeFields: { membership_status?: string; joined_at?: string | null } = {};
+  const officeFields: { membership_status?: string; joined_at?: string | null; deceased_at?: null } = {};
   if (permissions.has("people.write")) {
     const status = String(formData.get("membership_status") || "");
     if (status) {
       if (!MEMBERSHIP_STATUSES.has(status)) return { status: "error", message: "Choose a valid membership status." };
       officeFields.membership_status = status;
+      if (status !== "deceased" && Object.hasOwn(profile, "deceased_at")) officeFields.deceased_at = null;
     }
     if (formData.has("joined_at")) {
       const joined = String(formData.get("joined_at") || "").trim();
