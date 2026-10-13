@@ -15,6 +15,9 @@ type EditableEvent = {
   location_name: string | null;
   visibility: string;
   status: string;
+  capacity: number | null;
+  registration_opens_at: string | null;
+  registration_closes_at: string | null;
 };
 
 function jamaicaInputValue(iso: string) {
@@ -68,6 +71,7 @@ export function EventForm({ event }: { event?: EditableEvent }) {
           </select>
         </label>
       </div>
+      <div className="form-row"><label>Maximum attendees (blank for unlimited)<input type="number" name="capacity" min={1} step={1} defaultValue={event?.capacity ?? ''}/></label><label>Registration opens (Jamaica time, optional)<input type="datetime-local" name="registration_opens_at" defaultValue={event?.registration_opens_at ? jamaicaInputValue(event.registration_opens_at) : ''}/></label><label>Registration closes (Jamaica time, optional)<input type="datetime-local" name="registration_closes_at" defaultValue={event?.registration_closes_at ? jamaicaInputValue(event.registration_closes_at) : ''}/></label></div>
       <FormStatus state={state} />
       <SubmitButton pendingLabel="Saving…">{event ? "Save event" : "Create event"}</SubmitButton>
     </form>

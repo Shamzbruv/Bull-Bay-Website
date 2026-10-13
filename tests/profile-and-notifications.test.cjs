@@ -22,6 +22,7 @@ function profileActions({ column = true, saved = true } = {}) {
     'next/cache': { revalidatePath() {} }, 'next/navigation': { redirect() {} },
     '@/lib/supabase/server': { createClient: async () => db },
     '@/lib/auth/session': { getUserPermissions: async () => new Set() },
+    '@/lib/members/records': load('lib/members/records.ts', {}),
   });
   const form = new FormData(); form.set('first_name', 'Test'); form.set('last_name', 'Member');
   return { actions, writes, form };

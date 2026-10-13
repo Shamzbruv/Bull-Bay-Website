@@ -1,7 +1,7 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import { getOrganizationId } from "@/lib/auth/session";
+import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { getCurrentProfile, getOrganizationId } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 import { PAYMENT_URL } from "@/lib/payments/external";
 import { revalidatePath } from "next/cache";
@@ -11,6 +11,7 @@ import { SITE_URL } from "@/lib/org";
 import { MEMBERSHIP_REQUEST_MARKER } from "@/lib/members/membership-request";
 import { checkFormShield, scoreSubmission, type ScorableSubmission } from "@/lib/spam";
 import { callerIp, rateLimit } from "@/lib/rate-limit";
+import { registrationInput } from "@/lib/events/registration";
 
 // initialActionState moved to lib/action-state.ts — this file has "use
 // server" and Next.js requires every export here to be an async function;
@@ -254,34 +255,32 @@ export async function submitMembershipRequest(_prev: ActionState, formData: Form
   return { status: "success", message: JOIN_REQUEST_MESSAGE };
 }
 
-export async function registerForEvent(
-  eventId: string,
-  _prev: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const supabase = await createClient();
-  const { profileId } = await currentProfileId();
-
-  const guestName = String(formData.get("guestName") || "").trim();
-  const guestEmail = String(formData.get("guestEmail") || "").trim();
-  const quantityRaw = Number(formData.get("quantity") || 1);
-  const quantity = Number.isFinite(quantityRaw) && quantityRaw > 0 ? Math.floor(quantityRaw) : 1;
-
-  if (!profileId && (!guestName || !guestEmail)) {
-    return { status: "error", message: "Please provide your name and email to register." };
-  }
-
-  const { error } = await supabase.from("event_registrations").insert({
-    event_id: eventId,
-    profile_id: profileId,
-    guest_name: profileId ? null : guestName,
-    guest_email: profileId ? null : guestEmail,
-    quantity,
-  });
-
-  if (error) return { status: "error", message: "We couldn't complete your registration. Please try again." };
-  revalidatePath("/events");
-  return { status: "success", message: "You're registered! We look forward to seeing you there." };
+export async function registerForEvent(eventId: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const parsed = registrationInput.safeParse(Object.fromEntries(['isMember','guestName','guestEmail','guestPhone','quantity','attendees','requirements','notes','consent'].map(k => [k, String(formData.get(k) ?? '')])));
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0]?.message ?? "Check the information and try again." };
+  const input = parsed.data;
+  const [profile, org] = await Promise.all([getCurrentProfile(), getOrganizationId()]);
+  if (!org) return { status: "error", message: "Registration is temporarily unavailable. Please contact the church office." };
+  if (input.isMember === 'yes' && (!profile || profile.organization_id !== org)) return { status: "error", message: "Church members must sign in with their church account before registering." };
+  if (profile?.membership_status === 'deceased') return { status: "error", message: "Please contact the church office about this member record." };
+  if (!rateLimit(`event-registration:${await callerIp()}`, 20, 60 * 60 * 1000).allowed) return { status: "error", message: "Too many registration attempts. Please try again later or contact the church office." };
+  const admin = createServiceRoleClient();
+  const details = { attendees: input.attendees.split('\n').map(name => name.trim()).filter(Boolean), requirements: input.requirements, consent_at: new Date().toISOString() };
+  const { data, error } = await admin.rpc('register_church_event', { org, event: eventId, person: profile?.organization_id === org ? profile.id : null, member: input.isMember === 'yes', contact_name: input.guestName, contact_email: input.guestEmail, contact_phone: input.guestPhone, party_size: input.quantity, details, additional_notes: input.notes });
+  if (error) return { status: "error", message: error.code === 'P0001' ? error.message : "We couldn't complete your registration. Please contact the church office or try again." };
+  const result = data as { id: string; created: boolean };
+  if (!result.created) return { status: "success", message: "You are already registered for this event. Contact the church office if you need to change your details." };
+  // The database transaction has already delivered the staff inbox alert.
+  // Email is an additional channel and a mail failure must not lose registration.
+  try {
+    const { data: event } = await admin.from('events').select('title').eq('id', eventId).eq('organization_id', org).single();
+    await notifyOffice(org, { subject: `Event registration — ${event?.title ?? 'Church event'}`, html: await renderStaffNotificationEmail({ heading: 'New event registration', fields: [
+      { label: 'Event', value: event?.title ?? '' }, { label: 'Name', value: input.guestName }, { label: 'Email', value: input.guestEmail }, { label: 'Phone', value: input.guestPhone }, { label: 'Church member', value: input.isMember }, { label: 'Number attending', value: String(input.quantity) }, { label: 'Other attendees', value: input.attendees }, { label: 'Special requirements', value: input.requirements }, { label: 'Notes', value: input.notes },
+    ], actionUrl: `${SITE_URL}/admin/events/${eventId}/registrations` }) });
+  } catch { console.error('Event registration saved; supplementary office email unavailable.'); }
+  revalidatePath('/events');
+  revalidatePath('/admin/events');
+  return { status: "success", message: "You're registered! Your details have been sent to the church office. We look forward to seeing you there." };
 }
 
 export async function joinGroup(groupId: string, _prev: ActionState): Promise<ActionState> {

@@ -20,7 +20,7 @@ async function getRoleHolderEmails(organizationId: string, roleCodes: string[]):
   const userIds = [...new Set((userRoles ?? []).map((r) => r.user_id))];
   if (userIds.length === 0) return [];
 
-  const { data: profiles } = await admin.from("profiles").select("email").in("auth_user_id", userIds);
+  const { data: profiles } = await admin.from("profiles").select("email").eq("organization_id", organizationId).in("auth_user_id", userIds);
   return [...new Set((profiles ?? []).map((p) => p.email).filter((e): e is string => Boolean(e)))];
 }
 
@@ -44,7 +44,7 @@ async function getPastorEmail(organizationId: string): Promise<string | null> {
  */
 export async function notifyOffice(organizationId: string, opts: { subject: string; html: string }): Promise<{ sent: number; total: number }> {
   const [officeEmails, pastorEmail] = await Promise.all([
-    getRoleHolderEmails(organizationId, ["secretary", "church_executive", "super_admin"]),
+    getRoleHolderEmails(organizationId, ["secretary", "church_executive", "church_admin", "super_admin"]),
     getPastorEmail(organizationId),
   ]);
 
