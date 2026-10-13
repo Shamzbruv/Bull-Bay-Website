@@ -509,18 +509,23 @@ export function FamilyWorkspace({
               !data.readOnly &&
               (data.canManage || i.targetId === data.viewerId);
             const dest = data.households.find((h) => h.id === i.householdId);
+            const reviewingAnotherPerson = i.targetId !== data.viewerId;
             return (
               <div className={styles.request} key={`${i.id}-${i.updatedAt}`}>
                 <span className={styles.badge}>Household invitation</span>
                 <strong>
                   {i.targetId === data.viewerId
                     ? `${name(i.sourceId)} invited you to ${dest?.name ?? "their household"}`
-                    : `Invitation to ${dest?.name ?? "your household"}`}
+                    : `${name(i.targetId)} was invited to ${dest?.name ?? "the household"} by ${name(i.sourceId)}`}
                 </strong>
                 {canReview ? (
                   <OfficeActionForm
                     action={reviewFamilyRequest}
-                    label="Join household"
+                    label={
+                      reviewingAnotherPerson
+                        ? "Confirm household assignment"
+                        : "Join household"
+                    }
                     submitValue={{ name: "decision", value: "accepted" }}
                     actions={
                       <SubmitButton
@@ -547,9 +552,9 @@ export function FamilyWorkspace({
                         type="checkbox"
                         required
                       />
-                      I agree to join {dest?.name ?? "this household"}. This
-                      replaces my current household assignment and shares my
-                      name within the household.
+                      {reviewingAnotherPerson
+                        ? `The church office has verified that ${name(i.targetId)} agrees to join ${dest?.name ?? "this household"}. This replaces their household assignment and shares their name within the household.`
+                        : `I agree to join ${dest?.name ?? "this household"}. This replaces my current household assignment and shares my name within the household.`}
                     </label>
                   </OfficeActionForm>
                 ) : (

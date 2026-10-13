@@ -5,7 +5,7 @@ import { officeAction } from "@/lib/office/action";
 import { householdInput, linkInput } from "./model";
 import type { ActionState } from "@/app/(public)/actions";
 import type { Json } from "@/lib/supabase/types";
-import { callerIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimit } from "@/lib/rate-limit";
 const text = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 async function change(
   command: string,
@@ -64,13 +64,7 @@ export async function requestFamilyRelationship(
         input.error.issues[0]?.message ?? "Check the relationship information.",
       );
     const { user } = await officeContext();
-    if (
-      !rateLimit(
-        `family-request:${user.id}:${await callerIp()}`,
-        15,
-        60 * 60 * 1000,
-      ).allowed
-    )
+    if (!rateLimit(`family-request:${user.id}`, 15, 60 * 60 * 1000).allowed)
       throw new Error(
         "You have sent several family requests. Please try later or contact the church office.",
       );
