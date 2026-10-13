@@ -15,6 +15,18 @@ export type Database = {
   }
   public: {
     Tables: WorkflowTables & {
+      family_relationships: {
+        Row: {id:string;organization_id:string;source_profile_id:string;target_profile_id:string;recipient_profile_id:string;kind:string;notes:string;status:string;requested_by:string|null;reviewed_by:string|null;created_at:string;updated_at:string}
+        Insert: {organization_id:string;source_profile_id:string;target_profile_id:string;recipient_profile_id:string;kind:string;status:string;notes?:string;requested_by?:string|null}
+        Update: {status?:string;notes?:string;reviewed_by?:string|null}
+        Relationships: []
+      }
+      household_invitations: {
+        Row: {id:string;organization_id:string;household_id:string;source_profile_id:string;target_profile_id:string;status:string;requested_by:string|null;reviewed_by:string|null;created_at:string;updated_at:string}
+        Insert: {organization_id:string;household_id:string;source_profile_id:string;target_profile_id:string;requested_by?:string|null;status?:string}
+        Update: {status?:string;reviewed_by?:string|null}
+        Relationships: []
+      }
       member_details: {
         Row: { id: string; organization_id: string; profile_id: string; category: string; label: string; value: string; updated_by: string | null; created_at: string; updated_at: string }
         Insert: { id?: string; organization_id: string; profile_id: string; category: string; label: string; value: string; updated_by?: string | null; created_at?: string; updated_at?: string }
@@ -1417,18 +1429,24 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          description: string
+          updated_at: string
           name: string
           organization_id: string
         }
         Insert: {
           created_at?: string
           id?: string
+          description: string
+          updated_at: string
           name: string
           organization_id: string
         }
         Update: {
           created_at?: string
           id?: string
+          description?: string
+          updated_at?: string
           name?: string
           organization_id?: string
         }
@@ -3378,6 +3396,7 @@ export type Database = {
       }
     }
     Functions: {
+      manage_family: {Args: {command:string;org:string;actor:string;payload:Json};Returns:Json}
       register_church_event: {
         Args: { org: string; event: string; person: string | null; member: boolean; contact_name: string; contact_email: string; contact_phone: string; party_size: number; details: Json; additional_notes: string }
         Returns: Json
@@ -3740,6 +3759,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      manage_family: {Args: {command:string;org:string;actor:string;payload:Json};Returns:Json}
       register_church_event: {
         Args: { org: string; event: string; person: string | null; member: boolean; contact_name: string; contact_email: string; contact_phone: string; party_size: number; details: Json; additional_notes: string }
         Returns: Json
