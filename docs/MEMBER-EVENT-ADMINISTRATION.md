@@ -10,7 +10,7 @@ People can be added without a login or email address. Creating a directory recor
 
 Record and detail edits reject stale versions rather than overwrite another staff member's changes. Successful actions invalidate dashboard caches so subsequent views use the saved data.
 
-Deleting a person requires `people.delete` and typing DELETE. Their custom details are removed, linked sessions and refresh tokens are revoked, and the authentication account is banned. Historical event registrations and church transactions remain. The caller's own account and accounts with any role other than Member are protected. No existing member records are removed by this migration.
+Deleting a person requires `people.delete` and typing DELETE. Their custom details are removed, linked sessions and refresh tokens are revoked, and the authentication account is banned. Historical event registrations and church transactions remain. The caller's own account and accounts with any role other than Member are protected. Private event and document policies also require a current non-deceased church profile, so removing the profile withdraws access even before an old access token expires. No existing member records are removed by this migration.
 
 ## Event registration
 

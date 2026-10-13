@@ -37,6 +37,7 @@ test('migration: staff scope, atomic alerts, capacity, duplicates, member sign-i
   await db.exec(fs.readFileSync(path.join(__dirname,'fixtures/member-event-schema.sql'),'utf8'));
   const migration=fs.readdirSync(path.join(root,'supabase/migrations')).find(f=>f.endsWith('_member_records_event_registration.sql'));
   await db.query('insert into organizations(id) values($1),($2)',[id(1),id(2)]);
+  await db.query("update organizations set slug='other-church' where id=$1",[id(2)]);
   await db.query('insert into auth.users(id) values($1),($2),($3)',[id(11),id(12),id(13)]);
   await db.query("insert into roles(id,organization_id,code) values($1,$4,'secretary'),($2,$4,'member'),($3,$4,'church_admin')",[id(21),id(22),id(23),id(1)]);
   await db.exec(fs.readFileSync(path.join(root,'supabase/migrations',migration),'utf8'));
@@ -45,6 +46,7 @@ test('migration: staff scope, atomic alerts, capacity, duplicates, member sign-i
   await db.query("insert into profiles(id,organization_id,auth_user_id,membership_status) values($1,$5,$6,'member'),($2,$5,$7,'member'),($3,$5,null,'member'),($4,$8,null,'member')",[id(31),id(32),id(33),id(34),id(1),id(11),id(12),id(2)]);
   await db.query("insert into profiles(id,organization_id,auth_user_id,membership_status) values($1,$2,$3,'member')",[id(35),id(1),id(13)]);
   await db.query('insert into member_details(organization_id,profile_id,category,label,value) values($1,$2,\'Baptism\',\'Date\',\'2024-01-01\')',[id(1),id(32)]);
+  await db.query("insert into member_details(organization_id,profile_id,category,label,value) values($1,$2,'Private','Other church','Unchanged')",[id(2),id(34)]);
   await assert.rejects(db.query('insert into member_details(organization_id,profile_id,category,label,value) values($1,$2,\'Baptism\',\'Date\',\'x\')',[id(1),id(34)]),/foreign key/);
   await db.query("select set_config('test.user_id',$1,false)",[id(12)]);
   await db.exec('set role authenticated');
@@ -69,7 +71,18 @@ test('migration: staff scope, atomic alerts, capacity, duplicates, member sign-i
   await assert.rejects(register({email:'member@example.com',member:true}),/must sign in/);
   await assert.rejects(register({org:id(2)}),/not open/);
   await assert.rejects(register({person:id(34),member:true,email:'other@example.com',quantity:1}),/cannot register/);
+  await db.query("insert into events(id,organization_id,title,starts_at,status,visibility) values($1,$2,'Members meeting',now()+interval '1 day','published','members')",[id(42),id(1)]);
+  await db.query("insert into storage.objects(bucket_id,name) values('member-resources','conference/test.pdf')");
+  await db.query("select set_config('test.user_id',$1,false)",[id(12)]);
+  await db.exec('set role authenticated');
+  assert.equal((await db.query('select * from events where id=$1',[id(42)])).rows.length,1);
+  assert.equal((await db.query('select * from storage.objects')).rows.length,1);
+  await db.exec('reset role');
   await db.query("update profiles set membership_status='deceased' where id=$1",[id(32)]);
+  await db.exec('set role authenticated');
+  assert.equal((await db.query('select * from events where id=$1',[id(42)])).rows.length,0,'deceased profiles cannot access private events');
+  assert.equal((await db.query('select * from storage.objects')).rows.length,0,'deceased profiles cannot directly download storage objects');
+  await db.exec('reset role');
   await assert.rejects(register({person:id(32),member:true,email:'member@example.com',quantity:1}),/cannot register/);
   await db.query("update profiles set membership_status='member' where id=$1",[id(32)]);
   assert.equal((await register({person:id(32),member:true,email:'member@example.com',quantity:1})).rows[0].result.created,true);
@@ -87,6 +100,12 @@ test('migration: staff scope, atomic alerts, capacity, duplicates, member sign-i
   await assert.rejects(register(),/permission denied for function/);
   await assert.rejects(db.query("insert into event_registrations(event_id,guest_name,guest_email) values($1,'Bypass','bypass@example.com')",[id(41)]),/row-level security/);
   await db.exec('reset role');
+  await db.query("update events set visibility='public',registration_closes_at=null where id=$1",[id(41)]);
+  await db.exec("alter table notifications add constraint test_alert_failure check(title <> 'New event registration') not valid");
+  await assert.rejects(register({email:'rollback@example.com',quantity:1,details:{attendees:[]}}),/test_alert_failure/);
+  assert.equal((await db.query('select * from event_registrations')).rows.length,2,'a failed alert rolls back registration');
+  await db.exec('alter table notifications drop constraint test_alert_failure');
+  assert.equal((await register({email:'rollback@example.com',quantity:1,details:{attendees:[]}})).rows[0].result.created,true,'retry after rollback succeeds');
   await assert.rejects(db.query('select office_delete_member($1,$2,$3)',[id(1),id(11),id(31)]),/protected/);
   await assert.rejects(db.query('select office_delete_member($1,$2,$3)',[id(1),id(12),id(33)]),/not allowed/);
   await assert.rejects(db.query('select office_delete_member($1,$2,$3)',[id(1),id(11),id(35)]),/protected/);
@@ -94,9 +113,14 @@ test('migration: staff scope, atomic alerts, capacity, duplicates, member sign-i
   await db.query('insert into auth.sessions(user_id) values($1)',[id(12)]);
   await db.query('select office_delete_member($1,$2,$3)',[id(1),id(11),id(32)]);
   assert.equal((await db.query('select * from profiles where id=$1',[id(32)])).rows.length,0);
-  assert.equal((await db.query('select * from member_details')).rows.length,0,'custom details cascade on member deletion');
+  assert.equal((await db.query('select * from member_details where organization_id=$1',[id(1)])).rows.length,0,'custom details cascade on member deletion');
+  assert.equal((await db.query('select * from member_details where organization_id=$1',[id(2)])).rows.length,1,'other church details are preserved');
+  await db.exec('set role authenticated');
+  assert.equal((await db.query('select * from events where id=$1',[id(42)])).rows.length,0,'deleted profile loses private event access despite a surviving JWT');
+  assert.equal((await db.query('select * from storage.objects')).rows.length,0,'deleted profile loses storage access despite a surviving JWT');
+  await db.exec('reset role');
   assert.equal((await db.query('select * from auth.sessions where user_id=$1',[id(12)])).rows.length,0,'member sessions revoked');
-  assert.equal((await db.query('select * from event_registrations')).rows.length,2,'historical registrations preserved');
+  assert.equal((await db.query('select * from event_registrations')).rows.length,3,'historical registrations preserved');
   assert.equal((await db.query('select * from event_registrations where profile_id is not null')).rows.length,0);
   assert.equal((await db.query("select * from audit_logs where action='member.deleted'")).rows.length,1);
  } finally { await db.close(); }

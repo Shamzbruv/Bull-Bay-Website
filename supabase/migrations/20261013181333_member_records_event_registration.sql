@@ -37,6 +37,22 @@ where r.code in ('secretary','church_executive','church_admin') on conflict do n
 
 -- Snapshot event answers separately from the member's current contact details.
 alter table public.event_registrations add column registration_details jsonb not null default '{}'::jsonb check(jsonb_typeof(registration_details)='object');
+-- Removing a profile must also remove its access while a previously issued
+-- JWT has not expired. Do not rely only on the token's authenticated role.
+drop policy "events member read" on public.events;
+create policy "events member read" on public.events for select to authenticated using (
+ status='published' and (visibility='public' or (visibility='members' and exists(
+  select 1 from public.profiles viewer where viewer.auth_user_id=(select auth.uid()) and viewer.organization_id=events.organization_id and viewer.membership_status<>'deceased'
+ )))
+);
+drop policy "member-resources authenticated read" on storage.objects;
+create policy "member-resources authenticated read" on storage.objects for select to authenticated using(
+ bucket_id='member-resources' and exists(select 1 from public.profiles viewer join public.organizations o on o.id=viewer.organization_id where viewer.auth_user_id=(select auth.uid()) and o.slug='bull-bay' and viewer.membership_status<>'deceased')
+);
+drop policy "member-resources staff write" on storage.objects;
+create policy "member-resources staff write" on storage.objects for all to authenticated
+ using(bucket_id='member-resources' and exists(select 1 from public.profiles viewer join public.organizations o on o.id=viewer.organization_id where viewer.auth_user_id=(select auth.uid()) and o.slug='bull-bay' and viewer.membership_status<>'deceased' and public.has_permission(viewer.organization_id,'direction.manage')))
+ with check(bucket_id='member-resources' and exists(select 1 from public.profiles viewer join public.organizations o on o.id=viewer.organization_id where viewer.auth_user_id=(select auth.uid()) and o.slug='bull-bay' and viewer.membership_status<>'deceased' and public.has_permission(viewer.organization_id,'direction.manage')));
 -- Public visitors submit through the validated server action, not directly
 -- through the REST API. Existing owner cancellation/read policies remain.
 drop policy "event_registrations create" on public.event_registrations;
