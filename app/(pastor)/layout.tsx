@@ -35,7 +35,7 @@ export default async function PastorLayout({ children }: { children: React.React
     {
       label: "Ministry tools",
       items: [
-        ...(allowed("people.read") ? [{ href: "/admin/people", label: "People", icon: "people" as const }] : []),
+        ...(allowed("people.read") ? [{ href: "/admin/people", label: "People", icon: "people" as const }, {href:"/admin/families",label:"Families & connections",icon:"users" as const}] : []),
         ...(allowed("people.write") ? [{ href: "/admin/visitors", label: "Visitors", icon: "person" as const }] : []),
         ...(allowed("giving.read") ? [{ href: "/admin/giving", label: "Giving reports", icon: "coins" as const }] : []),
         ...(allowed("attendance.manage") ? [{ href: "/admin/attendance", label: "Attendance", icon: "checklist" as const }] : []),

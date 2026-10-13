@@ -295,30 +295,9 @@ export async function removeAvatar(): Promise<ActionState> {
   return { status: "success", message: "Profile photo removed." };
 }
 
-export async function saveHousehold(_prev: ActionState, formData: FormData): Promise<ActionState> {
-  const supabase = await createClient();
-  const profile = await requireProfileId(supabase);
-  if (!profile) return { status: "error", message: "Please sign in again." };
-
-  const name = String(formData.get("name") || "").trim();
-  if (!name) return { status: "error", message: "Please enter a household name." };
-
-  if (profile.household_id) {
-    const { data, error } = await supabase.from("households").update({ name }).eq("id", profile.household_id).select("id").maybeSingle();
-    if (error || !data) return { status: "error", message: "We couldn't save your household." };
-  } else {
-    const { data: household, error } = await supabase
-      .from("households")
-      .insert({ organization_id: profile.organization_id, name })
-      .select("id")
-      .single();
-    if (error || !household) return { status: "error", message: "We couldn't create your household." };
-    const { error: linkError } = await supabase.from("profiles").update({ household_id: household.id }).eq("id", profile.id);
-    if (linkError) return { status: "error", message: "The household was created, but could not be linked to your profile. Please contact the church office." };
-  }
-
-  revalidatePath("/member/household");
-  return { status: "success", message: "Household saved." };
+export async function saveHousehold(prev:ActionState,formData:FormData):Promise<ActionState> {
+ const {saveFamilyHousehold}=await import("@/lib/families/actions");
+ return saveFamilyHousehold(prev,formData);
 }
 
 export async function updateNotificationPreferences(_prev: ActionState, formData: FormData): Promise<ActionState> {
