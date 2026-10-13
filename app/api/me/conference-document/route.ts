@@ -1,27 +1,17 @@
 import { NextResponse } from "next/server";
-import { createClient, createServiceRoleClient } from "@/lib/supabase/server";
+import { getCurrentProfile, getOrganizationId } from "@/lib/auth/session";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { currentConferenceDocument } from "@/lib/office/conference-document";
 
-/**
- * Any signed-in member/staff can download the current Church Members
- * Conference document — it's private-to-members, not staff-only. The file
- * itself lives in the member-resources bucket, which has no anonymous
- * Storage policy at all (see 0014_member_resources_storage.sql); this
- * route is the only path to it, via a 5-minute signed URL.
- */
 export async function POST() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Please sign in." }, { status: 401 });
-
-  const admin = createServiceRoleClient();
-  const path = "conference/Bull_Bay_Church_Members_Conference_2026-2027.pptx";
-  const { data: signed, error } = await admin.storage.from("member-resources").createSignedUrl(path, 300);
-
-  if (error || !signed) {
-    return NextResponse.json({ error: "The conference document isn't available yet." }, { status: 404 });
-  }
-
-  return NextResponse.json({ url: signed.signedUrl });
+  const [profile, org] = await Promise.all([getCurrentProfile(), getOrganizationId()]);
+  if (!profile) return NextResponse.json({ error: 'Please sign in with your church account.' }, { status: 401 });
+  if (profile.organization_id !== org || profile.membership_status === 'deceased') return NextResponse.json({ error: 'This church account cannot access the conference document.' }, { status: 403 });
+  try {
+    const file = await currentConferenceDocument();
+    if (!file) return NextResponse.json({ error: "The conference document isn't available yet." }, { status: 404 });
+    const { data, error } = await createServiceRoleClient().storage.from('member-resources').createSignedUrl(`conference/${file.name}`, 300, { download: file.name });
+    if (error || !data) throw new Error('The download could not be prepared. Please try again.');
+    return NextResponse.json({ url: data.signedUrl }, { headers: { 'Cache-Control': 'private, no-store' } });
+  } catch (error) { return NextResponse.json({ error: error instanceof Error ? error.message : 'Download unavailable.' }, { status: 503 }); }
 }

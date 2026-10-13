@@ -815,8 +815,6 @@ export async function promoteAnnualPlanItemToEvent(itemId: string, _prev: Action
 }
 
 // Conference document --------------------------------------------------
-const CONFERENCE_DOCUMENT_PATH = "conference/Bull_Bay_Church_Members_Conference_2026-2027.pptx";
-
 export async function uploadConferenceDocument(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const organizationId = await getOrganizationId();
   const permissions = organizationId ? await getUserPermissions(organizationId) : new Set<string>();
@@ -825,14 +823,18 @@ export async function uploadConferenceDocument(_prev: ActionState, formData: For
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { status: "error", message: "Please choose a file." };
 
+  if (file.size > 25 * 1024 * 1024 || !/\.(pptx|pdf)$/i.test(file.name)) return { status: "error", message: "Choose a PDF or PowerPoint file under 25 MB." };
+  const ext = file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'pptx';
   const admin = createServiceRoleClient();
   const buffer = Buffer.from(await file.arrayBuffer());
-  const { error } = await admin.storage.from("member-resources").upload(CONFERENCE_DOCUMENT_PATH, buffer, {
-    contentType: file.type || "application/octet-stream",
+  if (ext === 'pdf' ? buffer.subarray(0,5).toString() !== '%PDF-' : buffer[0] !== 0x50 || buffer[1] !== 0x4b) return { status: "error", message: "The file contents do not match a PDF or PowerPoint document." };
+  const { error } = await admin.storage.from("member-resources").upload(`conference/Bull_Bay_Church_Members_Conference.${ext}`, buffer, {
+    contentType: ext === 'pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     upsert: true,
   });
 
   if (error) return { status: "error", message: "Upload failed. Please try again." };
   revalidatePath("/admin/conference-document");
+  revalidatePath("/member/ministry");
   return { status: "success", message: "Conference document updated." };
 }

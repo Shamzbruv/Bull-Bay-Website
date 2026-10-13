@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { currentConferenceDocument } from "@/lib/office/conference-document";
+import { ConferenceDownload } from "@/app/(member)/member/ministry/conference-download";
 import { getOrganizationId, getUserPermissions } from "@/lib/auth/session";
 import { AccessDenied } from "@/components/access-denied";
 import { UploadForm } from "./upload-form";
@@ -11,9 +12,7 @@ export default async function AdminConferenceDocumentPage() {
   const permissions = await getUserPermissions(organizationId ?? "");
   if (!permissions.has("direction.manage")) return <AccessDenied />;
 
-  const admin = createServiceRoleClient();
-  const { data: files } = await admin.storage.from("member-resources").list("conference");
-  const current = files?.find((f) => f.name.endsWith(".pptx") || f.name.endsWith(".pdf"));
+  const current = await currentConferenceDocument();
 
   return (
     <>
@@ -29,6 +28,7 @@ export default async function AdminConferenceDocumentPage() {
         {current ? (
           <div>
             <b>{current.name}</b>
+            <ConferenceDownload />
             <p style={{ color: "var(--color-muted)", fontSize: ".82rem" }}>
               {current.metadata?.size ? `${Math.round((current.metadata.size as number) / 1024)} KB` : ""}
               {current.updated_at ? ` • updated ${new Date(current.updated_at).toLocaleDateString("en-JM")}` : ""}
