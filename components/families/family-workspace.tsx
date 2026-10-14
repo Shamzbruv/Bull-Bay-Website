@@ -18,6 +18,7 @@ import {
   type FamilyData,
 } from "@/lib/families/model";
 import { FamilyMap } from "./family-map";
+import { FamilyConnections } from "./family-connections";
 import styles from "./family.module.css";
 
 export function FamilyWorkspace({
@@ -29,7 +30,8 @@ export function FamilyWorkspace({
 }) {
   const home = data.householdId ?? `person:${data.viewerId}`;
   const [focus, setFocus] = useState<string | null>(initialFocus ?? null);
-  const [view, setView] = useState("household");
+  const [view, setView] = useState("connections");
+  const [requestOpen, setRequestOpen] = useState(false);
   const [depth, setDepth] = useState(2);
   const [search, setSearch] = useState("");
   const [peoplePage, setPeoplePage] = useState(0);
@@ -93,6 +95,26 @@ export function FamilyWorkspace({
           </div>
         </div>
       </header>
+      <div className={styles.quickActions}>
+        <div>
+          <strong>Your family, connected.</strong>
+          <span>Choose a family on the map or trace its connection below.</span>
+        </div>
+        {!data.readOnly && (
+          <button
+            type="button"
+            className={styles.primaryButton}
+            onClick={() => {
+              setRequestOpen(true);
+              document
+                .getElementById("family-connect")
+                ?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            + Connect a relative
+          </button>
+        )}
+      </div>
       <div className={styles.controls}>
         <div
           className={styles.tabs}
@@ -133,7 +155,7 @@ export function FamilyWorkspace({
         </div>
         <div className={styles.selector}>
           <label>
-            Connections deep
+            Show connections
             <select
               aria-label="Number of family connection levels"
               value={depth}
@@ -342,10 +364,23 @@ export function FamilyWorkspace({
             onSelectFamily={setFocus}
           />
         )}
+        <FamilyConnections
+          key={root}
+          data={data}
+          root={root}
+          depth={depth}
+          onExplore={(id) => {
+            setFocus(id);
+            setView("connections");
+          }}
+        />
       </section>
       {!data.readOnly && (
-        <div className={styles.panel}>
-          <details>
+        <div className={styles.panel} id="family-connect">
+          <details
+            open={requestOpen}
+            onToggle={(e) => setRequestOpen(e.currentTarget.open)}
+          >
             <summary>
               <strong>+ Connect a relative in this or another family</strong>
             </summary>

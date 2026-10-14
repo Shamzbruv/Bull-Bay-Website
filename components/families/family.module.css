@@ -1,6 +1,332 @@
 .workspace {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: 24px;
+}
+.workspace > * {
+  min-width: 0;
+}
+.quickActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.quickActions > div {
+  display: grid;
+  gap: 5px;
+}
+.quickActions span {
+  color: #64786a;
+  font-size: 0.85rem;
+}
+.primaryButton {
+  background: #174a63;
+  color: white;
+  border: 0;
+  border-radius: 12px;
+  padding: 13px 18px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.connectionSection {
+  margin-top: 24px;
+  background: white;
+  border: 1px solid #dce5dc;
+  border-radius: 22px;
+  padding: 24px;
+}
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.sectionHeading h2 {
+  margin: 6px 0;
+  font-size: 1.5rem;
+}
+.sectionHeading p {
+  margin: 0;
+  color: #62746a;
+  font-size: 0.85rem;
+}
+.eyebrow {
+  display: block;
+  color: #537266;
+  font-size: 0.67rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+}
+.connectionCount {
+  background: #edf3ed;
+  color: #335c4c;
+  border-radius: 30px;
+  padding: 9px 13px;
+  font-size: 0.76rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+.connectionGrid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.85fr) minmax(0, 1.4fr);
+  gap: 24px;
+}
+.searchLabel {
+  display: grid;
+  gap: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #33584e;
+}
+.searchLabel input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #d5e0d7;
+  border-radius: 10px;
+  padding: 11px;
+  background: #fbfcfa;
+  box-sizing: border-box;
+}
+.connectionChoices {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  max-height: 430px;
+  overflow: auto;
+}
+.connectionChoices button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid #dfe7df;
+  border-radius: 12px;
+  padding: 13px;
+  text-align: left;
+  background: white;
+  color: #244b40;
+  cursor: pointer;
+}
+.connectionChoices button[aria-pressed="true"] {
+  background: #edf5ee;
+  border-color: #618d74;
+  box-shadow: inset 3px 0 #397459;
+}
+.connectionChoices button > span:nth-child(2) {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+.connectionChoices strong {
+  overflow-wrap: anywhere;
+}
+.connectionChoices small {
+  font-size: 0.73rem;
+  color: #62766b;
+}
+.familyMonogram {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #dceade;
+  color: #31674d;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+.levelPill {
+  font-size: 0.65rem;
+  border-radius: 20px;
+  background: white;
+  padding: 5px 8px;
+  border: 1px solid #dce6dd;
+  white-space: nowrap;
+}
+.connectionStory {
+  border-radius: 16px;
+  padding: 24px;
+  background: #f8faf5;
+  border: 1px solid #e1e8dc;
+  min-width: 0;
+}
+.connectionStory h3 {
+  margin: 8px 0 22px;
+  font-size: 1.45rem;
+  color: #173f4e;
+}
+.connectionTrail {
+  list-style: none;
+  margin: 0 0 22px;
+  padding: 0;
+}
+.connectionTrail li {
+  margin: 0;
+  padding: 0;
+}
+.trailStart,
+.trailFamily {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: #234c42;
+}
+.trailStart > span,
+.trailFamily > span {
+  width: 12px;
+  height: 12px;
+  background: #37785c;
+  border-radius: 50%;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 4px #e0ebdf;
+}
+.bridgeStory {
+  margin-left: 5px;
+  padding: 20px 0 20px 24px;
+  border-left: 2px solid #7da38b;
+  display: grid;
+  gap: 9px;
+  font-size: 0.86rem;
+  color: #32594c;
+}
+.bridgeStory > strong {
+  line-height: 1.6;
+}
+.bridgeStory p {
+  margin: 0;
+  color: #607266;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.relationPill {
+  justify-self: start;
+  background: #e8efdd;
+  border-radius: 20px;
+  padding: 5px 9px;
+  font-size: 0.68rem;
+  color: #506c39;
+  font-weight: 800;
+}
+.connectionEmpty {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  align-items: center;
+}
+.connectionEmpty h3 {
+  font-size: 1.2rem;
+  margin-top: 0;
+}
+.connectionEmpty p {
+  color: #617568;
+  line-height: 1.7;
+  font-size: 0.85rem;
+}
+.exampleBridge {
+  border: 1px dashed #becfbd;
+  border-radius: 16px;
+  padding: 20px;
+  background: #f8faf3;
+}
+.exampleBridge > span {
+  display: block;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #6a7f61;
+  margin-bottom: 20px;
+}
+.exampleBridge > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #294f43;
+}
+.exampleBridge strong {
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.exampleLine {
+  display: grid;
+  flex: 1;
+  text-align: center;
+  font-size: 0.68rem;
+  color: #597044;
+  border-bottom: 2px solid #7c9a63;
+  padding-bottom: 8px;
+  position: relative;
+}
+.exampleLine::before,
+.exampleLine::after {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #7c9a63;
+  position: absolute;
+  bottom: -4px;
+}
+.exampleLine::before {
+  left: 0;
+}
+.exampleLine::after {
+  right: 0;
+}
+.exampleBridge p {
+  margin-bottom: 0;
+}
+.routeNames {
+  font-weight: 750;
+  background: #f0f5e9;
+  padding: 12px;
+  border-radius: 10px;
+}
+.mapDetail h3 {
+  margin: 6px 0;
+}
+.mapDetail button {
+  margin: 12px 8px 0 0;
+}
+.workspace button:focus-visible,
+.workspace input:focus-visible,
+.workspace select:focus-visible {
+  outline: 3px solid #b88d36;
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .connectionGrid,
+  .connectionEmpty {
+    grid-template-columns: 1fr;
+  }
+  .connectionSection,
+  .connectionStory {
+    padding: 18px;
+  }
+  .sectionHeading,
+  .quickActions {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .connectionChoices {
+    max-height: 260px;
+  }
+  .exampleBridge > div {
+    gap: 8px;
+  }
+  .mapStage {
+    height: 420px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .workspace * {
+    scroll-behavior: auto !important;
+  }
 }
 .hero {
   background: linear-gradient(125deg, #12374f, #1f6656);
