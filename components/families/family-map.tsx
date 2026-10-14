@@ -7,6 +7,11 @@ import {
   type FamilyData,
   type FamilyLink,
 } from "@/lib/families/model";
+import {
+  familyLabel,
+  familyPaths,
+  relationshipLabel,
+} from "@/lib/families/paths";
 import styles from "./family.module.css";
 type Node = {
   id: string;
@@ -30,6 +35,7 @@ export function FamilyMap({
   onSelectFamily: (id: string) => void;
 }) {
   const circle = familyCircle(data.people, data.links, root, depth);
+  const paths = familyPaths(data, root, depth);
   const involved = new Set(
     circle.links.flatMap((l) => [l.sourceId, l.targetId]),
   );
@@ -84,8 +90,11 @@ export function FamilyMap({
     n.x = 60 + n.level * 340;
     n.y = 60 + row * 155;
   }
-  const width = Math.max(600, ...nodes.map((n) => n.x + 280));
-  const height = Math.max(480, ...nodes.map((n) => n.y + 145));
+  const tallestColumn = Math.max(1, ...columnCounts.values());
+  for (const n of nodes)
+    n.y += ((tallestColumn - columnCounts.get(n.level)!) * 155) / 2;
+  const width = Math.max(600, ...nodes.map((n) => n.x + 420));
+  const height = Math.max(260, ...nodes.map((n) => n.y + 145));
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
   const byPerson = new Map(data.people.map((p) => [p.id, p]));
   const [zoom, setZoom] = useState(1);
@@ -99,6 +108,14 @@ export function FamilyMap({
   } | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const selectedLink = circle.links.find((l) => l.id === selected);
+  const currentNode = nodes.find((n) => n.id === selectedNode);
+  const selectedFamily = currentNode
+    ? peopleView
+      ? familyNodeId(data.people.find((p) => p.id === currentNode.id)!)
+      : currentNode.id
+    : null;
+  const selectedPath = selectedFamily ? (paths.get(selectedFamily) ?? []) : [];
+  const pathLinks = new Set(selectedPath.map((s) => s.link.id));
   const showLink = (l: FamilyLink) => {
     setSelected(l.id);
     setSelectedNode(null);
@@ -112,7 +129,17 @@ export function FamilyMap({
           ? selectedLink.targetId
           : familyNodeId(byPerson.get(selectedLink.targetId)!),
       ])
-    : new Set(selectedNode ? [selectedNode] : []);
+    : new Set(
+        peopleView
+          ? selectedNode
+            ? [selectedNode]
+            : []
+          : selectedPath.length
+            ? [root, ...selectedPath.map((s) => s.to)]
+            : selectedNode
+              ? [selectedNode]
+              : [],
+      );
   const edges = peopleView
     ? circle.links
     : circle.links.filter(
@@ -169,6 +196,7 @@ export function FamilyMap({
       </div>
       <div
         className={styles.mapStage}
+        style={{ height: Math.min(480, Math.max(280, height * zoom)) }}
         ref={stage}
         tabIndex={0}
         aria-label="Scrollable family map. Use the relationship list below for a text view."
@@ -230,12 +258,21 @@ export function FamilyMap({
             const key = [a.id, b.id].sort().join(":");
             const offset = (seen.get(key) ?? 0) * 22;
             seen.set(key, (seen.get(key) ?? 0) + 1);
-            const ax = a.x + 112,
+            const sameColumn = a.x === b.x;
+            const ax = a.x + (sameColumn || b.x > a.x ? 224 : 0),
               ay = a.y + 56,
-              bx = b.x + 112,
+              bx = b.x + (sameColumn || a.x > b.x ? 224 : 0),
               by = b.y + 56;
-            const d = `M ${ax} ${ay} C ${ax + (bx - ax) / 2} ${ay + offset}, ${bx - (bx - ax) / 2} ${by + offset}, ${bx} ${by}`;
+            const controlX = sameColumn ? ax + 150 + offset : (ax + bx) / 2;
+            const d = `M ${ax} ${ay} C ${controlX} ${ay + offset}, ${controlX} ${by + offset}, ${bx} ${by}`;
+            const labelX = sameColumn ? ax + 112 + offset : (ax + bx) / 2;
             const labelY = (ay + by) / 2 + offset;
+            const emphasized = selected === l.id || pathLinks.has(l.id);
+            const edgeLabel = relationshipLabel(l.kind);
+            const labelWidth = Math.max(
+              88,
+              Math.min(225, edgeLabel.length * 6 + 24),
+            );
             return (
               <g
                 key={l.id}
@@ -256,27 +293,26 @@ export function FamilyMap({
                 <path
                   d={d}
                   fill="none"
-                  stroke={selected === l.id ? "#ab8034" : "#5b8d83"}
-                  strokeWidth={selected === l.id ? 4 : 2.5}
-                  strokeDasharray={selected === l.id ? undefined : "7 5"}
+                  stroke={emphasized ? "#ab8034" : "#5b8d83"}
+                  strokeWidth={emphasized ? 4 : 2.5}
                 />
                 <rect
-                  x={(ax + bx) / 2 - 58}
+                  x={labelX - labelWidth / 2}
                   y={labelY - 15}
-                  width="116"
+                  width={labelWidth}
                   height="29"
                   rx="14"
                   fill="#fffdf8"
                   stroke="#d8e1dc"
                 />
                 <text
-                  x={(ax + bx) / 2}
+                  x={labelX}
                   y={labelY + 4}
                   textAnchor="middle"
                   fontSize="12"
                   fill="#234a45"
                 >
-                  {l.kind.replaceAll("_", " / ")}
+                  {edgeLabel}
                 </text>
               </g>
             );
@@ -290,7 +326,6 @@ export function FamilyMap({
                 onClick={() => {
                   setSelectedNode(n.id);
                   setSelected(null);
-                  if (!peopleView) onSelectFamily(n.id);
                 }}
               >
                 <small>
@@ -318,9 +353,58 @@ export function FamilyMap({
             <strong>{linkSentence(selectedLink, data.people)}</strong>
             {selectedLink.notes && <p>{selectedLink.notes}</p>}
           </>
+        ) : currentNode ? (
+          <>
+            <span className={styles.eyebrow}>
+              {peopleView ? "Relative" : "Connected household"}
+            </span>
+            <h3>{currentNode.name}</h3>
+            <p>{currentNode.subtitle}</p>
+            {selectedPath.length > 0 && (
+              <>
+                <p className={styles.routeNames}>
+                  {[root, ...selectedPath.map((s) => s.to)]
+                    .map((id) => familyLabel(data, id))
+                    .join(" → ")}
+                </p>
+                {selectedPath.map((s) => (
+                  <p key={s.link.id}>
+                    <strong>{linkSentence(s.link, data.people)}</strong>
+                    {s.link.notes && <> · {s.link.notes}</>}
+                  </p>
+                ))}
+              </>
+            )}
+            {peopleView &&
+              circle.links
+                .filter((l) =>
+                  [l.sourceId, l.targetId].includes(currentNode.id),
+                )
+                .map((l) => (
+                  <button
+                    className={styles.quietButton}
+                    key={l.id}
+                    type="button"
+                    onClick={() => showLink(l)}
+                  >
+                    {linkSentence(l, data.people)}
+                  </button>
+                ))}
+            {selectedFamily && selectedFamily !== root && (
+              <button
+                className={styles.quietButton}
+                type="button"
+                onClick={() => onSelectFamily(selectedFamily)}
+              >
+                Explore {familyLabel(data, selectedFamily)} →
+              </button>
+            )}
+          </>
         ) : (
           <>
-            <strong>Select a connection to read its story.</strong>
+            <strong>
+              Select a family, person, or connection to see how they are linked.
+            </strong>
             <p>
               Drag the background or scroll to explore. Every line comes from a
               confirmed relationship.

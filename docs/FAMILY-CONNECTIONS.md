@@ -2,6 +2,8 @@
 
 My Household now has three views: Household, Family connections, and Family tree. Household shows the named family and its people; Family connections draws household-to-household lines; Family tree draws the actual people and relationships. One, two, or three levels can be explored. Zoom, fit-to-map, dragging, and a text equivalent support different screen sizes and keyboard users.
 
+Family connections opens first. The visible “How our families connect” section lets people search connected household names or relatives and trace the shortest confirmed route back to the focused household. Each bridge names both people, their recorded relationship, and their connection story. Routes between households never infer a new kinship between people. Selecting a map card preserves the current focus and highlights its route; an explicit Explore button changes the focused family. Same-column relationships curve around the people cards. The map scrolls inside its own container on mobile. Empty circles show a clearly labeled example, with no sample records saved to the database.
+
 Households are explicit assignments. They may contain different surnames, and two people with the same surname are never assumed to be related. When a person changes household, their person-to-person relationships remain and the map reflects the new household label.
 
 The church office maintains the complete family directory under Families & connections. Staff with `people.write` can create households, assign existing people, record office-verified relationships, and review pending requests. `people.read` permits inspection. Role preview is read-only. A family link is also available from member records.
