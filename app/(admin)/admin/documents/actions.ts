@@ -1,4 +1,5 @@
 "use server";
+import { readOfficiant, requestOfficiantSignature } from "@/lib/documents/officiant";
 import { officeContext,recordOfficeAction,roleMembers } from "@/lib/office/context";
 import { officeAction,formText } from "@/lib/office/action";
 import { cleanDesign,templateFields } from "@/lib/documents/design";
@@ -20,11 +21,14 @@ export async function toggleTemplateActive(id:string,isActive:boolean):Promise<A
 export async function claimRequest(id:string):Promise<ActionState>{return officeAction(async()=>{const {db,org,user}=await officeContext("documents.manage");const {data,error}=await db.from("document_requests").update({status:"in_review",assigned_to:user.id}).eq("organization_id",org).eq("id",id).eq("status","submitted").select("id").maybeSingle();if(error||!data)throw new Error("This request was already assigned or changed.");await recordOfficeAction(org,user.id,"document.claimed","document_requests",id);return "Request assigned to you.";});}
 export async function prepareRequest(id:string,_:ActionState,form:FormData):Promise<ActionState>{return officeAction(async()=>{
  const {db,org,user,profile,permissions}=await officeContext("documents.manage");const body=formText(form,"prepared_body",30000);if(!body||templateFields(body).length)throw new Error("Fill every template field before submitting the document.");
- const urgentReason=urgentReasonFrom(form);if(urgentReason&&!permissions.has("documents.urgent_sign"))throw new Error("Your role can't sign documents on the Pastor's behalf.");
+ const officiant=form.get("request_officiant")==="on";
+ if(officiant)await readOfficiant(org,form);
+ const urgentReason=officiant?null:urgentReasonFrom(form);if(urgentReason&&!permissions.has("documents.urgent_sign"))throw new Error("Your role can't sign documents on the Pastor's behalf.");
  const {data:r}=await db.from("document_requests").select("template_id,template_snapshot,status").eq("organization_id",org).eq("id",id).maybeSingle();if(!r||!['submitted','in_review','prepared','pending_pastor'].includes(r.status))throw new Error("This request can no longer be edited.");
  const {data:t}=r.template_id?await db.from("document_templates").select("*").eq("organization_id",org).eq("id",r.template_id).maybeSingle():{data:null};
  const {data,error}=await db.from("document_requests").update({prepared_body:body,status:"pending_pastor",prepared_by:user.id,template_snapshot:r.template_snapshot??t}).eq("organization_id",org).eq("id",id).eq("status",r.status).select("id").maybeSingle();if(error||!data)throw new Error("The request changed. Refresh and try again.");
  await recordOfficeAction(org,user.id,"document.prepared","document_requests",id);
+ if(officiant)return requestOfficiantSignature(org,id,user.id,form);
  const tellPastors=async()=>{const pastors=await roleMembers(org,['pastor']);await notifyUsers(org,pastors.flatMap(p=>p.auth_user_id?[p.auth_user_id]:[]),{title:"A document is ready for your approval",url:`/pastor/documents?request=${id}`,type:"document"});};
  if(urgentReason){
   try{return await certifyPreparedDocument({org,requestId:id,actor:{userId:user.id,name:await certifierName(org,user.id,profile),permissions},urgentReason});}
@@ -51,4 +55,13 @@ export async function deleteDocumentRequest(id:string):Promise<ActionState>{retu
  if(error)throw new Error("The document couldn't be deleted. Please try again.");
  await recordOfficeAction(org,user.id,"document.deleted","document_requests",id,{title:r.title,status:r.status,document_number:r.document_number??"",recipient:r.recipient_name??r.requester_profile_id??""});
  return "Deleted.";
+});}
+
+export async function cancelOfficiant(id:string):Promise<ActionState>{return officeAction(async()=>{
+ const {db,org,user}=await officeContext("documents.manage");
+ const {data:r}=await db.from("document_requests").select("status").eq("organization_id",org).eq("id",id).single();
+ if(r?.status!=="pending_pastor")throw new Error("Only a document awaiting certification can change its officiating pastor.");
+ const {error}=await db.from("document_officiants").delete().eq("organization_id",org).eq("request_id",id);if(error)throw error;
+ await recordOfficeAction(org,user.id,"document.officiant_cancelled","document_requests",id);
+ return "Officiating pastor request cancelled. The usual church pastor signing workflow applies.";
 });}

@@ -30,6 +30,7 @@ export async function draftDocumentPdf({
   recipientName,
   template,
   preparedBy,
+  officiantName,
 }: {
   org: string;
   title: string;
@@ -39,6 +40,7 @@ export async function draftDocumentPdf({
   template: { layout?: string | null; design?: unknown } | null;
   /** Shown as having prepared it (an auth user id). */
   preparedBy: string | null;
+  officiantName?: string;
 }): Promise<Buffer> {
   const db = createServiceRoleClient();
   const [pastors, { data: authority }] = await Promise.all([
@@ -48,7 +50,7 @@ export async function draftDocumentPdf({
   const pastor = pastors[0] ?? null;
   const design = cleanDesign(template?.design);
   // The name under the Pastor's signature line, as certifying prints it.
-  const signerName = (authority?.value as { signer_name?: string } | undefined)?.signer_name || design.signer_name || fullName(pastor) || "Pastor";
+  const signerName = officiantName || (authority?.value as { signer_name?: string } | undefined)?.signer_name || design.signer_name || fullName(pastor) || "Pastor";
   // The Pastor preparing his own letter isn't named twice, as when certified.
   const preparer = await preparingSigner(db, org, preparedBy, pastor?.auth_user_id);
   return generateDocumentPdf({
@@ -62,6 +64,7 @@ export async function draftDocumentPdf({
     layout: template?.layout ?? undefined,
     design: { ...design, signer_name: signerName },
     preparer,
+    ...(officiantName ? { signer: { name: officiantName, title: "Officiating Pastor" } } : {}),
   });
 }
 

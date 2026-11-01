@@ -1,3 +1,7 @@
+import { signingBinding, sameSigningBinding } from "@/lib/documents/officiant";
+import { roleMembers } from "@/lib/office/context";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import { CancelOfficiantButton } from "./cancel-officiant-button";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -24,6 +28,9 @@ export default async function PrepareDocumentPage({ params }: { params: Promise<
     .maybeSingle();
   if (!request) notFound();
 
+  const now = new Date().getTime();
+  const pastors = await roleMembers(organizationId!, ["pastor", "assistant_pastor", "acting_pastor", "student_pastor"]);
+  const { data: officiant } = await createServiceRoleClient().from("document_officiants").select("name,email,signed_at,expires_at,binding").eq("organization_id", organizationId!).eq("request_id", id).maybeSingle();
   const requester = request.profiles as unknown as { first_name: string | null; last_name: string | null; joined_at: string | null } | null;
   const canUrgentSign = permissions.has("documents.urgent_sign");
   const signingReady = canUrgentSign && (await pastorSigningReady(organizationId!));
@@ -55,13 +62,14 @@ export default async function PrepareDocumentPage({ params }: { params: Promise<
         </div>
       </div>
 
+      {officiant && <div className="panel"><h2>Officiating pastor: {officiant.name}</h2><p>{officiant.email} — {!sameSigningBinding(officiant.binding, signingBinding(request)) ? "Document changed. A fresh acknowledgement is required; send a new request below." : officiant.signed_at ? `Acknowledged and signed ${new Date(officiant.signed_at).toLocaleString("en-JM", { timeZone: "America/Jamaica" })}. Ready for office certification if the document is unchanged.` : Date.parse(officiant.expires_at) <= now ? "Request expired. Send a new request below." : "Awaiting acknowledgement and signature."}</p>{request.status === "pending_pastor" && <CancelOfficiantButton requestId={id} />}</div>}
       <div className="panel">
         <h2>Prepare the document</h2>
         <p className="form-note">
           Merge fields have been filled in from the member&apos;s profile — review and edit before sending to the
           pastor.
         </p>
-        <PrepareForm requestId={request.id} initialBody={mergedParagraphs.join("\n\n")} canUrgentSign={canUrgentSign} signingReady={signingReady} />
+        <PrepareForm requestId={request.id} initialBody={mergedParagraphs.join("\n\n")} canUrgentSign={canUrgentSign} signingReady={signingReady} pastors={pastors} />
       </div>
     </>
   );

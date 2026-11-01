@@ -1,3 +1,4 @@
+import { readOfficiant } from "@/lib/documents/officiant";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { nameOnDocument } from "@/lib/documents/delivery";
 import { markBlanks } from "@/lib/documents/merge";
@@ -22,7 +23,8 @@ async function loadRequest(org: string, id: string) {
       ? Promise.resolve({ data: null })
       : db.from("document_templates").select("layout,design").eq("organization_id", org).eq("id", request.template_id).maybeSingle(),
   ]);
-  return { request, member, template: (request.template_snapshot ?? template) as { layout?: string; design?: unknown } | null };
+  const { data: officiant } = await db.from("document_officiants").select("name").eq("organization_id", org).eq("request_id", id).maybeSingle();
+  return { request, member, officiant, template: (request.template_snapshot ?? template) as { layout?: string; design?: unknown } | null };
 }
 
 export async function GET(_: Request, { params }: Params) {
@@ -38,6 +40,7 @@ export async function GET(_: Request, { params }: Params) {
   }
   // Until it's sent to the Pastor, it's prepared by whoever took it on.
   const bytes = await draftDocumentPdf({
+    officiantName: loaded.officiant?.name,
     org: viewer.org,
     title: request.title,
     body: markBlanks(request.prepared_body || ""),
@@ -56,8 +59,10 @@ export async function POST(incoming: Request, { params }: Params) {
   const form = await incoming.formData().catch(() => null);
   if (!form) return new Response("Bad request", { status: 400 });
   const { request, member, template } = loaded;
+  const selectedOfficiant = form.get("request_officiant") === "on" ? await readOfficiant(viewer.org, form).catch(() => null) : null;
   // Whoever sends it to the Pastor becomes the one who prepared it.
   const bytes = await draftDocumentPdf({
+    officiantName: selectedOfficiant?.name || loaded.officiant?.name,
     org: viewer.org,
     title: request.title,
     body: markBlanks(String(form.get("prepared_body") ?? "").trim().slice(0, 30000)),

@@ -1,3 +1,4 @@
+import { sameSigningBinding, signingBinding } from "@/lib/documents/officiant";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { generateDocumentPdf, type PreparingSigner } from "@/lib/documents/pdf";
 import { getLogoBuffer, getStaffAssetBuffer } from "@/lib/documents/assets";
@@ -87,6 +88,10 @@ export async function certifyPreparedDocument({ org, requestId, actor, urgentRea
   const db = createServiceRoleClient();
   const { data: request } = await db.from("document_requests").select("*").eq("organization_id", org).eq("id", requestId).maybeSingle();
   if (!request?.prepared_body || request.status !== "pending_pastor") throw new Error("Prepare the document and submit it for certification first.");
+  const { data: officiant, error: officiantError } = await db.from("document_officiants").select("*").eq("organization_id", org).eq("request_id", requestId).maybeSingle();
+  if (officiantError) throw officiantError;
+  if (officiant && (!officiant.signed_at || !officiant.signature_png)) throw new Error("The officiating pastor must acknowledge and sign this document first.");
+  if (officiant && !sameSigningBinding(officiant.binding, signingBinding(request))) throw new Error("The document changed after the signing request. Request a fresh acknowledgement from the officiating pastor.");
   const [{ data: member }, { data: authority }, pastors] = await Promise.all([
     request.requester_profile_id
       ? db.from("profiles").select("id,first_name,last_name,email").eq("organization_id", org).eq("id", request.requester_profile_id).maybeSingle()
@@ -106,10 +111,10 @@ export async function certifyPreparedDocument({ org, requestId, actor, urgentRea
     ? await db.from("profiles").select("auth_user_id,signature_path,stamp_path,first_name,last_name").eq("id", signerId).maybeSingle()
     : { data: null };
   // The Pastor certifying his own letter doesn't need his name twice.
-  const preparer = await preparingSigner(db, org, request.prepared_by, signerProfile?.auth_user_id);
+  const preparer = await preparingSigner(db, org, request.prepared_by, officiant ? null : signerProfile?.auth_user_id);
   const [logo, signatureImage, stampImage] = await Promise.all([
     getLogoBuffer(),
-    getStaffAssetBuffer(signerProfile?.signature_path || assetConfig?.signature_path || null),
+    officiant?.signature_png ? Promise.resolve(Buffer.from(officiant.signature_png.split(",")[1]!, "base64")) : getStaffAssetBuffer(signerProfile?.signature_path || assetConfig?.signature_path || null),
     getStaffAssetBuffer(signerProfile?.stamp_path || assetConfig?.stamp_path || null),
   ]);
   if (!signatureImage || !stampImage) {
@@ -117,23 +122,23 @@ export async function certifyPreparedDocument({ org, requestId, actor, urgentRea
   }
   const snapshot = (request.template_snapshot ?? {}) as { layout?: string; design?: unknown; email_template_id?: string };
   const design = cleanDesign(snapshot.design);
-  const signerName = assetConfig?.signer_name || design.signer_name || fullName(signerProfile) || "Pastor";
+  const signerName = officiant?.name || assetConfig?.signer_name || design.signer_name || fullName(signerProfile) || "Pastor";
   // Only someone else signing for him is "urgent"; the Pastor ticking the
   // box on his own document is just certifying it.
-  const reason = urgent && !actorIsPastor ? urgentReason!.trim().slice(0, 1000) : null;
+  const reason = !officiant && urgent && !actorIsPastor ? urgentReason!.trim().slice(0, 1000) : null;
 
   const { data: numbered, error: lockError } = await db
     .from("document_requests")
-    .update({ status: "stamped", certified_by: actor.userId, certified_at: new Date().toISOString(), signer_profile_id: signerId ?? null, urgent_reason: reason })
+    .update({ status: "stamped", officiant_approval_hash: officiant?.token_hash ?? null, certified_by: actor.userId, certified_at: new Date().toISOString(), signer_profile_id: officiant ? null : signerId ?? null, urgent_reason: reason })
     .eq("organization_id", org)
     .eq("id", requestId)
     .eq("status", "pending_pastor")
     .select("document_number")
     .maybeSingle();
-  if (lockError || !numbered?.document_number) throw new Error("This document is already being certified. Refresh before trying again.");
+  if (lockError || !numbered?.document_number) throw new Error("The document changed, its officiating pastor has not signed, or it is already being certified. Refresh and request a new signature if needed.");
   const number = numbered.document_number;
   const path = `documents/${requestId}/${number}.pdf`;
-  const otherPastors = pastors.filter((p) => p.auth_user_id && p.auth_user_id !== actor.userId);
+  const otherPastors = officiant ? [] : pastors.filter((p) => p.auth_user_id && p.auth_user_id !== actor.userId);
   try {
     const pdf = await generateDocumentPdf({
       documentNumber: number,
@@ -144,7 +149,7 @@ export async function certifyPreparedDocument({ org, requestId, actor, urgentRea
       logoImage: logo,
       layout: snapshot.layout,
       design,
-      signer: { name: signerName, title: "Pastor, New Testament Church of God, Bull Bay", signatureImage, stampImage },
+      signer: { name: signerName, title: officiant ? "Officiating Pastor" : "Pastor, New Testament Church of God, Bull Bay", signatureImage, stampImage },
       preparer,
     });
     const { error: uploadError } = await db.storage.from("member-resources").upload(path, pdf, { contentType: "application/pdf", upsert: true });
@@ -152,7 +157,7 @@ export async function certifyPreparedDocument({ org, requestId, actor, urgentRea
     await recordOfficeAction(org, actor.userId, "document.signature_stamp_applied", "document_requests", requestId, {
       signer_name: signerName,
       document_number: number,
-      authority: reason ? "urgent_office_signature" : actor.permissions.has("documents.sign_delegate") ? "executive_delegation" : "pastor_approval",
+      authority: officiant ? "officiant_acknowledgement" : reason ? "urgent_office_signature" : actor.permissions.has("documents.sign_delegate") ? "executive_delegation" : "pastor_approval",
       sent_to: delivery.outside ? "outside_recipient" : "member",
       ...(reason ? { urgent_reason: reason } : {}),
     });
@@ -178,7 +183,7 @@ export async function certifyPreparedDocument({ org, requestId, actor, urgentRea
   } catch (error) {
     await db
       .from("document_requests")
-      .update({ status: "pending_pastor", certified_by: null, certified_at: null, pdf_path: null, urgent_reason: null })
+      .update({ status: "pending_pastor", officiant_approval_hash: null, certified_by: null, certified_at: null, pdf_path: null, urgent_reason: null })
       .eq("id", requestId)
       .eq("status", "stamped");
     throw error;

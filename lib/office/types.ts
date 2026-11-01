@@ -13,7 +13,9 @@ export type CalendarConnection = Base & { user_id: string; calendar_profile_id: 
 export type CalendarEventLink = { connection_id: string; event_id: string; google_event_id: string; synced_hash: string; google_updated: string | null; synced_at: string };
 /** What the two-way sync did, shown to the people whose calendar it is. */
 export type CalendarSyncLog = { id: number; connection_id: string; organization_id: string; direction: string; action: string; title: string | null; detail: string | null; created_at: string };
+export type DocumentOfficiant = { request_id: string; organization_id: string; name: string; email: string; token_hash: string; binding: Json; expires_at: string; requested_by: string; requested_at: string; signed_at: string | null; signature_png: string | null; acknowledgement: string | null };
 export type WorkflowTables = {
+ document_officiants: Table<DocumentOfficiant>;
  office_tasks: Table<OfficeTask>;
  email_templates: Table<EmailTemplate>;
  email_deliveries: Table<EmailDelivery>;

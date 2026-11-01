@@ -720,6 +720,7 @@ export type Database = {
       document_requests: {
         Row: {
           template_snapshot: Json
+          officiant_approval_hash: string | null
           signer_profile_id: string | null
           prepared_by: string | null
           recipient_name: string | null
@@ -747,6 +748,7 @@ export type Database = {
         }
         Insert: {
           template_snapshot?: Json
+          officiant_approval_hash?: string | null
           signer_profile_id?: string | null
           prepared_by?: string | null
           recipient_name?: string | null
@@ -774,6 +776,7 @@ export type Database = {
         }
         Update: {
           template_snapshot?: Json
+          officiant_approval_hash?: string | null
           signer_profile_id?: string | null
           prepared_by?: string | null
           recipient_name?: string | null

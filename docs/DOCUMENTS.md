@@ -81,3 +81,25 @@ The person who prepared a document is printed beside the Pastor's signature
 with their role's title (`primaryRoleName`). The secretary role prints as
 **Admin Secretary**; other roles use their name. An account with no name on
 file shows the title alone, rather than "Church Office".
+
+### A different pastor officiated (including visiting pastors)
+
+On **Documents → Certificates → Baby Dedication Certificate → Use template**,
+select **Request acknowledgement from a different officiating pastor**. Choose
+an existing pastor, or enter a visiting pastor's full name and email. The
+minister field is filled with that pastor's name. Prepare and send the request.
+Existing documents can use the same option on **Continue preparing**.
+
+The pastor receives a private, seven-day link, without needing an account. It
+shows the prepared document and asks them to confirm they officiated and draw
+their signature with a mouse, finger or pen. Their acknowledgement and timestamp
+are kept with the document and in the audit log. No certificate is issued yet.
+The office then certifies it using that signature, the officiating pastor's name,
+and the church stamp. Their signature is never added to reusable staff assets.
+
+Changing the document details requires a fresh request; replacing a request
+invalidates its old link and signature. The preparation page shows the signing
+status. **Cancel request and use church pastor** explicitly returns an unissued
+document to the usual signing workflow. Failed request emails appear in
+**Email delivery** and use the existing retry worker. Signing requests are only
+sent when an admin submits the form.

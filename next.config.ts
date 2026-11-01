@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
-    return [{ source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] }];
+    return [{ source: "/document-signing/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "Referrer-Policy", value: "no-referrer" }, { key: "X-Robots-Tag", value: "noindex, nofollow" }] }, { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] }];
   },
   /** The Live Countdown's sanctuary display, the address the TVs open. */
   async rewrites() {
