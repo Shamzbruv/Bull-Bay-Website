@@ -1,3 +1,4 @@
+import { savedPastorSignature } from "@/lib/documents/pastor-signatures";
 import { readOfficiant } from "@/lib/documents/officiant";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { templateFields } from "@/lib/documents/design";
@@ -27,7 +28,7 @@ export async function POST(incoming: Request, { params }: { params: Promise<{ id
     const value = text(`field_${key}`, 5000);
     if (value) fields[key] = value;
   }
-  const officiant = form.get("request_officiant") === "on" ? await readOfficiant(viewer.org, form).catch(() => null) : null;
+  const officiant = form.get("request_officiant") === "on" ? await readOfficiant(viewer.org, form).catch(() => null) : form.get("saved_pastor_signature_id") ? await savedPastorSignature(viewer.org, String(form.get("saved_pastor_signature_id"))).catch(() => null) : null;
   if (officiant && templateFields(template.body).includes("minister_name")) fields.minister_name = officiant.name;
   const personId = text("recipient_id", 40);
   const { data: member } = /^[0-9a-f-]{36}$/.test(personId)

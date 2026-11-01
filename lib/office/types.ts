@@ -13,8 +13,10 @@ export type CalendarConnection = Base & { user_id: string; calendar_profile_id: 
 export type CalendarEventLink = { connection_id: string; event_id: string; google_event_id: string; synced_hash: string; google_updated: string | null; synced_at: string };
 /** What the two-way sync did, shown to the people whose calendar it is. */
 export type CalendarSyncLog = { id: number; connection_id: string; organization_id: string; direction: string; action: string; title: string | null; detail: string | null; created_at: string };
-export type DocumentOfficiant = { request_id: string; organization_id: string; name: string; email: string; token_hash: string; binding: Json; expires_at: string; requested_by: string; requested_at: string; signed_at: string | null; signature_png: string | null; acknowledgement: string | null };
+export type PastorSignatureAuthorization = { id: string; organization_id: string; email: string; name: string | null; token_hash: string; expires_at: string; invited_by: string; invited_at: string; accepted_at: string | null; signature_png: string | null; consent_text: string | null; revoked_at: string | null; revoked_by: string | null };
+export type DocumentOfficiant = { authorization_id: string | null; request_id: string; organization_id: string; name: string; email: string; token_hash: string; binding: Json; expires_at: string; requested_by: string; requested_at: string; signed_at: string | null; signature_png: string | null; acknowledgement: string | null };
 export type WorkflowTables = {
+ pastor_signature_authorizations: Table<PastorSignatureAuthorization>;
  document_officiants: Table<DocumentOfficiant>;
  office_tasks: Table<OfficeTask>;
  email_templates: Table<EmailTemplate>;

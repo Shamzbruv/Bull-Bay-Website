@@ -1,3 +1,4 @@
+import { savedPastorSignature } from "@/lib/documents/pastor-signatures";
 import { readOfficiant } from "@/lib/documents/officiant";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { nameOnDocument } from "@/lib/documents/delivery";
@@ -59,7 +60,7 @@ export async function POST(incoming: Request, { params }: Params) {
   const form = await incoming.formData().catch(() => null);
   if (!form) return new Response("Bad request", { status: 400 });
   const { request, member, template } = loaded;
-  const selectedOfficiant = form.get("request_officiant") === "on" ? await readOfficiant(viewer.org, form).catch(() => null) : null;
+  const selectedOfficiant = form.get("request_officiant") === "on" ? await readOfficiant(viewer.org, form).catch(() => null) : form.get("saved_pastor_signature_id") ? await savedPastorSignature(viewer.org, String(form.get("saved_pastor_signature_id"))).catch(() => null) : null;
   // Whoever sends it to the Pastor becomes the one who prepared it.
   const bytes = await draftDocumentPdf({
     officiantName: selectedOfficiant?.name || loaded.officiant?.name,

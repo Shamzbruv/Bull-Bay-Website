@@ -1,4 +1,5 @@
 "use server";
+import { savedPastorSignature, applySavedPastorSignature } from "@/lib/documents/pastor-signatures";
 import { readOfficiant, requestOfficiantSignature } from "@/lib/documents/officiant";
 import { officeContext,recordOfficeAction,roleMembers } from "@/lib/office/context";
 import { officeAction,formText } from "@/lib/office/action";
@@ -22,12 +23,15 @@ export async function claimRequest(id:string):Promise<ActionState>{return office
 export async function prepareRequest(id:string,_:ActionState,form:FormData):Promise<ActionState>{return officeAction(async()=>{
  const {db,org,user,profile,permissions}=await officeContext("documents.manage");const body=formText(form,"prepared_body",30000);if(!body||templateFields(body).length)throw new Error("Fill every template field before submitting the document.");
  const officiant=form.get("request_officiant")==="on";
+ const savedId=officiant?"":formText(form,"saved_pastor_signature_id",40);
+ if(savedId)await savedPastorSignature(org,savedId);
  if(officiant)await readOfficiant(org,form);
- const urgentReason=officiant?null:urgentReasonFrom(form);if(urgentReason&&!permissions.has("documents.urgent_sign"))throw new Error("Your role can't sign documents on the Pastor's behalf.");
+ const urgentReason=officiant||savedId?null:urgentReasonFrom(form);if(urgentReason&&!permissions.has("documents.urgent_sign"))throw new Error("Your role can't sign documents on the Pastor's behalf.");
  const {data:r}=await db.from("document_requests").select("template_id,template_snapshot,status").eq("organization_id",org).eq("id",id).maybeSingle();if(!r||!['submitted','in_review','prepared','pending_pastor'].includes(r.status))throw new Error("This request can no longer be edited.");
  const {data:t}=r.template_id?await db.from("document_templates").select("*").eq("organization_id",org).eq("id",r.template_id).maybeSingle():{data:null};
  const {data,error}=await db.from("document_requests").update({prepared_body:body,status:"pending_pastor",prepared_by:user.id,template_snapshot:r.template_snapshot??t}).eq("organization_id",org).eq("id",id).eq("status",r.status).select("id").maybeSingle();if(error||!data)throw new Error("The request changed. Refresh and try again.");
  await recordOfficeAction(org,user.id,"document.prepared","document_requests",id);
+ if(savedId)return applySavedPastorSignature(org,id,user.id,savedId);
  if(officiant)return requestOfficiantSignature(org,id,user.id,form);
  const tellPastors=async()=>{const pastors=await roleMembers(org,['pastor']);await notifyUsers(org,pastors.flatMap(p=>p.auth_user_id?[p.auth_user_id]:[]),{title:"A document is ready for your approval",url:`/pastor/documents?request=${id}`,type:"document"});};
  if(urgentReason){

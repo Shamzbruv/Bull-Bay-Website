@@ -103,3 +103,22 @@ status. **Cancel request and use church pastor** explicitly returns an unissued
 document to the usual signing workflow. Failed request emails appear in
 **Email delivery** and use the existing retry worker. Signing requests are only
 sent when an admin submits the form.
+
+### Reusable pastor signatures (sign once)
+
+Go to **Documents → Pastor signatures**, enter the pastor's email and send an
+invitation. The pastor opens the private link, enters their own full name and
+title, signs with a mouse or finger, and explicitly authorizes reuse on church
+certificates, letters, forms and other documents and records generated through
+the system. The exact consent and acceptance time are retained. No account is
+required. Pending invitations expire after seven days and can be resent.
+
+Once authorized, choose the pastor under **Use an authorized saved signature**
+when preparing a document or using a template. No separate email or signature is
+required per document. The office still reviews and certifies before issuing.
+Each use records the selected authorization and the staff member who used it;
+blanket permission is not recorded as an acknowledgement of a particular ceremony.
+
+**Revoke** disables the link and stops future use, including on documents already
+prepared but not yet certified. Issued documents keep their original signatures.
+To replace a signature or change the pastor's name, revoke and invite again.

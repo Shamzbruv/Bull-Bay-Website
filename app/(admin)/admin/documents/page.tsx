@@ -72,6 +72,7 @@ export default async function AdminDocumentsPage({ searchParams }: { searchParam
         >
           Certificates
         </Link>
+        <Link className="secondary-button" href="/admin/documents/pastor-signatures">Pastor signatures</Link>
         <Link className="secondary-button" href="/admin/emails">
           Email templates &amp; delivery
         </Link>

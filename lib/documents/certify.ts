@@ -1,3 +1,4 @@
+import { savedPastorSignature } from "@/lib/documents/pastor-signatures";
 import { sameSigningBinding, signingBinding } from "@/lib/documents/officiant";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { generateDocumentPdf, type PreparingSigner } from "@/lib/documents/pdf";
@@ -90,6 +91,7 @@ export async function certifyPreparedDocument({ org, requestId, actor, urgentRea
   if (!request?.prepared_body || request.status !== "pending_pastor") throw new Error("Prepare the document and submit it for certification first.");
   const { data: officiant, error: officiantError } = await db.from("document_officiants").select("*").eq("organization_id", org).eq("request_id", requestId).maybeSingle();
   if (officiantError) throw officiantError;
+  if (officiant?.authorization_id) await savedPastorSignature(org, officiant.authorization_id);
   if (officiant && (!officiant.signed_at || !officiant.signature_png)) throw new Error("The officiating pastor must acknowledge and sign this document first.");
   if (officiant && !sameSigningBinding(officiant.binding, signingBinding(request))) throw new Error("The document changed after the signing request. Request a fresh acknowledgement from the officiating pastor.");
   const [{ data: member }, { data: authority }, pastors] = await Promise.all([
@@ -155,9 +157,10 @@ export async function certifyPreparedDocument({ org, requestId, actor, urgentRea
     const { error: uploadError } = await db.storage.from("member-resources").upload(path, pdf, { contentType: "application/pdf", upsert: true });
     if (uploadError) throw new Error("The PDF could not be saved.");
     await recordOfficeAction(org, actor.userId, "document.signature_stamp_applied", "document_requests", requestId, {
+      ...(officiant?.authorization_id ? { authorization_id: officiant.authorization_id } : {}),
       signer_name: signerName,
       document_number: number,
-      authority: officiant ? "officiant_acknowledgement" : reason ? "urgent_office_signature" : actor.permissions.has("documents.sign_delegate") ? "executive_delegation" : "pastor_approval",
+      authority: officiant?.authorization_id ? "authorized_saved_pastor_signature" : officiant ? "officiant_acknowledgement" : reason ? "urgent_office_signature" : actor.permissions.has("documents.sign_delegate") ? "executive_delegation" : "pastor_approval",
       sent_to: delivery.outside ? "outside_recipient" : "member",
       ...(reason ? { urgent_reason: reason } : {}),
     });

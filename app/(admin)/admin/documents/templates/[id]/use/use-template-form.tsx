@@ -8,12 +8,13 @@ import { PreviewNote, PreviewPdfButton } from "../../../preview-pdf-button";
 import { useDocumentTemplate } from "./actions";
 type Person={id:string;first_name:string|null;last_name:string|null;email:string|null;address_line1:string|null;joined_at:string|null};
 const nameOf=(p?:Person)=>[p?.first_name,p?.last_name].filter(Boolean).join(" ");
-export function UseTemplateForm({id,body,people,canUrgentSign,signingReady,pastors}:{id:string;body:string;people:Person[];canUrgentSign:boolean;signingReady:boolean;pastors:OfficiantChoice[]}){
+export function UseTemplateForm({id,body,people,canUrgentSign,signingReady,pastors,savedSignatures}:{id:string;body:string;people:Person[];canUrgentSign:boolean;signingReady:boolean;pastors:OfficiantChoice[];savedSignatures:{id:string;name:string|null;email:string}[]}){
  const [mode,setMode]=useState<"member"|"outside">("member");
  const [person,setPerson]=useState("");
  const [outside,setOutside]=useState({name:"",email:"",address:""});
  const [urgent,setUrgent]=useState(false);
  const [officiant,setOfficiant]=useState(false);
+ const [saved,setSaved]=useState("");
  const [values,setValues]=useState<Record<string,string>>({church_name:"New Testament Church of God, Bull Bay",date_today:new Date().toLocaleDateString("en-JM",{timeZone:"America/Jamaica"})});
  const fields=templateFields(body);
  // Choosing a member fills in what the template knows about them; for a
@@ -22,7 +23,7 @@ export function UseTemplateForm({id,body,people,canUrgentSign,signingReady,pasto
  const chooseMember=(personId:string)=>{setPerson(personId);const p=people.find(p=>p.id===personId);setValues(v=>({...v,member_name:nameOf(p)||(mode==="outside"?outside.name:""),membership_since:p?.joined_at??"",...(mode==="member"?{recipient_address:p?.address_line1??""}:{})}));};
  const chooseMode=(next:"member"|"outside")=>{setMode(next);if(next==="outside")setValues(v=>({...v,recipient_name:outside.name,recipient_address:outside.address,...(person?{}:{member_name:outside.name})}));};
  const editOutside=(key:"name"|"email"|"address",value:string)=>{const next={...outside,[key]:value};setOutside(next);if(key==="name")setValues(v=>({...v,recipient_name:value,...(person?{}:{member_name:value})}));if(key==="address")setValues(v=>({...v,recipient_address:value}));};
- return <OfficeActionForm action={useDocumentTemplate.bind(null,id)} label={officiant?"Prepare and request officiating pastor signature":urgent?"Sign, stamp and send now":"Prepare document for certification"} actions={<PreviewPdfButton href={`/api/office/documents/templates/${id}/preview`}/>}>
+ return <OfficeActionForm action={useDocumentTemplate.bind(null,id)} label={saved?"Prepare with selected pastor signature":officiant?"Prepare and request officiating pastor signature":urgent?"Sign, stamp and send now":"Prepare document for certification"} actions={<PreviewPdfButton href={`/api/office/documents/templates/${id}/preview`}/>}>
   <fieldset className="doc-send-to">
    <legend>Send the finished PDF to</legend>
    <div className="choice-row">
@@ -46,8 +47,8 @@ export function UseTemplateForm({id,body,people,canUrgentSign,signingReady,pasto
   </label>
   {fields.map(k=><label key={k}>{fieldLabel(k)}<input name={`field_${k}`} required value={values[k]??""} onChange={e=>setValues({...values,[k]:e.target.value})}/></label>)}
   <details><summary>Preview document text</summary><p style={{whiteSpace:"pre-wrap"}}>{body.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g,(match,key:string)=>values[key]||match)}</p></details>
-  <OfficiantFields onNameChange={name=>setValues(v=>({...v,minister_name:name}))} pastors={pastors} enabled={officiant} onChange={value=>{setOfficiant(value);setUrgent(false);}}/>
-  {canUrgentSign&&!officiant&&<UrgentSignFields urgent={urgent} onChange={setUrgent} signingReady={signingReady}/>}
+  <OfficiantFields savedSignatures={savedSignatures} onSavedChange={id=>{setSaved(id);setUrgent(false);}} onNameChange={name=>setValues(v=>({...v,minister_name:name}))} pastors={pastors} enabled={officiant} onChange={value=>{setOfficiant(value);setUrgent(false);}}/>
+  {canUrgentSign&&!officiant&&!saved&&<UrgentSignFields urgent={urgent} onChange={setUrgent} signingReady={signingReady}/>}
   <PreviewNote/>
  </OfficeActionForm>;
 }
