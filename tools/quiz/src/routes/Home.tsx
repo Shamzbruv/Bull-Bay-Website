@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { Play, Library, PlusCircle, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
+import { Play, Library, PlusCircle, Shuffle, Images, History as HistoryIcon, Settings as SettingsIcon } from 'lucide-react';
 import { AppShell } from '../components/layout/AppShell';
 import { ChurchLogo } from '../components/brand/ChurchLogo';
 import { BrandDivider } from '../components/brand/BrandDivider';
 import { brand } from '../config/brand';
 import { useGameStore } from '../state/gameStore';
+import { puzzleModes } from '../types/biblePuzzles';
 
 const PARTICLES = Array.from({ length: 24 }, (_, i) => i);
 
@@ -86,6 +87,11 @@ export function Home() {
             <span className="block mt-2 font-display text-3xl font-black text-white">FAMILY FEUD</span>
             <span className="block mt-2 text-sm text-white/70">PowerPoint or Bible questions · Choose your format · You reveal the answers</span>
           </Link>
+
+          <div className="grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+            <SecondaryAction to="/puzzles/unscramble" icon={<Shuffle size={20} />} label={puzzleModes.unscramble.title} />
+            <SecondaryAction to="/puzzles/pictures" icon={<Images size={20} />} label={puzzleModes.pictures.title} />
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
             <SecondaryAction to="/quizzes" icon={<Library size={20} />} label="Quiz Library" />

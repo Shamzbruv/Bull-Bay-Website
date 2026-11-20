@@ -1,5 +1,7 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { FamilyFeud, FamilyFeudDisplay } from './routes/FamilyFeud';
+import { PuzzleDisplay } from './routes/PuzzleDisplay';
 import { Home } from './routes/Home';
 import { PlaySetup } from './routes/PlaySetup';
 import { GameHost } from './routes/GameHost';
@@ -15,6 +17,8 @@ import { Settings } from './routes/Settings';
 import { useSoundSync } from './hooks/useSoundSync';
 import { usePreloadAssets } from './hooks/usePreloadAssets';
 
+const PuzzleHost = lazy(() => import('./routes/PuzzleHost'));
+
 function App() {
   useSoundSync();
   usePreloadAssets();
@@ -23,6 +27,10 @@ function App() {
     <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/puzzles/display/:id" element={<PuzzleDisplay />} />
+        <Route path="/puzzles/:mode" element={
+          <Suspense fallback={<p role="status" className="p-6 text-white">Loading Bible puzzles…</p>}><PuzzleHost /></Suspense>
+        } />
         <Route path="/feud" element={<FamilyFeud />} />
         <Route path="/feud/:gameId/display" element={<FamilyFeudDisplay />} />
         <Route path="/play/setup" element={<PlaySetup />} />
