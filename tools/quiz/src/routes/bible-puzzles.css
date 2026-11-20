@@ -1,0 +1,307 @@
+.bp-host {
+  width: min(100% - 2rem, 76rem);
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 3rem) 0 5rem;
+}
+
+.bp-host > h1,
+.bp-end h1,
+.bp-end h2 {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  font-weight: 850;
+  line-height: 1.1;
+  color: var(--color-bb-gold-light);
+}
+
+.bp-host > p,
+.bp-end p {
+  margin-top: 0.7rem;
+  color: #cbd7eb;
+}
+
+.bp-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 1rem;
+  color: var(--color-bb-gold-light);
+}
+
+.bp-host-grid {
+  margin-top: 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(15rem, 19rem);
+  gap: 1rem;
+}
+
+.bp-board,
+.bp-controls,
+.bp-new-game {
+  border: 1px solid #7893c05c;
+  border-radius: 1.25rem;
+  background: #0a1935;
+}
+
+.bp-board {
+  min-width: 0;
+  padding: clamp(1rem, 3vw, 3rem);
+  text-align: center;
+  color: #fff;
+}
+
+.bp-board-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: clamp(0.85rem, 1.7vw, 1.25rem);
+  text-align: left;
+  font-weight: 700;
+  color: var(--color-bb-gold-light);
+}
+
+.bp-board-heading span:last-child {
+  white-space: nowrap;
+}
+
+.bp-board > h2 {
+  margin: 1.25rem 0 0;
+  font-size: clamp(1rem, 2.5vw, 1.8rem);
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.bp-pictures,
+.bp-letters {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: clamp(0.3rem, 1vw, 0.8rem);
+  padding: clamp(1rem, 4vh, 3rem) 0;
+}
+
+.bp-pictures span,
+.bp-letters span {
+  display: grid;
+  place-items: center;
+  border: 1px solid #7893c066;
+  border-radius: clamp(0.45rem, 1.2vw, 1rem);
+  background: linear-gradient(155deg, #274675, #152a50);
+  aspect-ratio: 1;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.bp-letters span {
+  width: clamp(1.8rem, 4.8vw, 5.2rem);
+  font-size: clamp(1.15rem, 3vw, 3.1rem);
+}
+
+.bp-pictures span {
+  width: min(21%, 11rem);
+  font-size: clamp(1.9rem, 7vw, 6rem);
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+}
+
+.bp-result {
+  display: grid;
+  place-content: center;
+  min-height: 5.25rem;
+  color: #e1ebfb;
+  font-size: clamp(1rem, 2.1vw, 1.5rem);
+}
+
+.bp-result strong {
+  font-size: clamp(1.5rem, 5vw, 3.6rem);
+  line-height: 1.12;
+  color: var(--color-bb-gold-light);
+  overflow-wrap: anywhere;
+}
+
+.bp-result strong + p {
+  margin-top: 0.4rem;
+}
+
+.bp-result b {
+  margin-right: 0.4rem;
+  color: var(--color-bb-gold-light);
+}
+
+.bp-controls {
+  align-self: start;
+  display: grid;
+  gap: 0.65rem;
+  padding: 1rem;
+}
+
+.bp-controls h2 {
+  font-size: 1.2rem;
+  font-weight: 750;
+}
+
+.bp-button,
+.bp-fullscreen {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  border: 1px solid #7893c073;
+  border-radius: 0.65rem;
+  background: #1b345d;
+  color: #fff;
+  padding: 0.5rem 0.7rem;
+  font-weight: 650;
+  text-align: center;
+  cursor: pointer;
+}
+
+.bp-button:hover:not(:disabled),
+.bp-fullscreen:hover {
+  background: #294c7c;
+}
+
+.bp-button:focus-visible,
+.bp-fullscreen:focus-visible,
+.bp-back:focus-visible,
+.bp-new-game summary:focus-visible,
+.bp-game-setup select:focus-visible {
+  outline: 2px solid var(--color-bb-gold-light);
+  outline-offset: 3px;
+}
+
+.bp-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.bp-button.bp-reveal {
+  border-color: #efd078;
+  background: #efd078;
+  color: #162846;
+}
+
+.bp-button.bp-reveal:hover {
+  background: #ffe49c;
+}
+
+.bp-navigation {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.bp-note {
+  color: #c0cfe6;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.bp-private {
+  padding: 0.65rem;
+  border-radius: 0.55rem;
+  background: #132747;
+  color: var(--color-bb-gold-light);
+}
+
+.bp-private span {
+  display: block;
+  color: #d4e2f9;
+  font-size: 0.85rem;
+}
+
+.bp-setup,
+.bp-new-game {
+  margin-top: 1.25rem;
+}
+
+.bp-setup {
+  max-width: 32rem;
+}
+
+.bp-new-game {
+  max-width: 40rem;
+  padding: 0.75rem 1rem;
+}
+
+.bp-new-game summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.bp-new-game[open] summary {
+  margin-bottom: 0.65rem;
+}
+
+.bp-game-setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+.bp-game-setup label {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 11rem;
+}
+
+.bp-game-setup select {
+  min-height: 2.75rem;
+  border: 1px solid #7893c073;
+  border-radius: 0.55rem;
+  background: #132747;
+  color: #fff;
+  padding: 0 0.65rem;
+}
+
+.bp-display {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  min-height: 100svh;
+  padding: 1rem 1rem 4.5rem;
+  color: white;
+}
+
+.bp-display .bp-board {
+  width: min(100%, 82rem);
+}
+
+.bp-end {
+  display: grid;
+  justify-items: center;
+  gap: 0.85rem;
+  padding: 1rem 0;
+  text-align: center;
+}
+
+.bp-display .bp-fullscreen {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1;
+}
+
+.bp-connection {
+  margin-top: 0.6rem;
+  color: var(--color-bb-gold-light);
+}
+
+@media (max-width: 52rem) {
+  .bp-host-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-height: 34rem) and (orientation: landscape) {
+  .bp-display {
+    align-content: start;
+  }
+
+  .bp-display .bp-pictures span {
+    width: min(19vh, 21%);
+    font-size: 12vh;
+  }
+}
